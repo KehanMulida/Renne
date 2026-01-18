@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: Bandage
+  m_EditorClassIdentifier: Assembly-CSharp::ConsumableData
+  ID: 2001
+  Name: Bandage
+  description: "\u7269\u54C1\u63CF\u8FF0"
+  Type: 0
+  rarity: 0
+  UseCost: 1
+  EffectType: HealHP
+  EffectValue: 20
+  Sound: 
+  Animation: 
+  VFX: 
+  icon: {fileID: 0}
+  Prefab: {fileID: 7865087893502583766, guid: 1a95e504bcf17914b8e1da9aa3220bb2, type: 3}
+  weight: 1
+  value: 10
+  maxStack: 10
+  healAmount: 20
+  staminaAmount: 0
+  sanityAmount: 0

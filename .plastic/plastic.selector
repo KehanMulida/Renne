@@ -1,0 +1,4 @@
+repository "Renne@tj_calvingong@cloud.cn"
+  path "/"
+    br "/main"
+    co "/main"
