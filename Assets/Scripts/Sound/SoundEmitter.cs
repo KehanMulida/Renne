@@ -98,6 +98,7 @@ public class SoundEmitter : MonoBehaviour
     /// </summary>
     public void EmitMovementSound()
     {
+        // Debug.LogWarning($"[SoundEmitter:{gameObject.name}] EmitMovementSound called! enableSound={enableSound}, radius={movementSoundRadius}");
         if (!enableSound) return;
         if (Time.time - lastSoundTime < minSoundInterval) return;
 

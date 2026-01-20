@@ -3,16 +3,16 @@
   "WorkspaceRootPath": "E:\\Renne\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\player\\inventory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\player\\inventory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\items\\itemdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\items\\itemdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\items\\itemdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\Renne\\Assets\\Scripts\\Camera\\floor-visibility-system.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -66,16 +66,16 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Inventory.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\Inventory.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\Inventory.cs",
-              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Player\\Inventory.cs*",
-              "RelativeToolTip": "Assets\\Scripts\\Player\\Inventory.cs*",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Player\\Inventory.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Player\\Inventory.cs",
               "ViewState": "AgIAAEcAAAAAAAAAAAAmwF8AAAAsAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-11-30T11:57:23.203Z",
@@ -83,7 +83,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "ItemData.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Items\\ItemData.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Items\\ItemData.cs",
@@ -91,20 +91,20 @@
               "RelativeToolTip": "Assets\\Scripts\\Items\\ItemData.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-30T07:35:03.501Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-11-30T07:35:03.501Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "PlayerInputController.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\PlayerInputController.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\PlayerInputController.cs",
               "ToolTip": "E:\\Renne\\Assets\\Scripts\\Player\\PlayerInputController.cs",
               "RelativeToolTip": "Assets\\Scripts\\Player\\PlayerInputController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAOMBAAAAAAAAAAAlwP4BAABlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-30T07:06:00.607Z"
+              "WhenOpened": "2025-11-30T07:06:00.607Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",

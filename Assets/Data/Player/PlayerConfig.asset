@@ -27,7 +27,7 @@ MonoBehaviour:
   Defense: 5
   MaxSanity: 100
   CurrentSanity: 100
-  BaseNoiceLevel: 2
+  BaseNoiceLevel: 10
   HearingRange: 14
   BaseVisibility: 5
   ViewAngle: 120

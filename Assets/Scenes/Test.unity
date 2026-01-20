@@ -282,7 +282,7 @@ Transform:
   m_GameObject: {fileID: 18334327}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.27, y: 0.32, z: 0.88}
+  m_LocalPosition: {x: 19.24, y: 0.32, z: 0.88}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -301,7 +301,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enableSound: 1
-  movementSoundRadius: 3
+  movementSoundRadius: 15
   movementSoundIntensity: 0.5
   showSoundRadius: 0
   soundColor: {r: 1, g: 1, b: 0, a: 0.3}
@@ -319,11 +319,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enableListening: 1
-  hearingRange: 10
+  hearingRange: 20
   hearingThreshold: 0.1
   maxSoundMemory: 10
   soundMemoryDuration: 5
-  showHearingRange: 0
+  showHearingRange: 1
   hearingColor: {r: 0, g: 1, b: 1, a: 0.2}
   enableDebugLog: 0
 --- !u!114 &18334337
@@ -2385,6 +2385,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 92983291815800354, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
+      propertyPath: movementSoundRadius
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 92983291815800354, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
+      propertyPath: movementSoundIntensity
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 703754485212201003, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2424,6 +2432,10 @@ PrefabInstance:
     - target: {fileID: 703754485212201003, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3111265367095503012, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
+      propertyPath: hearingRange
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 5564543807172579976, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
       propertyPath: m_Materials.Array.data[0]

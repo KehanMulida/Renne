@@ -52,6 +52,10 @@ public class SimpleEnemyAI : MonoBehaviour
     private Vector3 lastKnownPlayerPosition;
     private int movesSinceLastSight = 0;
     private Vector3? investigationTarget;
+    private Vector3 lastHeardSoundPosition;
+    private bool hasHeardSound = false;
+    private int lastKnownPlayerFloor = 0;
+    private int targetFloor = -1;
 
     // ============ 初始化 ============
 
@@ -130,19 +134,102 @@ public class SimpleEnemyAI : MonoBehaviour
     private void OnSoundHeard(SoundEvent soundEvent, float intensity)
     {
         // 检查是否是玩家的声音
-        if (soundEvent.source == null) return;
+          // *** 最开头加这行，确认方法是否被调用 ***
+        Debug.LogWarning($"[AI:{gameObject.name}] OnSoundHeard CALLED! Source: {soundEvent.source?.name}, Intensity: {intensity}");
+
+        // 检查是否是玩家的声音
+        if (soundEvent.source == null) 
+        {
+            DebugLog("Sound source is null, ignoring");
+            return;
+        }
 
         TurnBasedUnit sourceUnit = soundEvent.source.GetComponent<TurnBasedUnit>();
-        if (sourceUnit == null || sourceUnit.Faction != TurnFaction.Player) return;
+        if (sourceUnit == null) 
+        {
+         DebugLog("Sound source has no TurnBasedUnit, ignoring");
+            return;
+        }
+        
+        if (sourceUnit.Faction != TurnFaction.Player) 
+        {
+            DebugLog($"Sound source faction is {sourceUnit.Faction}, not Player, ignoring");
+            return;
+        }
+        // *** 移除回合限制，任何时候都记录声音位置 ***
+        
+        // 记录声音位置
+        lastHeardSoundPosition = soundEvent.position;
+        hasHeardSound = true;
+        
+        DebugLog($"Heard player sound at {soundEvent.position}, intensity: {intensity}");
 
-        // 只有在非追击状态才响应声音
+        // 只有在非追击状态才切换到调查状态
         if (currentState != EnemyAIState.Chasing && currentState != EnemyAIState.Searching)
         {
             investigationTarget = soundEvent.position;
             ChangeState(EnemyAIState.Investigating);
-            DebugLog($"Heard player sound at {soundEvent.position}, investigating...");
         }
+        
+        // *** 添加：转向声音方向 ***
+        LookTowardsPosition(soundEvent.position);
     }
+    /// <summary>
+    /// 获取最接近目标楼层的连接点
+    /// </summary>
+    private FloorConnection GetNearestFloorConnection(int toFloor)
+    {
+        if(FloorManager.Instance == null) return null;
+
+        int currentFloor =  unitMovement.CurrentFloor;
+        Vector2Int currentPos =unitMovement.CurrentGridPosition;
+
+        FloorData floorData = FloorManager.Instance. GetFloor(currentFloor);
+        if(floorData == null || floorData.connections == null) return null;
+
+        FloorConnection nearestConnection = null;
+        float nearestDistance = float.MaxValue; // 最近距离
+
+        // 遍历所有连接，找到最接近目标楼层的连接
+        foreach (var connection in floorData.connections)
+        {
+            // 检查这个连接是否通向目标楼层
+            if (connection.toFloor == toFloor)
+            {
+                float distance = Vector2Int.Distance(currentPos, connection.gridPosition);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestConnection = connection;
+                }
+            }
+        }
+          if (nearestConnection != null)
+        {
+            DebugLog($"[Floor] Nearest connection to floor {toFloor}: {nearestConnection.gridPosition} ({nearestConnection.connectionType}), distance: {nearestDistance:F1}");
+        }
+        else
+        {
+            DebugLog($"[Floor] No connection found to floor {toFloor}");
+        }
+
+        return nearestConnection;
+    }
+    /// <summary>
+    /// 获取所有可用的楼层连接点
+    /// </summary>
+    private List<FloorConnection> GetAllFloorConnections()
+    {
+        if (FloorManager.Instance == null) return new List<FloorConnection>();
+
+        int currentFloor = unitMovement.CurrentFloor;
+        FloorData floorData = FloorManager.Instance.GetFloor(currentFloor);
+        
+        if (floorData == null) return new List<FloorConnection>();
+        
+        return floorData.connections;
+    }
+    
 
     // ============ 状态机 ============
 
@@ -153,8 +240,10 @@ public class SimpleEnemyAI : MonoBehaviour
     {
         if (!useVision || visionSensor == null) return;
 
-        bool wasChasing = (currentState == EnemyAIState.Chasing);
+        // 强制立即执行一次视觉检测
         visionSensor.PerformDetection();
+
+        bool wasChasing = (currentState == EnemyAIState.Chasing);
 
         if (visionSensor.PlayerVisible)
         {
@@ -162,10 +251,16 @@ public class SimpleEnemyAI : MonoBehaviour
             lastKnownPlayerPosition = visionSensor.LastSeenPosition;
             movesSinceLastSight = 0;
 
+            // *** 添加：记录玩家楼层 ***
+            if (FloorManager.Instance != null)
+            {
+                lastKnownPlayerFloor = FloorManager.Instance.GetFloorFromWorldY(lastKnownPlayerPosition.y);
+            }
+
             if (currentState != EnemyAIState.Chasing)
             {
                 ChangeState(EnemyAIState.Chasing);
-                Debug.LogWarning($"[AI:{gameObject.name}] !!! SPOTTED PLAYER !!! Position: {lastKnownPlayerPosition}");
+                Debug.LogWarning($"[AI:{gameObject.name}] !!! SPOTTED PLAYER !!! Position: {lastKnownPlayerPosition}, Floor: {lastKnownPlayerFloor}");
             }
         }
         else if (currentState == EnemyAIState.Chasing)
@@ -175,7 +270,6 @@ public class SimpleEnemyAI : MonoBehaviour
             Debug.LogWarning($"[AI:{gameObject.name}] Lost sight of player, starting search");
         }
     }
-
     // ============ 状态执行 ============
 
     private Vector2Int? ExecuteIdle()
@@ -191,35 +285,102 @@ public class SimpleEnemyAI : MonoBehaviour
     /// 执行调查
     /// </summary>
 
-    private Vector2Int? ExecuteInvestigate()
+   private Vector2Int? ExecuteInvestigate()
     {
         if (!investigationTarget.HasValue)
         {
+            hasHeardSound = false;
             ChangeState(EnemyAIState.Patrol);
             return SelectRandomMove();
         }
 
-        // 移动到调查点
-        Vector2Int targetGrid = GridManager.Instance.WorldToGrid(investigationTarget.Value);
+        int myFloor = unitMovement.CurrentFloor;
         Vector2Int currentPos = unitMovement.CurrentGridPosition;
+        
+        // 获取声音来源的楼层
+        int soundFloor = FloorManager.Instance != null 
+            ? FloorManager.Instance.GetFloorFromWorldY(investigationTarget.Value.y) 
+            : 0;
+
+        // 检查是否需要跨楼层
+        if (myFloor != soundFloor)
+        {
+            DebugLog($"[Investigate] Sound on different floor! My floor: {myFloor}, Sound floor: {soundFloor}");
+
+            FloorConnection connection = GetNearestFloorConnection(soundFloor);
+
+            if (connection != null)
+            {
+                if (currentPos == connection.gridPosition)
+                {
+                    DebugLog($"[Investigate] At connection point, moving to floor {soundFloor}");
+                    unitMovement.MoveToGrid(connection.gridPosition, connection.toFloor);
+                    return null;
+                }
+                else
+                {
+                    DebugLog($"[Investigate] Moving to connection point at {connection.gridPosition}");
+                    return SelectMoveTowardsPosition(connection.gridPosition);
+                }
+            }
+        }
+
+        // 同楼层调查
+        Vector2Int targetGrid = GridManager.Instance.WorldToGrid(investigationTarget.Value);
 
         // 到达调查点
         if (Vector2Int.Distance(currentPos, targetGrid) < investigationRadius)
         {
             investigationTarget = null;
+            hasHeardSound = false;
             ChangeState(EnemyAIState.Patrol);
             DebugLog("Investigation complete, returning to patrol");
             return SelectRandomMove();
         }
 
-        // 向调查点移动
+        DebugLog($"[Investigate] Moving towards sound at grid {targetGrid}");
         return SelectMoveTowardsPosition(targetGrid);
     }
 
     private Vector2Int? ExecuteChase()
     {
-        // 追击玩家
+        int myFloor = unitMovement.CurrentFloor;
+        Vector2Int currentPos = unitMovement.CurrentGridPosition;
+
+        // 检查是否需要跨楼层
+        if (myFloor != lastKnownPlayerFloor)
+        {
+            DebugLog($"[Chase] Player on different floor! My floor: {myFloor}, Player floor: {lastKnownPlayerFloor}");
+
+            // 找到最近的楼层连接点
+            FloorConnection connection = GetNearestFloorConnection(lastKnownPlayerFloor);
+
+            if (connection != null)
+            {
+                // 检查是否已经在连接点上
+                if (currentPos == connection.gridPosition)
+                {
+                    // 在连接点上，执行跨楼层移动
+                    DebugLog($"[Chase] At connection point, moving to floor {lastKnownPlayerFloor}");
+                    unitMovement.MoveToGrid(connection.gridPosition, connection.toFloor);
+                    return null; // 返回null因为已经调用了MoveToGrid
+                }
+                else
+                {
+                    // 移动到连接点
+                    DebugLog($"[Chase] Moving to connection point at {connection.gridPosition}");
+                    return SelectMoveTowardsPosition(connection.gridPosition);
+                }
+            }
+            else
+            {
+                DebugLog($"[Chase] No connection to floor {lastKnownPlayerFloor}, searching on current floor");
+            }
+        }
+
+        // 同楼层追击
         Vector2Int targetGrid = GridManager.Instance.WorldToGrid(lastKnownPlayerPosition);
+        DebugLog($"[Chase] Same floor, targeting grid {targetGrid}");
         return SelectMoveTowardsPosition(targetGrid);
     }
 
@@ -235,7 +396,35 @@ public class SimpleEnemyAI : MonoBehaviour
             return SelectRandomMove();
         }
 
-        // 继续向最后位置搜索
+        int myFloor = unitMovement.CurrentFloor;
+        Vector2Int currentPos = unitMovement.CurrentGridPosition;
+
+        // 检查是否需要跨楼层搜索
+        if (myFloor != lastKnownPlayerFloor)
+        {
+            DebugLog($"[Search] Player was on floor {lastKnownPlayerFloor}, I'm on floor {myFloor}");
+
+            FloorConnection connection = GetNearestFloorConnection(lastKnownPlayerFloor);
+
+            if (connection != null)
+            {
+                if (currentPos == connection.gridPosition)
+                {
+                    // 在连接点上，执行跨楼层移动
+                    DebugLog($"[Search] At connection point, moving to floor {lastKnownPlayerFloor}");
+                    unitMovement.MoveToGrid(connection.gridPosition, connection.toFloor);
+                    return null;
+                }
+                else
+                {
+                    // 移动到连接点
+                    DebugLog($"[Search] Moving to connection point at {connection.gridPosition}");
+                    return SelectMoveTowardsPosition(connection.gridPosition);
+                }
+            }
+        }
+
+        // 同楼层搜索
         Vector2Int targetGrid = GridManager.Instance.WorldToGrid(lastKnownPlayerPosition);
         DebugLog($"Searching... ({movesSinceLastSight}/{searchMovesAfterLostSight})");
         return SelectMoveTowardsPosition(targetGrid);
@@ -307,11 +496,30 @@ public class SimpleEnemyAI : MonoBehaviour
             case EnemyAIState.Patrol:
                 movesSinceLastSight = 0;
                 investigationTarget = null;
+                hasHeardSound = false;  // *** 添加 ***
                 break;
 
             case EnemyAIState.Searching:
                 movesSinceLastSight = 0;
                 break;
+                
+            case EnemyAIState.Chasing:
+                hasHeardSound = false;  // *** 添加：追击时清除声音标记 ***
+                break;
+        }
+    }
+    /// <summary>
+    /// 转向指定位置
+    /// </summary>
+    private void LookTowardsPosition(Vector3 targetPosition)
+    {
+        Vector3 direction = targetPosition - transform.position;
+        direction.y = 0; // 保持水平
+        
+        if (direction.sqrMagnitude > 0.01f)
+        {
+            transform.rotation = Quaternion.LookRotation(direction);
+            DebugLog($"Turned towards sound at {targetPosition}");
         }
     }
 
@@ -398,9 +606,9 @@ public class SimpleEnemyAI : MonoBehaviour
     {
         if (!isExecuting) return;
 
-        DebugLog($"[After Move] Position: {unitMovement.CurrentGridPosition}, AP: {turnBasedUnit.RemainingActionPoints}");
+        DebugLog($"[After Move] Position: {unitMovement.CurrentGridPosition}, Floor: {unitMovement.CurrentFloor}, AP: {turnBasedUnit.RemainingActionPoints}");
 
-        // *** 移动后立即再检测一次 ***
+        // 移动后立即再检测一次
         UpdateVision();
         
         DebugLog($"[After Vision Check] State: {currentState}");
