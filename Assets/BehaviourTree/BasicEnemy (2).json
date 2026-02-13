@@ -1,0 +1,75 @@
+{
+  "type": "Selector",
+  "children": [
+    {
+      "type": "Sequence",
+      "name": "Combat",
+      "children": [
+        {
+          "type": "Condition",
+          "key": "hasVisualContact",
+          "value": "true",
+          "exists": false
+        },
+        {
+          "type": "Action",
+          "executor": "combat",
+          "keys": ["lastSeenTarget"]
+        }
+      ]
+    },
+    {
+      "type": "Selector",
+      "children": [
+        {
+          "type": "Sequence",
+          "name": "Combat",
+          "children": [
+            {"type": "Condition", "key": "hasVisualContact", "value": "true"},
+            {"type": "Condition", "key": "inCombatRange", "value": "true"},
+            {"type": "Action", "executor": "combat", "keys": ["lastSeenTarget"]}
+          ]
+        },
+        {
+          "type": "Sequence",
+          "name": "Chase",
+          "children": [
+            {"type": "Condition", "key": "hasVisualContact", "value": "true"},
+            {"type": "Action", "executor": "move", "keys": ["lastSeenPosition"]}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Sequence",
+      "name": "Search",
+      "children": [
+        {"type": "Condition", "key": "lastSeenPosition", "exists": true},
+        {"type": "Action", "executor": "move", "keys": ["lastSeenPosition"]}
+      ]
+    },
+    {
+      "type": "Sequence",
+      "name": "Investigate",
+      "children": [
+        {
+          "type": "Condition",
+          "key": "lastHeardPosition",
+          "value": null,
+          "exists": true
+        },
+        {
+          "type": "Action",
+          "executor": "investigate",
+          "keys": ["lastHeardPosition", "lastHeardFloor"]
+        }
+      ]
+    },
+    {
+      "type": "Action",
+      "name": "Patrol",
+      "executor": "move",
+      "keys": ["patrolTarget"]
+    }
+  ]
+}

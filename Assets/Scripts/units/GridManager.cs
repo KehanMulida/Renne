@@ -63,6 +63,7 @@ public class GridManager : MonoBehaviour
     public int Height => gridHeight;
     public float CellSize => cellSize;
     public Vector3 Origin => gridOrigin;
+    private HashSet<Vector3Int> occupiedPositions = new HashSet<Vector3Int>();
 
     void Awake()
     {
@@ -226,6 +227,31 @@ public class GridManager : MonoBehaviour
     {
         GridCell cell = GetCell(gridPos, floor);
         return cell != null && cell.isWalkable;
+    }
+    /// <summary>
+    /// 标记格子为已占据
+    /// </summary>
+    public void SetOccupied(Vector2Int gridPos, int floor, bool occupied)
+    {
+        Vector3Int key = new Vector3Int(gridPos.x, gridPos.y, floor);
+        
+        if (occupied)
+        {
+            occupiedPositions.Add(key);
+        }
+        else
+        {
+            occupiedPositions.Remove(key);
+        }
+    }
+
+    /// <summary>
+    /// 检查格子是否被占据
+    /// </summary>
+    public bool IsOccupied(Vector2Int gridPos, int floor = 0)
+    {
+        Vector3Int key = new Vector3Int(gridPos.x, gridPos.y, floor);
+        return occupiedPositions.Contains(key);
     }
 
     /// <summary>

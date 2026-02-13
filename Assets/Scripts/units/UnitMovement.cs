@@ -116,6 +116,10 @@ public class UnitMovement : MonoBehaviour
             Invoke(nameof(InitializePosition), 0.1f);
             return;
         }
+        if (GridManager.Instance != null)
+        {
+            GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+        }
 
         // 保存原始Y坐标
         float originalY = transform.position.y;
@@ -275,6 +279,31 @@ public class UnitMovement : MonoBehaviour
         transform.position = GridManager.Instance.GridToWorld(gridPos);
         OnPositionChanged?.Invoke(currentGridPosition);
     }
+    /// <summary>
+    /// 设置楼层（用于电梯/楼梯切换）
+    /// 直接改变楼层，不播放移动动画
+    /// </summary>
+    public void SetFloor(int floor)
+    {
+        if (!FloorManager.Instance.IsValidFloor(floor))
+        {
+            Debug.LogError($"[UnitMovement] Invalid floor: {floor}");
+            return;
+        }
+
+        int oldFloor = currentFloor;
+        currentFloor = floor;
+
+        // 更新世界坐标到新楼层
+        Vector3 newWorldPos = FloorManager.Instance.GridToWorld(currentGridPosition, currentFloor);
+        transform.position = newWorldPos;
+
+        // 触发楼层改变事件
+        OnFloorChanged?.Invoke(currentFloor);
+
+        Debug.Log($"[{gameObject.name}] Floor changed: {oldFloor} -> {currentFloor}");
+    }
+
 
     // ============ 私有方法 ============
     
@@ -289,6 +318,16 @@ public class UnitMovement : MonoBehaviour
     private IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path)
     {
         isMoving = true;
+       
+
+        if (animator != null)
+        {
+            animator.SetBool(moveAnimationParam, true);
+        }
+
+        // 移除旧位置占据标记
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
+
 
         // 播放移动动画
         if (animator != null)
@@ -336,11 +375,11 @@ public class UnitMovement : MonoBehaviour
             {
                 soundEmitter.EmitMovementSound();
             }
-            
+        
             // 触发位置改变事件（每走一步都触发）
             OnPositionChanged?.Invoke(currentGridPosition);
         }
-
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);  // 设置新位置占据标记
         // 停止移动动画
         if (animator != null)
         {

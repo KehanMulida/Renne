@@ -3,11 +3,27 @@
   "WorkspaceRootPath": "E:\\Renne\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\ai\\investigationexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\ai\\investigationexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\ai\\behaviourtree\\btparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\ai\\behaviourtree\\btparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\units\\turnbasedunit.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\units\\turnbasedunit.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\sound\\soundmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\sound\\soundmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\sound\\soundlistener.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\sound\\soundlistener.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\player\\playerinputcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
@@ -66,11 +82,61 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "InvestigationExecutor.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvxQAAAA1AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-10T19:14:15.875Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "BTParser.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Ai\\BehaviourTree\\BTParser.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Ai\\BehaviourTree\\BTParser.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Ai\\BehaviourTree\\BTParser.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Ai\\BehaviourTree\\BTParser.cs",
+              "ViewState": "AgIAACQAAAAAAAAAAAApwDsAAAAUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T07:05:21.503Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "TurnBasedUnit.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\TurnBasedUnit.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\units\\TurnBasedUnit.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\units\\TurnBasedUnit.cs",
+              "RelativeToolTip": "Assets\\Scripts\\units\\TurnBasedUnit.cs",
+              "ViewState": "AgIAAHoAAAAAAAAAAAAiwJUAAACAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-07T02:48:57.305Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 3,
+              "Title": "SoundManager.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Sound\\SoundManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Sound\\SoundManager.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Sound\\SoundManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Sound\\SoundManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-26T18:29:06.959Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "ItemData.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Items\\ItemData.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Items\\ItemData.cs",
@@ -82,7 +148,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "PlayerInputController.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\PlayerInputController.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\PlayerInputController.cs",
@@ -90,12 +156,11 @@
               "RelativeToolTip": "Assets\\Scripts\\Player\\PlayerInputController.cs",
               "ViewState": "AgIAAOMBAAAAAAAAAAAlwP4BAABlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-30T07:06:00.607Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-11-30T07:06:00.607Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 8,
               "Title": "floor-visibility-system.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Camera\\floor-visibility-system.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Camera\\floor-visibility-system.cs",
@@ -106,7 +171,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 9,
               "Title": "FloorManager.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\FloorManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\FloorManager.cs",
@@ -118,7 +183,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 10,
               "Title": "UnitMovement.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\UnitMovement.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\UnitMovement.cs",
@@ -130,7 +195,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 4,
               "Title": "SoundListener.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Sound\\SoundListener.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Sound\\SoundListener.cs",
@@ -138,12 +203,11 @@
               "RelativeToolTip": "Assets\\Scripts\\Sound\\SoundListener.cs",
               "ViewState": "AgIAABoAAAAAAAAAAADwvyoAAAA6AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-26T13:09:51.802Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-11-26T13:09:51.802Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 6,
               "Title": "Inventory.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\Inventory.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\Inventory.cs",
@@ -155,7 +219,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 11,
               "Title": "floor-system-core.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\floor-system-core.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\floor-system-core.cs",
@@ -166,7 +230,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 12,
               "Title": "sound-detection-system.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Sound\\sound-detection-system.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Sound\\sound-detection-system.cs",
@@ -177,7 +241,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 13,
               "Title": "diagnostic-tester.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Diagnose\\diagnostic-tester.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Diagnose\\diagnostic-tester.cs",
@@ -188,7 +252,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 14,
               "Title": "TurnSystem.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\TurnSystem.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\TurnSystem.cs",
@@ -200,7 +264,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 15,
               "Title": "GridManager.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\GridManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\GridManager.cs",
@@ -212,7 +276,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 17,
               "Title": "playerinput.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\playerinput.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\playerinput.cs",
@@ -224,7 +288,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 16,
               "Title": "complete-pathfinding-code.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\complete-pathfinding-code.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\complete-pathfinding-code.cs",

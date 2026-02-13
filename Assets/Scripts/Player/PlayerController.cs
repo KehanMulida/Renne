@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// 玩家控制器
@@ -12,8 +13,10 @@ using UnityEngine;
 /// - 运行时创建配置副本，不修改原始配置
 /// - 提供事件通知属性变化
 /// </summary>
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, IDamageable
 {
+      public bool IsAlive => CurrentHp > 0;
+
     [Header("配置数据")]
     [SerializeField] private PlayerConfig configTemplate;  // 配置模板
     
@@ -328,7 +331,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// 检查是否存活
     /// </summary>
-    public bool IsAlive()
+    public bool isAlive()
     {
         return runtimeConfig != null && runtimeConfig.CurrentHp > 0;
     }

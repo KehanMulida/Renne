@@ -6,12 +6,13 @@ using UnityEngine;
 /// </summary>
 public class SoundEvent
 {
-    public Vector3 position;        // 声音产生的位置
-    public float radius;            // 声音传播半径
-    public GameObject source;       // 声音来源（谁发出的）
-    public SoundType soundType;     // 声音类型
-    public float intensity;         // 声音强度（0-1）
-    public float timestamp;         // 产生时间
+    public Vector3 position;
+    public float radius;
+    public GameObject source;
+    public SoundType soundType;
+    public float intensity;
+    public float timestamp;
+    public int floor; // 添加这一行
 
     public SoundEvent(Vector3 pos, float rad, GameObject src, SoundType type, float intense = 1f)
     {
@@ -21,6 +22,7 @@ public class SoundEvent
         soundType = type;
         intensity = intense;
         timestamp = Time.time;
+        floor = Mathf.FloorToInt(pos.y / 4f); // 添加这一行 - 自动计算楼层
     }
 }
 
