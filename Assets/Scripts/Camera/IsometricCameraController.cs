@@ -128,47 +128,30 @@ public class IsometricCameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// 处理手动平移
-    /// 使用WASD键移动相机
+    /// 处理手动平移（WASD 已禁用，避免与玩家移动冲突）
     /// </summary>
     private void HandlePan()
     {
-        if (!allowPan)
-            return;
+        // WASD 平移已注释，防止与玩家格子点击移动冲突
+        // if (!allowPan) return;
+        // Vector3 panDirection = Vector3.zero;
+        // if (Input.GetKey(panUpKey))    panDirection += Vector3.forward;
+        // if (Input.GetKey(panDownKey))  panDirection += Vector3.back;
+        // if (Input.GetKey(panLeftKey))  panDirection += Vector3.left;
+        // if (Input.GetKey(panRightKey)) panDirection += Vector3.right;
+        // if (panDirection != Vector3.zero)
+        // {
+        //     followTarget = false;
+        //     panDirection.Normalize();
+        //     targetPosition += panDirection * panSpeed * Time.deltaTime;
+        //     transform.position = targetPosition;
+        // }
 
-        Vector3 panDirection = Vector3.zero;
-
-        // 收集输入
-        if (Input.GetKey(panUpKey))
-            panDirection += Vector3.forward;
-        if (Input.GetKey(panDownKey))
-            panDirection += Vector3.back;
-        if (Input.GetKey(panLeftKey))
-            panDirection += Vector3.left;
-        if (Input.GetKey(panRightKey))
-            panDirection += Vector3.right;
-
-        // 执行平移
-        if (panDirection != Vector3.zero)
-        {
-            // 暂时禁用跟随（让玩家可以自由查看）
-            followTarget = false;
-            
-            panDirection.Normalize();
-            targetPosition += panDirection * panSpeed * Time.deltaTime;
-            transform.position = targetPosition;
-        }
-
-        // 空格键：回到跟随模式
-        if (Input.GetKeyDown(KeyCode.Space) && target != null)
-        {
-            followTarget = true;
-            targetPosition = target.position + offset;
-        }
+        // Space 键回到跟随模式也已移除，改为调用 ReturnToFollow() 公开方法
     }
 
     // ============ 公开接口 ============
-    
+
     /// <summary>
     /// 设置跟随目标
     /// 用途：切换跟随的单位（如切换控制角色时）
@@ -184,8 +167,8 @@ public class IsometricCameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// 立即跳转到目标位置
-    /// 用途：瞬移相机（如场景切换、传送等）
+    /// 立即跳转到目标位置（瞬移，无过渡）
+    /// 用途：场景切换、传送等需要立即到位的场景
     /// </summary>
     public void SnapToTarget()
     {
@@ -194,6 +177,46 @@ public class IsometricCameraController : MonoBehaviour
             targetPosition = target.position + offset;
             transform.position = targetPosition;
         }
+    }
+
+    /// <summary>
+    /// 回到跟随模式（平滑过渡）
+    /// 用途：剧情演出结束后调用，相机平滑回到玩家身上
+    /// 示例：cutsceneManager.OnCutsceneEnd += cameraController.ReturnToFollow;
+    /// </summary>
+    public void ReturnToFollow()
+    {
+        if (target == null) return;
+
+        followTarget = true;
+        // 不直接设置 targetPosition，让 HandleFollow 的 Lerp 平滑过渡回去
+        Debug.Log("[Camera] Returning to follow target after cutscene");
+    }
+
+    /// <summary>
+    /// 移动相机到指定世界坐标（平滑过渡，用于剧情演出）
+    /// 用途：剧情中聚焦到某个 NPC 或事件点
+    /// 示例：cameraController.FocusOnPoint(npcTransform.position);
+    /// </summary>
+    public void FocusOnPoint(Vector3 worldPosition)
+    {
+        followTarget = false;
+        targetPosition = worldPosition + offset;
+        Debug.Log($"[Camera] Focusing on point: {worldPosition}");
+    }
+
+    /// <summary>
+    /// 移动相机聚焦到指定 Transform（平滑过渡，用于剧情演出）
+    /// 用途：剧情中跟随某个特定角色
+    /// 示例：cameraController.FocusOnTarget(enemyTransform);
+    /// </summary>
+    public void FocusOnTarget(Transform focusTarget)
+    {
+        if (focusTarget == null) return;
+
+        followTarget = false;
+        targetPosition = focusTarget.position + offset;
+        Debug.Log($"[Camera] Focusing on target: {focusTarget.name}");
     }
 
     // ============ 调试可视化 ============

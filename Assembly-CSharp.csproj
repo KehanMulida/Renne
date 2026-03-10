@@ -94,6 +94,9 @@
     <Compile Include="Assets\Scripts\Ai\BehaviourTree\BTRunner.cs" />
     <Compile Include="Assets\Scripts\units\TurnSystem.cs" />
     <Compile Include="Assets\Scripts\Player\VisionSystem\FogMeshBuilder.cs" />
+    <Compile Include="Assets\Scripts\Player\EquipmentManager.cs" />
+    <Compile Include="Assets\Scripts\Items\ThrowableProjectile.cs" />
+    <Compile Include="Assets\Scripts\units\DynamicObstacle.cs" />
     <Compile Include="Assets\Scripts\Ai\Sensor\SoundPerception.cs" />
     <Compile Include="Assets\Scripts\Sound\SoundEmitter.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorVisibilityController.cs" />

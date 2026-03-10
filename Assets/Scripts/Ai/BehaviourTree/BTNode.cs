@@ -6,13 +6,16 @@ using UnityEngine;
 public abstract class BTNode
 {
     protected List<BTNode> children = new List<BTNode>();
-    
+
     public void AddChild(BTNode child)
     {
         children.Add(child);
     }
-    
-    public abstract NodeState Evaluate(Dictionary<string, object> blackboard, 
+
+    /// <summary>返回子节点列表，供 BTRunner 递归注入 coroutineRunner</summary>
+    public IReadOnlyList<BTNode> GetChildren() => children;
+
+    public abstract NodeState Evaluate(Dictionary<string, object> blackboard,
                                        Dictionary<string, IActionExecutor> executors);
 }
 

@@ -8,251 +8,248 @@ using System.Collections.Generic;
 /// 1. 管理单位在网格上的移动
 /// 2. 提供移动相关的查询接口
 /// 3. 发送移动事件通知
-/// 特点：
-/// - 只负责移动逻辑，不处理输入
-/// - 通过事件与其他系统解耦
-/// - 可以被AI或玩家输入系统调用
-/// 设计模式：
-/// - 观察者模式（事件系统）
-/// - 命令模式（MoveToGrid作为移动命令）
+/// 修改点：
+/// - 修复 InitializePosition 中占据标记顺序错误的 bug
+/// - MoveToGrid 增加终点占据检查，防止移动到其他单位所在格
 /// </summary>
 public class UnitMovement : MonoBehaviour
 {
     // ============ 配置参数 ============
-    
+
     [Header("移动属性")]
-    [SerializeField] private int moveRange = 5;       // 每回合可移动的格子数
-    [SerializeField] private float moveSpeed = 5f;    // 移动速度（格子/秒）
-    [SerializeField] private float verticalMoveSpeed = 3f;  // 垂直移动速度（楼层切换时）
+    [SerializeField] private int moveRange = 5;
+    [SerializeField] private float moveSpeed = 8f;
+    [SerializeField] private float verticalMoveSpeed = 3f;
+
+    [Header("移动手感")]
+    [Tooltip("路径预判距离比例（0~0.9）\n越大转弯越圆滑，越小越贴格子边缘\n推荐 0.3~0.5")]
+    [SerializeField][Range(0f, 0.9f)] private float lookAheadRatio = 0.4f;
+
+    [Tooltip("转向速度（越大转向越快）\n推荐 8~15")]
+    [SerializeField][Range(1f, 30f)] private float rotationSpeed = 10f;
+
+    [Tooltip("起步速度倍率（0~1）\n0=从静止加速，1=直接全速\n推荐 0.4~0.6")]
+    [SerializeField][Range(0f, 1f)] private float startSpeedRatio = 0.5f;
+
+    [Tooltip("结尾速度倍率（0~1）\n0=接近终点完全停止，1=全速到底\n推荐 0.6~0.8")]
+    [SerializeField][Range(0f, 1f)] private float endSpeedRatio = 0.7f;
 
     [Header("动画（可选）")]
-    [SerializeField] private Animator animator;                      // 动画控制器
-    [SerializeField] private string moveAnimationParam = "IsMoving"; // 移动动画的Bool参数名
+    [SerializeField] private Animator animator;
+    [SerializeField] private string moveAnimationParam = "IsMoving";
 
     // ============ 状态数据 ============
-    
-    private Vector2Int currentGridPosition;  // 当前所在的网格坐标（XZ）
-    private int currentFloor = 0;            // 当前所在楼层
-    private bool isMoving = false;           // 是否正在移动中
-    private SoundEmitter soundEmitter;       // 声音发射器（可选）
 
-    // ============ 公开属性 ============
-    
-    /// <summary>当前网格位置（只读）</summary>
+    private Vector2Int currentGridPosition;
+    private int currentFloor = 0;
+    private bool isMoving = false;
+    private SoundEmitter soundEmitter;
+
+    // ============ 公개属性 ============
+
     public Vector2Int CurrentGridPosition => currentGridPosition;
-    
-    /// <summary>当前楼层（只读）</summary>
     public int CurrentFloor => currentFloor;
-    
-    /// <summary>是否正在移动中（只读）</summary>
     public bool IsMoving => isMoving;
-    
-    /// <summary>移动范围（只读）</summary>
     public int MoveRange => moveRange;
 
-    // ============ 配置接口 ============
-    
+    /// <summary>当前单位的移动速度（AI 和其他系统可读取）</summary>
+    public float MoveSpeed => moveSpeed;
+
+    /// <summary>起步速度倍率</summary>
+    public float StartSpeedRatio => startSpeedRatio;
+
+    /// <summary>结尾速度倍率</summary>
+    public float EndSpeedRatio => endSpeedRatio;
+
     /// <summary>
-    /// 设置移动范围
+    /// 根据路径进度（0~1）计算当前帧的速度倍率
+    /// 供外部系统查询，也在内部移动协程里使用
+    /// 曲线形状：起步从 startSpeedRatio 加速到 1.0，结尾从 1.0 减速到 endSpeedRatio
+    /// 中段保持全速（倍率 = 1.0）
     /// </summary>
+    public float EvaluateSpeedRatio(float progress)
+    {
+        // 前 30% 路程：从 startSpeedRatio 线性加速到 1.0
+        if (progress < 0.3f)
+            return Mathf.Lerp(startSpeedRatio, 1f, progress / 0.3f);
+
+        // 后 30% 路程：从 1.0 线性减速到 endSpeedRatio
+        if (progress > 0.7f)
+            return Mathf.Lerp(1f, endSpeedRatio, (progress - 0.7f) / 0.3f);
+
+        // 中间 40%：全速
+        return 1f;
+    }
+
+    // ============ 配置接口 ============
+
     public void SetMoveRange(int range)
     {
         moveRange = Mathf.Max(1, range);
         Debug.Log($"[{gameObject.name}] MoveRange set to {moveRange}");
     }
 
-    /// <summary>
-    /// 设置移动速度
-    /// </summary>
     public void SetMoveSpeed(float speed)
     {
         moveSpeed = Mathf.Max(0.1f, speed);
         Debug.Log($"[{gameObject.name}] MoveSpeed set to {moveSpeed}");
     }
-    /// <summary>
-    /// 设置垂直移动速度
-    /// </summary>
+
     public void SetVerticalMoveSpeed(float speed)
     {
         verticalMoveSpeed = Mathf.Max(0.1f, speed);
     }
 
-    /// <summary>
-    /// 事件系统
-    /// </summary>
-    
-    /// <summary>移动完成事件：当单位完成移动时触发</summary>
+    // ============ 事件系统 ============
+
     public event System.Action OnMoveComplete;
-    
-    /// <summary>位置改变事件：当单位到达新格子时触发（包括路径中的每一步）</summary>
     public event System.Action<Vector2Int> OnPositionChanged;
-    
-    /// <summary>楼层改变事件：当单位切换楼层时触发</summary>
     public event System.Action<int> OnFloorChanged;
 
     void Awake()
     {
-        // 获取声音发射器（可选）
         soundEmitter = GetComponent<SoundEmitter>();
     }
 
     void Start()
     {
-        // 在Start中初始化位置，确保FloorManager已经准备好
+        // GridManager.Start 和 UnitMovement.Start 执行顺序不确定
+        // 用一帧延迟确保 GridManager 已经完成 InitializeGrid
+        StartCoroutine(InitializePositionDelayed());
+    }
+
+    private IEnumerator InitializePositionDelayed()
+    {
+        // 等一帧，让所有 Start() 都跑完
+        yield return null;
         InitializePosition();
     }
 
     /// <summary>
     /// 初始化单位位置
-    /// 将单位的世界坐标对齐到最近的网格格子
-    /// 注意：保持当前Y坐标，根据Y坐标识别楼层
+    /// 修复：先计算正确的 gridPosition 和 floor，再调用 SetOccupied
+    /// 原来的代码在 currentGridPosition 还是 (0,0) 的时候就调用了 SetOccupied，导致错误位置被标记
     /// </summary>
     private void InitializePosition()
     {
-        // 等待GridManager初始化
         if (GridManager.Instance == null)
         {
             Debug.LogWarning($"[{gameObject.name}] GridManager not ready, delaying initialization");
             Invoke(nameof(InitializePosition), 0.1f);
             return;
         }
-        if (GridManager.Instance != null)
-        {
-            GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
-        }
 
-        // 保存原始Y坐标
         float originalY = transform.position.y;
 
-        // 根据当前世界坐标计算对应的网格坐标
+        // Step 1：先计算正确的网格坐标
         currentGridPosition = GridManager.Instance.WorldToGrid(transform.position);
-        
-        // 根据Y坐标确定楼层
+
+        // Step 2：再确定楼层
         if (FloorManager.Instance != null)
         {
             currentFloor = FloorManager.Instance.GetFloorFromWorldY(originalY);
-            
-            // 对齐到网格中心，但使用楼层系统计算的精确Y坐标
             Vector3 alignedPos = FloorManager.Instance.GridToWorld(currentGridPosition, currentFloor);
             transform.position = alignedPos;
-            
-            Debug.Log($"[{gameObject.name}] Initialized at grid: {currentGridPosition}, floor: {currentFloor}, world: {transform.position}");
         }
         else
         {
-            // 没有FloorManager，使用传统2D逻辑
-            Vector3 alignedPos = GridManager.Instance.GridToWorld(currentGridPosition);
-            alignedPos.y = originalY; // 保持原始Y坐标
-            transform.position = alignedPos;
-            
             currentFloor = 0;
-            
-            Debug.Log($"[{gameObject.name}] Initialized at grid: {currentGridPosition}, floor: 0 (no FloorManager), world: {transform.position}");
+            Vector3 alignedPos = GridManager.Instance.GridToWorld(currentGridPosition);
+            alignedPos.y = originalY;
+            transform.position = alignedPos;
         }
+
+        // Step 3：位置确定后再标记占据（修复原来的顺序 bug）
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
+        Debug.Log($"[{gameObject.name}] Initialized at grid: {currentGridPosition}, floor: {currentFloor}, world: {transform.position}");
     }
 
     // ============ 公开接口 ============
-    
+
     /// <summary>
     /// 移动到目标网格（支持跨楼层）
-    /// 用途：这是移动的主要接口，外部通过调用此方法来移动单位
-    /// 参数：
-    ///   targetGridPos - 目标网格坐标
-    ///   targetFloor - 目标楼层（可选，默认-1表示同楼层）
-    /// 流程：计算路径 -> 沿路径移动 -> 触发事件
+    /// 新增：移动前检查终点是否被其他单位占据
     /// </summary>
     public void MoveToGrid(Vector2Int targetGridPos, int targetFloor = -1)
     {
-        // 防止重复移动
         if (isMoving)
         {
-            Debug.LogWarning("Unit is already moving!");
+            Debug.LogWarning($"[{gameObject.name}] Already moving!");
             return;
         }
 
-        // 默认同楼层移动
         if (targetFloor < 0)
-        {
             targetFloor = currentFloor;
-        }
 
-        // 已经在目标位置
         if (targetGridPos == currentGridPosition && targetFloor == currentFloor)
         {
-            Debug.Log("Already at target position");
+            Debug.Log($"[{gameObject.name}] Already at target position");
             return;
         }
 
-        // 检查是否是跨楼层移动
+        // 跨楼层移动
         if (targetFloor != currentFloor)
         {
-            // 跨楼层移动：检查是否有连接点
             FloorConnection connection = null;
-            
             if (FloorManager.Instance != null)
-            {
                 connection = FloorManager.Instance.GetConnection(targetGridPos, currentFloor);
-            }
 
             if (connection != null && connection.toFloor == targetFloor)
             {
-                // 使用楼层连接移动
                 StartCoroutine(MoveToFloorCoroutine(targetGridPos, targetFloor, connection));
             }
             else
             {
-                Debug.LogWarning($"No floor connection from floor {currentFloor} to {targetFloor} at {targetGridPos}");
-                return;
+                Debug.LogWarning($"[{gameObject.name}] No floor connection from floor {currentFloor} to {targetFloor} at {targetGridPos}");
             }
+            return;
         }
-        // 同楼层移动：使用A*寻路
-        else
+
+        // 同楼层移动：检查终点是否被占据
+        if (GridManager.Instance.IsOccupied(targetGridPos, currentFloor))
         {
-            List<Vector2Int> path = PathfindingService.FindPath(currentGridPosition, targetGridPos, currentFloor);
-
-            if (path == null || path.Count == 0)
-            {
-                Debug.LogWarning("No valid path found!");
-                return;
-            }
-
-            StartCoroutine(MoveAlongPathCoroutine(path));
+            Debug.LogWarning($"[{gameObject.name}] Target {targetGridPos} is occupied by another unit!");
+            return;
         }
+
+        List<Vector2Int> path = PathfindingService.FindPath(currentGridPosition, targetGridPos, currentFloor);
+
+        if (path == null || path.Count == 0)
+        {
+            Debug.LogWarning($"[{gameObject.name}] No valid path to {targetGridPos}");
+            return;
+        }
+
+        StartCoroutine(MoveAlongPathCoroutine(path));
     }
 
     /// <summary>
-    /// 检查是否可以移动到目标位置（支持楼层）
-    /// 用途：在移动前进行检查，避免无效移动
-    /// 检查项：
-    /// 1. 单位是否正在移动
-    /// 2. 目标格子是否可行走
-    /// 3. 目标格子是否在移动范围内
-    /// 注意：只检查同楼层移动
+    /// 检查是否可以移动到目标位置
+    /// 包含占据检查：不能移动到其他单位所在的格子
     /// </summary>
     public bool CanMoveTo(Vector2Int targetGridPos)
     {
         if (isMoving) return false;
+
+        // IsWalkable 默认 ignoreOccupied=false，会同时检查障碍物和占据
         if (!GridManager.Instance.IsWalkable(targetGridPos, currentFloor)) return false;
-        
-        // 计算移动范围并检查目标是否在范围内（传入当前楼层）
+
         HashSet<Vector2Int> range = PathfindingService.CalculateMovementRange(
-            currentGridPosition, 
-            moveRange, 
+            currentGridPosition,
+            moveRange,
             currentFloor
         );
         return range.Contains(targetGridPos);
     }
 
     /// <summary>
-    /// 获取当前移动范围（支持楼层）
-    /// 用途：供可视化系统或AI系统查询
-    /// 返回：所有可到达的格子集合（当前楼层）
+    /// 获取移动范围（用于可视化）
+    /// 使用剩余 AP 或默认 moveRange
     /// </summary>
     public HashSet<Vector2Int> GetMovementRange()
     {
         TurnBasedUnit turnUnit = GetComponent<TurnBasedUnit>();
-
-        // 如果有回合系统，用剩余 AP 作为移动范围；否则 fallback 用 moveRange
         int usablePoints = turnUnit != null ? turnUnit.RemainingActionPoints : moveRange;
 
         return PathfindingService.CalculateMovementRange(
@@ -263,162 +260,167 @@ public class UnitMovement : MonoBehaviour
     }
 
     /// <summary>
-    /// 强制设置位置
-    /// 用途：用于传送、复活等需要瞬移的场景
-    /// 注意：不会播放移动动画，直接瞬移
+    /// 强制瞬移到指定格子（不检查占据，用于传送/复活等）
     /// </summary>
     public void SetGridPosition(Vector2Int gridPos)
     {
         if (!GridManager.Instance.IsValid(gridPos))
         {
-            Debug.LogError($"Invalid grid position: {gridPos}");
+            Debug.LogError($"[{gameObject.name}] Invalid grid position: {gridPos}");
             return;
         }
 
+        // 清除旧占据
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
+
         currentGridPosition = gridPos;
         transform.position = GridManager.Instance.GridToWorld(gridPos);
+
+        // 标记新占据
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
         OnPositionChanged?.Invoke(currentGridPosition);
     }
+
     /// <summary>
-    /// 设置楼层（用于电梯/楼梯切换）
-    /// 直接改变楼层，不播放移动动画
+    /// 设置楼层（楼梯/电梯用）
     /// </summary>
     public void SetFloor(int floor)
     {
-        if (!FloorManager.Instance.IsValidFloor(floor))
+        if (FloorManager.Instance == null || !FloorManager.Instance.IsValidFloor(floor))
         {
-            Debug.LogError($"[UnitMovement] Invalid floor: {floor}");
+            Debug.LogError($"[{gameObject.name}] Invalid floor: {floor}");
             return;
         }
+
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
 
         int oldFloor = currentFloor;
         currentFloor = floor;
 
-        // 更新世界坐标到新楼层
         Vector3 newWorldPos = FloorManager.Instance.GridToWorld(currentGridPosition, currentFloor);
         transform.position = newWorldPos;
 
-        // 触发楼层改变事件
-        OnFloorChanged?.Invoke(currentFloor);
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
 
+        OnFloorChanged?.Invoke(currentFloor);
         Debug.Log($"[{gameObject.name}] Floor changed: {oldFloor} -> {currentFloor}");
     }
 
-
     // ============ 私有方法 ============
-    
-    /// <summary>
-    /// 沿路径移动的协程
-    /// 核心移动逻辑：
-    /// 1. 遍历路径上的每个格子
-    /// 2. 计算朝向并旋转
-    /// 3. 平滑移动到目标格子
-    /// 4. 更新当前位置并触发事件
-    /// </summary>
+
     private IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path)
     {
         isMoving = true;
-       
 
         if (animator != null)
-        {
             animator.SetBool(moveAnimationParam, true);
-        }
 
-        // 移除旧位置占据标记
         GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
 
+        float cellSize = GridManager.Instance.CellSize;
 
-        // 播放移动动画
-        if (animator != null)
-        {
-            animator.SetBool(moveAnimationParam, true);
-        }
+        // 预判阈值：距格子中心小于此距离时提前切换到下一格目标
+        float lookAheadDist = cellSize * lookAheadRatio;
 
-        // 遍历路径中的每个格子
+        // 用于速度曲线：记录整条路径的总步数和当前步数
+        int totalSteps = path.Count;
+        int currentStep = 0;
+
         foreach (Vector2Int gridPos in path)
         {
-            Vector3 targetWorldPos = FloorManager.Instance != null 
+            Vector3 targetWorldPos = FloorManager.Instance != null
                 ? FloorManager.Instance.GridToWorld(gridPos, currentFloor)
                 : GridManager.Instance.GridToWorld(gridPos);
-            
-            // 计算朝向（2.5D俯视角：只旋转Y轴）
-            Vector3 direction = (targetWorldPos - transform.position).normalized;
-            if (direction != Vector3.zero)
+
+            // 用于速度曲线的归一化进度（0=路径起点，1=路径终点）
+            float stepProgress = (float)currentStep / Mathf.Max(totalSteps - 1, 1);
+
+            while (true)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                transform.rotation = targetRotation;
-            }
+                float dist = Vector3.Distance(transform.position, targetWorldPos);
 
-            // 平滑移动到目标位置
-            float distance = Vector3.Distance(transform.position, targetWorldPos);
-            float duration = distance / moveSpeed;  // 根据速度计算移动时间
-            float elapsed = 0f;
+                // ---- 1. 路径预判 ----
+                // 距格子中心足够近时提前视为到达，进入下一格
+                // 最后一格不做预判，必须精确到达
+                bool isLastStep = (currentStep == totalSteps - 1);
+                if (!isLastStep && dist < lookAheadDist)
+                    break;
 
-            Vector3 startPos = transform.position;
+                // 最后一格精确到达
+                if (isLastStep && dist < 0.001f)
+                    break;
 
-            // 使用Lerp进行平滑插值移动
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-                transform.position = Vector3.Lerp(startPos, targetWorldPos, t);
+                // ---- 2. 速度曲线 ----
+                // 用 EvaluateSpeedRatio 根据路径进度计算速度倍率
+                // 起步加速、中段全速、结尾减速
+                float curveMultiplier = EvaluateSpeedRatio(stepProgress);
+                float frameSpeed = moveSpeed * Mathf.Clamp(curveMultiplier, 0.3f, 2f);
+
+                transform.position = Vector3.MoveTowards(
+                    transform.position,
+                    targetWorldPos,
+                    frameSpeed * Time.deltaTime
+                );
+
+                // ---- 3. 平滑旋转（Slerp）----
+                Vector3 dir = (targetWorldPos - transform.position);
+                dir.y = 0; // 保持水平，不抬头低头
+                if (dir.sqrMagnitude > 0.001f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(dir.normalized);
+                    transform.rotation = Quaternion.Slerp(
+                        transform.rotation,
+                        targetRot,
+                        rotationSpeed * Time.deltaTime
+                    );
+                }
+
                 yield return null;
             }
 
-            // 确保精确到达目标位置（避免浮点误差）
-            transform.position = targetWorldPos;
+            // 最后一格精确对齐，消除浮点误差
+            if (currentStep == totalSteps - 1)
+                transform.position = targetWorldPos;
+
             currentGridPosition = gridPos;
-            
-            // 发出移动声音
+            currentStep++;
+
             if (soundEmitter != null)
-            {
                 soundEmitter.EmitMovementSound();
-            }
-        
-            // 触发位置改变事件（每走一步都触发）
+
             OnPositionChanged?.Invoke(currentGridPosition);
         }
-        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);  // 设置新位置占据标记
-        // 停止移动动画
+
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
         if (animator != null)
-        {
             animator.SetBool(moveAnimationParam, false);
-        }
 
         isMoving = false;
-        
-        // 触发移动完成事件
+
         TurnBasedUnit turnUnit = GetComponent<TurnBasedUnit>();
         if (turnUnit != null && turnUnit.IsMyTurn)
-        {
             turnUnit.ConsumeActionPoint(path.Count);
-        }
 
-        // 2.再触发移动完成
         OnMoveComplete?.Invoke();
 
-        Debug.Log($"Move complete. Current position: {currentGridPosition}, Floor: {currentFloor}");
+        Debug.Log($"[{gameObject.name}] Move complete → grid: {currentGridPosition}, floor: {currentFloor}");
     }
 
-    /// <summary>
-    /// 跨楼层移动协程
-    /// 用于楼梯、电梯等楼层切换
-    /// </summary>
     private IEnumerator MoveToFloorCoroutine(Vector2Int targetGridPos, int targetFloor, FloorConnection connection)
     {
         isMoving = true;
 
         if (animator != null)
-        {
             animator.SetBool(moveAnimationParam, true);
-        }
 
-        // 第一步：移动到连接点
+        // 移动到楼层连接点
         if (targetGridPos != currentGridPosition)
         {
-            List<Vector2Int> pathToConnection = PathfindingService.FindPath(currentGridPosition, targetGridPos);
-            
+            GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
+
+            List<Vector2Int> pathToConnection = PathfindingService.FindPath(currentGridPosition, targetGridPos, currentFloor);
             if (pathToConnection != null)
             {
                 foreach (Vector2Int gridPos in pathToConnection)
@@ -426,71 +428,62 @@ public class UnitMovement : MonoBehaviour
                     Vector3 targetWorldPos = FloorManager.Instance.GridToWorld(gridPos, currentFloor);
                     yield return StartCoroutine(MoveToPositionCoroutine(targetWorldPos));
                     currentGridPosition = gridPos;
-                    
+
                     if (soundEmitter != null)
-                    {
                         soundEmitter.EmitMovementSound();
-                    }
                 }
             }
+
+            GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
         }
 
-        // 第二步：楼层切换（垂直移动）
+        // 楼层切换（垂直移动）
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
+
         int oldFloor = currentFloor;
         currentFloor = targetFloor;
 
         Vector3 startFloorPos = FloorManager.Instance.GridToWorld(targetGridPos, oldFloor);
         Vector3 endFloorPos = FloorManager.Instance.GridToWorld(targetGridPos, targetFloor);
 
-        // 根据连接类型调整移动方式
         float verticalDuration = Mathf.Abs(endFloorPos.y - startFloorPos.y) / verticalMoveSpeed;
         float elapsed = 0f;
 
         while (elapsed < verticalDuration)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / verticalDuration;
-            transform.position = Vector3.Lerp(startFloorPos, endFloorPos, t);
+            transform.position = Vector3.Lerp(startFloorPos, endFloorPos, elapsed / verticalDuration);
             yield return null;
         }
 
         transform.position = endFloorPos;
+        currentGridPosition = targetGridPos;
 
-        // 触发楼层改变事件
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
         OnFloorChanged?.Invoke(currentFloor);
-        
-        Debug.Log($"[{gameObject.name}] Changed floor: {oldFloor} -> {currentFloor} via {connection.connectionType}");
+        Debug.Log($"[{gameObject.name}] Floor changed: {oldFloor} -> {currentFloor} via {connection.connectionType}");
 
         if (animator != null)
-        {
             animator.SetBool(moveAnimationParam, false);
-        }
 
         isMoving = false;
         OnMoveComplete?.Invoke();
     }
 
-    /// <summary>
-    /// 移动到指定世界坐标的协程
-    /// 辅助方法，用于路径移动
-    /// </summary>
     private IEnumerator MoveToPositionCoroutine(Vector3 targetPos)
     {
         Vector3 direction = (targetPos - transform.position).normalized;
         if (direction != Vector3.zero)
-        {
             transform.rotation = Quaternion.LookRotation(direction);
-        }
 
-        float distance = Vector3.Distance(transform.position, targetPos);
-        float duration = distance / moveSpeed;
-        float elapsed = 0f;
-        Vector3 startPos = transform.position;
-
-        while (elapsed < duration)
+        while (Vector3.Distance(transform.position, targetPos) > 0.001f)
         {
-            elapsed += Time.deltaTime;
-            transform.position = Vector3.Lerp(startPos, targetPos, elapsed / duration);
+            transform.position = Vector3.MoveTowards(
+                transform.position,
+                targetPos,
+                moveSpeed * Time.deltaTime
+            );
             yield return null;
         }
 
@@ -498,46 +491,33 @@ public class UnitMovement : MonoBehaviour
     }
 
     // ============ 调试可视化 ============
-    
-    /// <summary>
-    /// Gizmos绘制：在Scene视图中显示移动范围
-    /// 绿色半透明方块表示可移动的格子
-    /// 支持多楼层：在正确的楼层高度显示
-    /// </summary>
+
     void OnDrawGizmosSelected()
     {
         if (!Application.isPlaying) return;
 
+        // 移动范围（绿色，忽略占据）
         Gizmos.color = new Color(0, 1, 0, 0.3f);
         HashSet<Vector2Int> range = GetMovementRange();
-        
+
         foreach (Vector2Int pos in range)
         {
-            Vector3 worldPos;
-            
-            // 使用正确的楼层高度
-            if (FloorManager.Instance != null)
-            {
-                worldPos = FloorManager.Instance.GridToWorld(pos, currentFloor);
-            }
-            else
-            {
-                worldPos = GridManager.Instance.GridToWorld(pos);
-            }
-            
+            Vector3 worldPos = FloorManager.Instance != null
+                ? FloorManager.Instance.GridToWorld(pos, currentFloor)
+                : GridManager.Instance.GridToWorld(pos);
+
             Gizmos.DrawCube(worldPos + Vector3.up * 0.1f, Vector3.one * GridManager.Instance.CellSize * 0.8f);
         }
 
-        // 绘制当前楼层标识
+        // 楼层标识
         if (FloorManager.Instance != null)
         {
             Gizmos.color = Color.cyan;
-            Vector3 floorIndicator = transform.position + Vector3.up * 3f;
-            Gizmos.DrawWireSphere(floorIndicator, 0.5f);
-            
-            #if UNITY_EDITOR
-            UnityEditor.Handles.Label(floorIndicator, $"Floor {currentFloor}");
-            #endif
+            Gizmos.DrawWireSphere(transform.position + Vector3.up * 3f, 0.5f);
+
+#if UNITY_EDITOR
+            UnityEditor.Handles.Label(transform.position + Vector3.up * 3f, $"Floor {currentFloor}");
+#endif
         }
     }
 }

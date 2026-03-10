@@ -285,27 +285,51 @@ public class Inventory : MonoBehaviour
     private void ApplyItemEffect(ItemData itemData)
     {
         PlayerController playerCtrl = GetComponent<PlayerController>();
-        if (playerCtrl == null) return;
 
-        // 直接使用消耗品的专属字段
         if (itemData is ConsumableData consumable)
         {
-            if (consumable.healAmount > 0)
-                playerCtrl.Heal(consumable.healAmount);
-            
-            if (consumable.staminaAmount > 0)
-                playerCtrl.RestoreStamina(consumable.staminaAmount);
-            
-            if (consumable.sanityAmount > 0)
-                playerCtrl.RestoreSanity(consumable.sanityAmount);
+            // 玩家自身效果
+            if (playerCtrl != null)
+            {
+                if (consumable.healAmount > 0)
+                    playerCtrl.Heal(consumable.healAmount);
+
+                if (consumable.staminaAmount > 0)
+                    playerCtrl.RestoreStamina(consumable.staminaAmount);
+
+                if (consumable.sanityAmount > 0)
+                    playerCtrl.RestoreSanity(consumable.sanityAmount);
+            }
+
+            // 对范围内敌人造成伤害
+            if (consumable.meleeDamage > 0)
+            {
+                float worldRadius = consumable.meleeRange *
+                    (GridManager.Instance != null ? GridManager.Instance.CellSize : 1f);
+
+                Collider[] hits = Physics.OverlapSphere(
+                    transform.position, worldRadius, consumable.meleeLayer);
+
+                // 用 IDamageable 去重，避免同一敌人有多个 Collider 被重复计算
+                HashSet<IDamageable> alreadyHit = new HashSet<IDamageable>();
+                foreach (var hit in hits)
+                {
+                    IDamageable damageable = hit.GetComponentInParent<IDamageable>();
+                    if (damageable == null) continue;
+                    if (alreadyHit.Contains(damageable)) continue;
+                    alreadyHit.Add(damageable);
+
+                    if (damageable.IsAlive)
+                    {
+                        damageable.TakeDamage(consumable.meleeDamage);
+                        DebugLog($"{itemData.Name} dealt {consumable.meleeDamage} damage to {hit.transform.root.name}");
+                    }
+                }
+            }
         }
 
-        // 播放音效
         if (!string.IsNullOrEmpty(itemData.Sound))
-        {
             DebugLog($"Play sound: {itemData.Sound}");
-            // 调用音效系统
-        }
     }
 
     private void DebugLog(string message)

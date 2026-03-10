@@ -13,24 +13,27 @@ public class SoundPerception : IPerceptionModule
     private EnemyConfig config;
     public event Action<PerceptionEvent> OnPerceptionEvent;
 
-   public void Initialize(Transform owner, EnemyConfig config)
+    public void Initialize(Transform owner, EnemyConfig config)
     {
         this.owner = owner;
         this.config = config;
         
-        // 订阅SoundManager的OnSoundBroadcast事件
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.OnSoundBroadcast += HandleSound;
         }
     }
 
-    // 匹配OnSoundBroadcast的Action<SoundEvent>签名
+    public void UpdatePerception() { }
+
     private void HandleSound(SoundEvent soundEvent)
     {
         float distance = Vector3.Distance(owner.position, soundEvent.position);
         if (distance > config.hearingRange) return;
         if (GetFloor(owner) != soundEvent.floor) return;
+
+        // 转向声音方向
+        TurnTowardsSound(soundEvent.position);
 
         OnPerceptionEvent?.Invoke(new PerceptionEvent
         {
@@ -40,11 +43,24 @@ public class SoundPerception : IPerceptionModule
             Floor = soundEvent.floor
         });
     }
-    public void UpdatePerception()
+
+    private void TurnTowardsSound(Vector3 soundPosition)
     {
-        // 声音感知是事件驱动的，不需要主动轮询
-        // 留空即可
-        return;
+        Vector3 direction = soundPosition - owner.position;
+        direction.y = 0; // 只水平旋转
+        
+        if (direction.sqrMagnitude > 0.01f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            owner.rotation = targetRotation; // 立即转向
+            
+            Debug.Log($"[SoundPerception] Turned towards sound at {soundPosition}");
+        }
+    }
+
+    private int GetFloor(Transform target)
+    {
+        return Mathf.FloorToInt(target.position.y / 4f);
     }
 
     public void Cleanup()
@@ -53,10 +69,5 @@ public class SoundPerception : IPerceptionModule
         {
             SoundManager.Instance.OnSoundBroadcast -= HandleSound;
         }
-    }
-
-    private int GetFloor(Transform target)
-    {
-        return Mathf.FloorToInt(target.position.y / 4f);
     }
 }

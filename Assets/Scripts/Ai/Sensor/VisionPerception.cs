@@ -9,9 +9,12 @@ public class VisionPerception : IPerceptionModule
     private Transform owner;
     private EnemyConfig config;
     private LayerMask obstacleLayer;
-    
+
+    // 追踪上一帧是否看到玩家，用于检测 VisualLost
+    private bool wasSeenLastFrame = false;
+
     public event Action<PerceptionEvent> OnPerceptionEvent;
-   
+
     public void Initialize(Transform owner, EnemyConfig config)
     {
         this.owner = owner;
@@ -29,35 +32,47 @@ public class VisionPerception : IPerceptionModule
         return Mathf.FloorToInt(target.position.y / 4f);
     }
 
-
     public void UpdatePerception()
     {
-     //   Debug.Log("[VisionPerception] UpdatePerception called");
-        
         var player = FindPlayer();
-     //   Debug.Log($"[VisionPerception] Player found: {player != null}");
-     //   bool canSee = CanSeeTarget(player);
-  //  Debug.Log($"[Vision] CanSeeTarget result: {canSee}");  // ← 添加这行
-        if (player == null) return;
-
-        if (CanSeeTarget(player))
+        if (player == null)
         {
-            Debug.Log("[VisionPerception] Can see player! Invoking event...");
-            
-            var evt = new PerceptionEvent
+            // 玩家消失，如果上帧还看得到就触发 VisualLost
+            if (wasSeenLastFrame)
             {
-                Type = PerceptionType.VisualContact,
-                Target = player,
-                Position = player.position,
+                wasSeenLastFrame = false;
+                OnPerceptionEvent?.Invoke(new PerceptionEvent
+                {
+                    Type = PerceptionType.VisualLost
+                });
+            }
+            return;
+        }
+
+        bool canSee = CanSeeTarget(player);
+
+        if (canSee)
+        {
+            wasSeenLastFrame = true;
+
+            OnPerceptionEvent?.Invoke(new PerceptionEvent
+            {
+                Type       = PerceptionType.VisualContact,
+                Target     = player,
+                Position   = player.position,
                 Confidence = CalculateVisibility(player),
-                Floor = GetFloor(player)
-            };
-            
-          //  Debug.Log($"[VisionPerception] Event created: {evt.Type}, Subscribers: {OnPerceptionEvent?.GetInvocationList().Length ?? 0}");
-            
-            OnPerceptionEvent?.Invoke(evt);
-            
-        //    Debug.Log("[VisionPerception] Event invoked");
+                Floor      = GetFloor(player)
+            });
+        }
+        else if (wasSeenLastFrame)
+        {
+            // 上一帧看得到，这一帧看不到 → 触发 VisualLost
+            wasSeenLastFrame = false;
+
+            OnPerceptionEvent?.Invoke(new PerceptionEvent
+            {
+                Type = PerceptionType.VisualLost
+            });
         }
     }
 

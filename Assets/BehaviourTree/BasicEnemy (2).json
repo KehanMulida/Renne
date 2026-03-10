@@ -8,34 +8,36 @@
         {
           "type": "Condition",
           "key": "hasVisualContact",
-          "value": "true",
-          "exists": false
+          "value": "true"
+        },
+        {
+          "type": "Condition",
+          "key": "inCombatRange",
+          "value": "true"
         },
         {
           "type": "Action",
           "executor": "combat",
-          "keys": ["lastSeenTarget"]
+          "keys": [
+            "lastSeenTarget"
+          ]
         }
       ]
     },
     {
-      "type": "Selector",
+      "type": "Sequence",
+      "name": "Chase",
       "children": [
         {
-          "type": "Sequence",
-          "name": "Combat",
-          "children": [
-            {"type": "Condition", "key": "hasVisualContact", "value": "true"},
-            {"type": "Condition", "key": "inCombatRange", "value": "true"},
-            {"type": "Action", "executor": "combat", "keys": ["lastSeenTarget"]}
-          ]
+          "type": "Condition",
+          "key": "hasVisualContact",
+          "value": "true"
         },
         {
-          "type": "Sequence",
-          "name": "Chase",
-          "children": [
-            {"type": "Condition", "key": "hasVisualContact", "value": "true"},
-            {"type": "Action", "executor": "move", "keys": ["lastSeenPosition"]}
+          "type": "Action",
+          "executor": "move",
+          "keys": [
+            "lastSeenPosition"
           ]
         }
       ]
@@ -44,24 +46,17 @@
       "type": "Sequence",
       "name": "Search",
       "children": [
-        {"type": "Condition", "key": "lastSeenPosition", "exists": true},
-        {"type": "Action", "executor": "move", "keys": ["lastSeenPosition"]}
-      ]
-    },
-    {
-      "type": "Sequence",
-      "name": "Investigate",
-      "children": [
         {
           "type": "Condition",
-          "key": "lastHeardPosition",
-          "value": null,
+          "key": "lastSeenPosition",
           "exists": true
         },
         {
           "type": "Action",
-          "executor": "investigate",
-          "keys": ["lastHeardPosition", "lastHeardFloor"]
+          "executor": "move",
+          "keys": [
+            "lastSeenPosition"
+          ]
         }
       ]
     },
@@ -69,7 +64,9 @@
       "type": "Action",
       "name": "Patrol",
       "executor": "move",
-      "keys": ["patrolTarget"]
+      "keys": [
+        "patrolTarget"
+      ]
     }
   ]
 }

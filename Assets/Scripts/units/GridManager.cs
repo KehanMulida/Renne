@@ -1,6 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+// 执行顺序：FloorManager(-200) → GridManager(-100) → 默认(0，包括UnitMovement、TurnBasedUnit等)
+// 这样可以保证 GridManager.Awake 时 FloorManager.Instance 已经存在
+// 在 Unity 里也可以通过 Edit > Project Settings > Script Execution Order 设置同样效果
+[DefaultExecutionOrder(-100)]
+
 /// <summary>
 /// 网格单元格数据类
 /// 职责：纯数据结构，存储单个格子的信息
@@ -12,7 +17,7 @@ public class GridCell
     public Vector2Int gridPosition;  // 格子的网格坐标（二维）
     public Vector3 worldPosition;    // 格子的世界坐标（三维）
     public int floor;                // 所属楼层
-    public bool isWalkable = true;   // 是否可行走
+    public bool isWalkable = true;   // 是否可行走（静态障碍物，如墙壁）
     public int moveCost = 1;         // 移动消耗（用于不同地形）
     public int height = 0;           // 高度层级，用于2.5D地形
 
@@ -30,6 +35,8 @@ public class GridCell
 /// 1. 管理整个游戏场景的网格数据
 /// 2. 提供坐标转换功能（世界坐标 <-> 网格坐标）
 /// 3. 提供网格查询接口
+/// 4. 管理动态障碍物（门、箱子等可变物体）
+/// 5. 管理单位占据状态（防止多个单位站同一格）
 /// 特点：
 /// - 单例模式，全局唯一
 /// - 只负责数据管理，不包含任何游戏逻辑
@@ -40,38 +47,50 @@ public class GridManager : MonoBehaviour
     public static GridManager Instance { get; private set; }
 
     // ============ 配置参数 ============
-    
+
     [Header("网格配置")]
-    [SerializeField] private int gridWidth = 20;      // 网格宽度（X轴格子数量）
-    [SerializeField] private int gridHeight = 20;     // 网格高度（Z轴格子数量）
-    [SerializeField] private float cellSize = 1f;     // 单个格子的尺寸
-    [SerializeField] private Vector3 gridOrigin = Vector3.zero;  // 网格原点位置
+    [SerializeField] private int gridWidth = 20;
+    [SerializeField] private int gridHeight = 20;
+    [SerializeField] private float cellSize = 1f;
+    [SerializeField] private Vector3 gridOrigin = Vector3.zero;
 
     [Header("多楼层支持")]
-    [SerializeField] private bool useFloorSystem = true;  // 是否启用楼层系统
+    [SerializeField] private bool useFloorSystem = true;
 
     [Header("障碍物检测")]
-    [SerializeField] private LayerMask obstacleLayer;           // 障碍物所在Layer
-    [SerializeField] private float obstacleCheckRadius = 0.4f;  // 障碍物检测半径
+    [SerializeField] private LayerMask obstacleLayer;
+    // 检测半径自动根据 cellSize 缩放，也可在 Inspector 手动覆盖
+    [SerializeField] private bool autoCalculateCheckRadius = true;
+    [SerializeField] private float obstacleCheckRadius = 0.4f;
 
-    // 网格数据存储：使用3D坐标(x, z, floor)作为key
-    private Dictionary<Vector3Int, GridCell> gridCells;  // 改为3D坐标索引
-    private Dictionary<Vector2Int, GridCell> gridCells2D; // 兼容旧版（无楼层系统时使用）
+    [Header("调试")]
+    [SerializeField] private bool showOccupiedCells = true;   // Gizmos 显示被占据的格子
 
-    // 公开属性：供外部只读访问
+    // ============ 内部数据 ============
+
+    // 网格数据：3D坐标(x, z, floor)作为key
+    private Dictionary<Vector3Int, GridCell> gridCells;
+    private Dictionary<Vector2Int, GridCell> gridCells2D;
+
+    // 单位占据状态（玩家、敌人站在哪个格子）
+    private HashSet<Vector3Int> occupiedPositions = new HashSet<Vector3Int>();
+
+    // ============ 公开属性 ============
+
     public int Width => gridWidth;
     public int Height => gridHeight;
     public float CellSize => cellSize;
     public Vector3 Origin => gridOrigin;
-    private HashSet<Vector3Int> occupiedPositions = new HashSet<Vector3Int>();
+
+    // ============ 初始化 ============
 
     void Awake()
     {
-        // 单例模式：确保场景中只有一个GridManager
+        // 只在 Awake 里注册单例
+        // 网格初始化放到 Start，确保 FloorManager.Awake 已经跑完，Instance 已经赋值
         if (Instance == null)
         {
             Instance = this;
-            InitializeGrid();
         }
         else
         {
@@ -79,31 +98,38 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 初始化网格数据
-    /// 遍历所有格子位置，创建GridCell并检测障碍物
-    /// 支持多楼层：为每个楼层创建独立的网格
-    /// </summary>
+    void Start()
+    {
+        InitializeGrid();
+    }
+
     private void InitializeGrid()
     {
+        if (autoCalculateCheckRadius)
+        {
+            obstacleCheckRadius = cellSize * 0.4f;
+        }
+
         if (useFloorSystem && FloorManager.Instance != null)
         {
+            Debug.Log($"[GridManager] FloorManager found with {FloorManager.Instance.NumberOfFloors} floors, using multi-floor mode");
             InitializeMultiFloorGrid();
         }
         else
         {
+            if (useFloorSystem)
+                Debug.LogWarning("[GridManager] useFloorSystem=true but FloorManager.Instance is null! Falling back to single floor. Check that FloorManager exists in scene.");
             InitializeSingleFloorGrid();
         }
     }
 
-    /// <summary>
-    /// 初始化多楼层网格
-    /// </summary>
     private void InitializeMultiFloorGrid()
     {
         gridCells = new Dictionary<Vector3Int, GridCell>();
         int numberOfFloors = FloorManager.Instance.NumberOfFloors;
+        float floorHeight = FloorManager.Instance.FloorHeight;
 
+        // 先创建所有楼层的空格子（全部可行走）
         for (int floor = 0; floor < numberOfFloors; floor++)
         {
             float floorY = FloorManager.Instance.GetFloorWorldY(floor);
@@ -114,36 +140,78 @@ public class GridManager : MonoBehaviour
                 {
                     Vector2Int gridPos = new Vector2Int(x, z);
                     Vector3 worldPos = gridOrigin + new Vector3(x * cellSize, floorY, z * cellSize);
-
                     GridCell cell = new GridCell(gridPos, worldPos, floor);
+                    gridCells[new Vector3Int(x, z, floor)] = cell;
+                }
+            }
+        }
 
-                    // 障碍物检测：在特定楼层高度检测
-                    Vector3 checkPos = worldPos;
-                    checkPos.y += 0.5f; // 稍微抬高检测点，避免检测到地板
+        // 找场景里所有 obstacleLayer 上的碰撞体
+        // 用整个场景范围的大 Box 一次性获取所有障碍物
+        Vector3 sceneBoundsCenter = gridOrigin + new Vector3(
+            gridWidth * cellSize * 0.5f,
+            floorHeight * numberOfFloors * 0.5f,
+            gridHeight * cellSize * 0.5f
+        );
+        Vector3 sceneBoundsHalf = new Vector3(
+            gridWidth * cellSize * 0.5f,
+            floorHeight * numberOfFloors * 0.5f,
+            gridHeight * cellSize * 0.5f
+        );
 
-                    if (Physics.CheckSphere(checkPos, obstacleCheckRadius, obstacleLayer))
+        Collider[] allObstacles = Physics.OverlapBox(
+            sceneBoundsCenter, sceneBoundsHalf, Quaternion.identity, obstacleLayer
+        );
+
+        int markedCount = 0;
+
+        foreach (Collider col in allObstacles)
+        {
+            // 用碰撞体的 Bounds 计算它在 XZ 平面上覆盖的所有格子
+            // 同时用 Bounds 的 Y 范围判断它跨越了哪些楼层
+            Bounds bounds = col.bounds;
+
+            // 计算 XZ 覆盖的格子范围
+            Vector2Int minGrid = WorldToGrid(new Vector3(bounds.min.x, 0, bounds.min.z));
+            Vector2Int maxGrid = WorldToGrid(new Vector3(bounds.max.x, 0, bounds.max.z));
+
+            // 计算 Y 方向覆盖的楼层范围
+            int minFloor = FloorManager.Instance.GetFloorFromWorldY(bounds.min.y);
+            int maxFloor = FloorManager.Instance.GetFloorFromWorldY(bounds.max.y);
+
+            // 遍历所有被覆盖的格子和楼层
+            for (int floor = minFloor; floor <= maxFloor; floor++)
+            {
+                if (!FloorManager.Instance.IsValidFloor(floor)) continue;
+
+                for (int x = minGrid.x; x <= maxGrid.x; x++)
+                {
+                    for (int z = minGrid.y; z <= maxGrid.y; z++)
                     {
-                        cell.isWalkable = false;
-                    }
+                        if (!IsValid(new Vector2Int(x, z))) continue;
 
-                    // 使用3D坐标作为key
-                    Vector3Int key = new Vector3Int(x, z, floor);
-                    gridCells[key] = cell;
+                        Vector3Int key = new Vector3Int(x, z, floor);
+                        if (gridCells.TryGetValue(key, out GridCell cell))
+                        {
+                            cell.isWalkable = false;
+                            markedCount++;
+                        }
+                    }
                 }
             }
 
-            Debug.Log($"[GridManager] Floor {floor} grid initialized at Y={floorY}");
+            Debug.Log($"[GridManager] Obstacle '{col.gameObject.name}' " +
+                      $"covers grids X[{minGrid.x}~{maxGrid.x}] Z[{minGrid.y}~{maxGrid.y}] " +
+                      $"floors[{minFloor}~{maxFloor}]");
         }
 
-        Debug.Log($"[GridManager] Multi-floor grid initialized: {gridWidth}x{gridHeight} x {numberOfFloors} floors");
+        Debug.Log($"[GridManager] Multi-floor grid ready: {gridWidth}x{gridHeight} x {numberOfFloors} floors, {markedCount} grid cells marked as obstacles");
     }
 
-    /// <summary>
-    /// 初始化单楼层网格（兼容模式）
-    /// </summary>
     private void InitializeSingleFloorGrid()
     {
         gridCells2D = new Dictionary<Vector2Int, GridCell>();
+        int obstacleCount = 0;
 
         for (int x = 0; x < gridWidth; x++)
         {
@@ -154,24 +222,23 @@ public class GridManager : MonoBehaviour
 
                 GridCell cell = new GridCell(gridPos, worldPos, 0);
 
-                if (Physics.CheckSphere(worldPos, obstacleCheckRadius, obstacleLayer))
+                Vector3 checkPos = new Vector3(worldPos.x, 0.5f, worldPos.z);
+                if (Physics.CheckSphere(checkPos, obstacleCheckRadius, obstacleLayer))
                 {
                     cell.isWalkable = false;
+                    obstacleCount++;
                 }
 
                 gridCells2D[gridPos] = cell;
             }
         }
 
-        Debug.Log($"[GridManager] Single-floor grid initialized: {gridWidth}x{gridHeight} cells");
+        Debug.Log($"[GridManager] Single-floor grid ready: {gridWidth}x{gridHeight}, obstacles: {obstacleCount}");
     }
 
-    // ============ 坐标转换接口 ============
-    
-    /// <summary>
-    /// 网格坐标转世界坐标
-    /// 用途：根据格子坐标计算实际的3D世界位置
-    /// </summary>
+    // ============ 坐标转换 ============
+
+    /// <summary>网格坐标转世界坐标（XZ平面，Y=0）</summary>
     public Vector3 GridToWorld(Vector2Int gridPos)
     {
         return gridOrigin + new Vector3(gridPos.x * cellSize, 0, gridPos.y * cellSize);
@@ -179,23 +246,38 @@ public class GridManager : MonoBehaviour
 
     /// <summary>
     /// 世界坐标转网格坐标
-    /// 用途：根据3D世界位置计算对应的格子坐标
-    /// 注意：使用Round进行四舍五入，确保精确对齐到格子
+    /// 使用 FloorToInt + 0.5 偏移确保格子中心对齐
+    /// 避免在格子边缘因浮点误差跳到相邻格子
     /// </summary>
     public Vector2Int WorldToGrid(Vector3 worldPos)
     {
         Vector3 offset = worldPos - gridOrigin;
-        int x = Mathf.RoundToInt(offset.x / cellSize);
-        int y = Mathf.RoundToInt(offset.z / cellSize);
+        // 加 0.5*cellSize 偏移后 FloorToInt，等价于以格子中心为基准取整
+        // 比 RoundToInt 更稳定，不受浮点精度影响
+        int x = Mathf.FloorToInt((offset.x + cellSize * 0.5f) / cellSize);
+        int y = Mathf.FloorToInt((offset.z + cellSize * 0.5f) / cellSize);
         return new Vector2Int(x, y);
     }
 
-    // ============ 数据查询接口 ============
-    
     /// <summary>
-    /// 获取指定位置的格子数据（支持楼层）
-    /// 返回：格子对象，如果坐标无效则返回null
+    /// 把世界坐标吸附到最近格子的中心点
+    /// 在 PlayerInputController 里点击后调用，确保显示的目标位置精确居中
     /// </summary>
+    public Vector3 SnapToGrid(Vector3 worldPos, int floor = 0)
+    {
+        Vector2Int gridPos = WorldToGrid(worldPos);
+
+        if (FloorManager.Instance != null)
+            return FloorManager.Instance.GridToWorld(gridPos, floor);
+
+        Vector3 snapped = GridToWorld(gridPos);
+        snapped.y = worldPos.y;
+        return snapped;
+    }
+
+    // ============ 格子查询 ============
+
+    /// <summary>获取格子数据（支持楼层）</summary>
     public GridCell GetCell(Vector2Int gridPos, int floor = 0)
     {
         if (useFloorSystem && gridCells != null)
@@ -210,44 +292,45 @@ public class GridManager : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// 检查格子坐标是否在网格范围内
-    /// </summary>
+    /// <summary>格子坐标是否在网格范围内</summary>
     public bool IsValid(Vector2Int gridPos)
     {
-        return gridPos.x >= 0 && gridPos.x < gridWidth && 
+        return gridPos.x >= 0 && gridPos.x < gridWidth &&
                gridPos.y >= 0 && gridPos.y < gridHeight;
     }
 
     /// <summary>
-    /// 检查格子是否可行走（支持楼层）
-    /// 返回：true=可行走，false=有障碍物或坐标无效
+    /// 检查格子是否可行走
+    /// ignoreOccupied = true：只检查静态障碍物（用于计算移动范围可视化）
+    /// ignoreOccupied = false（默认）：同时检查静态障碍物和单位占据（用于寻路和实际移动）
     /// </summary>
-    public bool IsWalkable(Vector2Int gridPos, int floor = 0)
+    public bool IsWalkable(Vector2Int gridPos, int floor = 0, bool ignoreOccupied = false)
     {
         GridCell cell = GetCell(gridPos, floor);
-        return cell != null && cell.isWalkable;
+        if (cell == null || !cell.isWalkable) return false;
+
+        // 检查单位占据
+        if (!ignoreOccupied && IsOccupied(gridPos, floor)) return false;
+
+        return true;
     }
+
+    // ============ 单位占据管理 ============
+
     /// <summary>
-    /// 标记格子为已占据
+    /// 标记/取消格子被单位占据
+    /// 在 UnitMovement 的移动开始/结束时调用
     /// </summary>
     public void SetOccupied(Vector2Int gridPos, int floor, bool occupied)
     {
         Vector3Int key = new Vector3Int(gridPos.x, gridPos.y, floor);
-        
         if (occupied)
-        {
             occupiedPositions.Add(key);
-        }
         else
-        {
             occupiedPositions.Remove(key);
-        }
     }
 
-    /// <summary>
-    /// 检查格子是否被占据
-    /// </summary>
+    /// <summary>检查格子是否被单位占据</summary>
     public bool IsOccupied(Vector2Int gridPos, int floor = 0)
     {
         Vector3Int key = new Vector3Int(gridPos.x, gridPos.y, floor);
@@ -255,27 +338,24 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 获取指定格子的相邻格子（四方向，支持楼层）
-    /// 用途：寻路算法需要知道当前格子可以走到哪些相邻格子
-    /// 返回：可行走的相邻格子列表
+    /// 获取相邻可行走格子（用于寻路）
+    /// 注意：寻路时需要考虑占据状态，所以 ignoreOccupied = false
     /// </summary>
     public List<Vector2Int> GetNeighbors(Vector2Int gridPos, int floor = 0)
     {
         List<Vector2Int> neighbors = new List<Vector2Int>();
-        
-        // 四个方向：上下左右
+
         Vector2Int[] directions = {
-            Vector2Int.up,    // 北 (0, 1)
-            Vector2Int.down,  // 南 (0, -1)
-            Vector2Int.left,  // 西 (-1, 0)
-            Vector2Int.right  // 东 (1, 0)
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
         };
 
         foreach (var dir in directions)
         {
             Vector2Int neighborPos = gridPos + dir;
-            // 只返回有效且可行走的相邻格子（同楼层）
-            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor))
+            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor, ignoreOccupied: false))
             {
                 neighbors.Add(neighborPos);
             }
@@ -284,11 +364,39 @@ public class GridManager : MonoBehaviour
         return neighbors;
     }
 
-    // ============ 数据修改接口 ============
-    
     /// <summary>
-    /// 手动设置格子的可行走状态（支持楼层）
-    /// 用途：运行时动态改变地形（如放置/移除障碍物）
+    /// 获取相邻可行走格子（忽略占据，用于移动范围可视化）
+    /// </summary>
+    public List<Vector2Int> GetNeighborsIgnoreOccupied(Vector2Int gridPos, int floor = 0)
+    {
+        List<Vector2Int> neighbors = new List<Vector2Int>();
+
+        Vector2Int[] directions = {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
+        };
+
+        foreach (var dir in directions)
+        {
+            Vector2Int neighborPos = gridPos + dir;
+            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor, ignoreOccupied: true))
+            {
+                neighbors.Add(neighborPos);
+            }
+        }
+
+        return neighbors;
+    }
+
+    // ============ 动态障碍物管理 ============
+
+    /// <summary>
+    /// 手动设置格子的可行走状态
+    /// 用途：
+    /// - DynamicObstacle 组件调用（门开/关、箱子放置/移除）
+    /// - 运行时动态改变地形
     /// </summary>
     public void SetWalkable(Vector2Int gridPos, bool walkable, int floor = 0)
     {
@@ -296,41 +404,184 @@ public class GridManager : MonoBehaviour
         if (cell != null)
         {
             cell.isWalkable = walkable;
+            Debug.Log($"[GridManager] Grid {gridPos} floor {floor} walkable set to {walkable}");
+        }
+        else
+        {
+            Debug.LogWarning($"[GridManager] SetWalkable: cell not found at {gridPos} floor {floor}");
         }
     }
 
-    // ============ 调试可视化 ============
-    
     /// <summary>
-    /// Gizmos绘制：在Scene视图中显示网格
-    /// 绿色=可行走，红色=障碍物
-    /// 支持多楼层显示
+    /// 重新扫描指定格子的障碍物状态
+    /// 用途：当场景中有物体移动后，重新检测该格子
     /// </summary>
+    /// <summary>
+    /// 重新扫描指定格子
+    /// 检查是否有障碍物的 Bounds 覆盖了这个格子
+    /// </summary>
+    public void RescanCell(Vector2Int gridPos, int floor = 0)
+    {
+        GridCell cell = GetCell(gridPos, floor);
+        if (cell == null) return;
+
+        float floorY = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloorWorldY(floor) : 0f;
+        float floorHeight = FloorManager.Instance != null
+            ? FloorManager.Instance.FloorHeight : 3f;
+
+        // 在这个格子的世界位置做一个小范围检测
+        Vector3 cellWorldPos = cell.worldPosition;
+        Vector3 center = new Vector3(cellWorldPos.x, floorY + floorHeight * 0.5f, cellWorldPos.z);
+        Vector3 half = new Vector3(cellSize * 0.5f, floorHeight * 0.5f, cellSize * 0.5f);
+
+        Collider[] hits = Physics.OverlapBox(center, half, Quaternion.identity, obstacleLayer);
+
+        bool hasObstacle = false;
+        foreach (var hit in hits)
+        {
+            // 确认障碍物的 Bounds 确实覆盖了当前楼层高度
+            int hitMinFloor = FloorManager.Instance != null
+                ? FloorManager.Instance.GetFloorFromWorldY(hit.bounds.min.y) : 0;
+            int hitMaxFloor = FloorManager.Instance != null
+                ? FloorManager.Instance.GetFloorFromWorldY(hit.bounds.max.y) : 0;
+
+            if (floor >= hitMinFloor && floor <= hitMaxFloor)
+            {
+                hasObstacle = true;
+                break;
+            }
+        }
+
+        cell.isWalkable = !hasObstacle;
+        Debug.Log($"[GridManager] Rescanned {gridPos} floor {floor}: walkable={cell.isWalkable}");
+    }
+
+    /// <summary>
+    /// 重新扫描整个楼层的障碍物状态
+    /// 用途：当楼层有大量物体变化时调用（性能较重，谨慎使用）
+    /// </summary>
+    /// <summary>
+    /// 重新扫描整个楼层
+    /// 用碰撞体的 Bounds 重新计算该楼层所有障碍物覆盖的格子
+    /// </summary>
+    public void RescanFloor(int floor)
+    {
+        if (!useFloorSystem || gridCells == null) return;
+
+        // 先把这层所有格子重置为可行走
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int z = 0; z < gridHeight; z++)
+            {
+                Vector3Int key = new Vector3Int(x, z, floor);
+                if (gridCells.TryGetValue(key, out GridCell cell))
+                    cell.isWalkable = true;
+            }
+        }
+
+        float floorY = FloorManager.Instance != null ? FloorManager.Instance.GetFloorWorldY(floor) : 0f;
+        float floorHeight = FloorManager.Instance != null ? FloorManager.Instance.FloorHeight : 3f;
+
+        // 只扫这一层高度范围内的障碍物
+        Vector3 center = gridOrigin + new Vector3(
+            gridWidth * cellSize * 0.5f,
+            floorY + floorHeight * 0.5f,
+            gridHeight * cellSize * 0.5f
+        );
+        Vector3 half = new Vector3(
+            gridWidth * cellSize * 0.5f,
+            floorHeight * 0.5f,
+            gridHeight * cellSize * 0.5f
+        );
+
+        Collider[] obstacles = Physics.OverlapBox(center, half, Quaternion.identity, obstacleLayer);
+
+        int markedCount = 0;
+        foreach (Collider col in obstacles)
+        {
+            // 用 Bounds 计算覆盖的格子范围
+            Bounds bounds = col.bounds;
+
+            // 确认这个障碍物的 Y 范围确实属于当前楼层
+            int colMinFloor = FloorManager.Instance != null
+                ? FloorManager.Instance.GetFloorFromWorldY(bounds.min.y) : 0;
+            int colMaxFloor = FloorManager.Instance != null
+                ? FloorManager.Instance.GetFloorFromWorldY(bounds.max.y) : 0;
+
+            if (floor < colMinFloor || floor > colMaxFloor) continue;
+
+            Vector2Int minGrid = WorldToGrid(new Vector3(bounds.min.x, 0, bounds.min.z));
+            Vector2Int maxGrid = WorldToGrid(new Vector3(bounds.max.x, 0, bounds.max.z));
+
+            for (int x = minGrid.x; x <= maxGrid.x; x++)
+            {
+                for (int z = minGrid.y; z <= maxGrid.y; z++)
+                {
+                    if (!IsValid(new Vector2Int(x, z))) continue;
+
+                    Vector3Int key = new Vector3Int(x, z, floor);
+                    if (gridCells.TryGetValue(key, out GridCell cell))
+                    {
+                        cell.isWalkable = false;
+                        markedCount++;
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"[GridManager] Rescanned floor {floor}: {markedCount} grid cells marked as obstacles");
+    }
+
+    // ============ 调试可视化 ============
+
     void OnDrawGizmos()
     {
         if (useFloorSystem && gridCells != null)
         {
-            // 多楼层模式：显示所有楼层的网格
             foreach (var cell in gridCells.Values)
             {
-                Gizmos.color = cell.isWalkable ? new Color(0, 1, 0, 0.1f) : new Color(1, 0, 0, 0.3f);
-                Gizmos.DrawWireCube(cell.worldPosition, Vector3.one * cellSize * 0.9f);
+                if (!cell.isWalkable)
+                {
+                    Gizmos.color = new Color(1, 0, 0, 0.3f);
+                    Gizmos.DrawWireCube(cell.worldPosition, Vector3.one * cellSize * 0.9f);
+                }
+                else
+                {
+                    Gizmos.color = new Color(0, 1, 0, 0.05f);
+                    Gizmos.DrawWireCube(cell.worldPosition, Vector3.one * cellSize * 0.9f);
+                }
             }
         }
         else if (gridCells2D != null)
         {
-            // 单楼层模式
             foreach (var cell in gridCells2D.Values)
             {
-                Gizmos.color = cell.isWalkable ? new Color(0, 1, 0, 0.1f) : new Color(1, 0, 0, 0.3f);
+                Gizmos.color = cell.isWalkable ? new Color(0, 1, 0, 0.05f) : new Color(1, 0, 0, 0.3f);
                 Gizmos.DrawWireCube(cell.worldPosition, Vector3.one * cellSize * 0.9f);
+            }
+        }
+
+        // 显示被占据的格子（蓝色）
+        if (showOccupiedCells && Application.isPlaying)
+        {
+            Gizmos.color = new Color(0, 0.5f, 1f, 0.5f);
+            foreach (var key in occupiedPositions)
+            {
+                Vector2Int gridPos = new Vector2Int(key.x, key.y);
+                int floor = key.z;
+
+                Vector3 worldPos;
+                if (FloorManager.Instance != null)
+                    worldPos = FloorManager.Instance.GridToWorld(gridPos, floor);
+                else
+                    worldPos = GridToWorld(gridPos);
+
+                Gizmos.DrawCube(worldPos + Vector3.up * 0.1f, Vector3.one * cellSize * 0.5f);
             }
         }
     }
 
-    /// <summary>
-    /// 绘制指定楼层的网格（用于调试）
-    /// </summary>
     public void DrawFloorGrid(int floor)
     {
         if (!useFloorSystem || gridCells == null) return;

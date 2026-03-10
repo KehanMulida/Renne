@@ -114,7 +114,11 @@ public class TurnBasedUnit : MonoBehaviour
         {
             Debug.LogError("TurnSystem not found! TurnBasedUnit requires TurnSystem in scene.");
         }
-
+        var aiController = GetComponent<EnemyAIController>();
+        if (aiController != null && aiController.config != null)
+        {
+                actionPointsPerTurn = aiController.config.moveRange;
+        }
         // 订阅移动完成事件（自动结束行动）
         if (unitMovement != null)
         {

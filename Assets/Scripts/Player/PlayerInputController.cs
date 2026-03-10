@@ -1,40 +1,55 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;  // 添加这个引用，用于ToArray()
+using System.Linq;
 
 /// <summary>
-/// 玩家输入控制器（完整版 - 支持回合制和楼层切换）
-/// 职责：
-/// 1. 接收和处理玩家输入（鼠标、键盘等）
-/// 2. 协调各个模块（UnitMovement、TurnSystem、FloorManager等）
-/// 3. 管理游戏流程（显示范围、执行移动、楼层切换、结束回合）
-/// 4. 只在玩家回合时响应输入
+/// 玩家输入控制器
+/// 职责：所有玩家输入的唯一入口
+/// 1. 移动输入（右键点击格子）
+/// 2. 回合控制（结束回合、楼层切换）
+/// 3. 拾取输入
+/// 4. 快捷栏输入（滚轮切换、投掷、使用物品）
+/// 设计原则：
+/// - 只负责读取输入和调用其他系统的公开方法
+/// - 不包含任何游戏逻辑，逻辑在各自的 Manager 里
 /// </summary>
 public class PlayerInputController : MonoBehaviour
 {
-    // ============ 引用组件 ============
-    
+    // ============ 引用 ============
+
     [Header("引用")]
     [SerializeField] private UnitMovement playerUnit;
     [SerializeField] private TurnBasedUnit turnBasedUnit;
     [SerializeField] private Camera mainCamera;
 
-    [Header("输入设置")]
+    [Header("移动 & 回合输入")]
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private KeyCode endTurnKey = KeyCode.Space;
     [SerializeField] private KeyCode changeFloorKey = KeyCode.E;
-    [SerializeField] private KeyCode pickupKey = KeyCode.F;              // 拾取物品按键
-    [SerializeField] private float pickupDetectionRange = 2f;             // 拾取检测范围
+
+    [Header("拾取输入")]
+    [SerializeField] private KeyCode pickupKey = KeyCode.Q;
+    [SerializeField] private float pickupDetectionRange = 2f;
+
+    [Header("快捷栏输入")]
+    [Tooltip("切换近战模式")]
+    [SerializeField] private KeyCode meleeModeKey = KeyCode.W;
+    [Tooltip("投掷 / 近战攻击（左键）")]
+    [SerializeField] private KeyCode throwKey = KeyCode.Mouse0;
+
+    // 近战模式状态
+    private bool isMeleeMode = false;
 
     // ============ 运行时数据 ============
-    
+
     private HashSet<Vector2Int> currentMovementRange;
     private Vector2Int? hoveredGridPos;
     private bool isInputEnabled = false;
     private FloorConnection availableFloorConnection = null;
     private bool isShowingFloorPrompt = false;
-    private List<WorldItem> nearbyItems = new List<WorldItem>();       // 附近的物品
-    private Inventory playerInventory;                                  // 玩家背包
+    private List<WorldItem> nearbyItems = new List<WorldItem>();
+    private Inventory playerInventory;
+    private EquipmentManager equipmentManager;
 
     // ============ 初始化 ============
 
@@ -50,13 +65,11 @@ public class PlayerInputController : MonoBehaviour
         }
 
         if (turnBasedUnit == null)
-        {
             turnBasedUnit = playerUnit.GetComponent<TurnBasedUnit>();
-        }
 
         if (turnBasedUnit == null)
         {
-            Debug.LogError("[PlayerInputController] TurnBasedUnit component not found!");
+            Debug.LogError("[PlayerInputController] TurnBasedUnit not found!");
             return;
         }
 
@@ -66,10 +79,9 @@ public class PlayerInputController : MonoBehaviour
         {
             TurnSystem.Instance.OnFactionChanged += OnFactionChanged;
             TurnSystem.Instance.OnTurnStart += OnTurnSystemStart;
-            
+
             if (TurnSystem.Instance.IsCurrentFaction(TurnFaction.Player))
             {
-                Debug.Log("[PlayerInputController] System already started, initializing");
                 isInputEnabled = true;
                 ShowMovementRange();
             }
@@ -81,76 +93,358 @@ public class PlayerInputController : MonoBehaviour
 
         turnBasedUnit.OnMyTurnStart += OnPlayerTurnStart;
         turnBasedUnit.OnMyTurnEnd += OnPlayerTurnEnd;
-        
-        // 获取或添加背包组件
+
+        // 初始化背包
         playerInventory = playerUnit.GetComponent<Inventory>();
         if (playerInventory == null)
-        {
             playerInventory = playerUnit.gameObject.AddComponent<Inventory>();
-        }
-        
+
+        // 获取 EquipmentManager 并注入 Inventory
+        equipmentManager = playerUnit.GetComponent<EquipmentManager>();
+        if (equipmentManager != null)
+            equipmentManager.SetInventory(playerInventory);
+        else
+            Debug.LogWarning("[PlayerInputController] EquipmentManager not found on player");
+
         Debug.Log("[PlayerInputController] Initialized successfully");
     }
 
     void Update()
     {
-        // 拾取功能完全独立，不受回合限制
+        // ---- 始终可用（不受回合限制）----
         CheckNearbyItems();
         HandlePickupInput();
 
-        // 移动功能只在启用输入且未移动时处理
+        // ---- 快捷栏瞄准（始终更新，让预瞄线实时显示）----
+        if (equipmentManager != null)
+            equipmentManager.UpdateAiming();
+
+        // ---- 快捷栏输入（始终可用）----
+        HandleHotbarInput();
+
+        // ---- 移动 & 回合（仅玩家回合且未移动时）----
         if (!isInputEnabled || playerUnit.IsMoving)
             return;
 
         CheckFloorConnection();
         HandleMouseInput();
-        HandleTurnInput();  // 回合控制单独处理
+        HandleTurnInput();
     }
 
-    // ============ 输入处理分离 ============
+    // ============ 快捷栏输入 ============
+
+    private void HandleHotbarInput()
+    {
+        if (equipmentManager == null) return;
+
+        // 滚轮切换槽位（切换时退出近战模式）
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(scroll) > 0.01f)
+        {
+            equipmentManager.ScrollSlot(scroll);
+            isMeleeMode = false;
+        }
+
+        bool canAct = turnBasedUnit == null || (turnBasedUnit.IsMyTurn && turnBasedUnit.CanAct);
+        HotbarSlot slot = equipmentManager.CurrentSlot;
+        bool hasItem = slot != null && !slot.IsEmpty;
+
+        // W 键：切换近战模式
+        // 只有当前物品有近战伤害配置时才能进入近战模式
+        if (Input.GetKeyDown(meleeModeKey))
+        {
+            bool canMelee = hasItem && slot.itemData is ConsumableData cd && cd.meleeDamage > 0;
+            if (canMelee)
+            {
+                isMeleeMode = !isMeleeMode;
+                Debug.Log($"[Input] Melee mode: {isMeleeMode}");
+            }
+            else
+            {
+                isMeleeMode = false;
+            }
+        }
+
+        // 左键：近战模式下攻击，否则投掷
+        if (Input.GetKeyDown(throwKey))
+        {
+            if (!canAct) return;
+
+            if (isMeleeMode)
+            {
+                // 近战模式：检测鼠标指向的格子是否在攻击范围内
+                if (TryGetMeleeTarget(out Vector2Int targetGrid))
+                {
+                    equipmentManager.ExecuteMelee(targetGrid);
+                    isMeleeMode = false; // 攻击后退出近战模式
+                }
+            }
+            else if (hasItem && slot.itemData.IsThrowable)
+            {
+                // 投掷模式
+                if (equipmentManager.TryGetAimPosition(out Vector3 aimPos))
+                    equipmentManager.ThrowItem(aimPos);
+            }
+        }
+    }
 
     /// <summary>
-    /// 处理拾取输入（独立于回合）
+    /// 获取鼠标指向的近战目标格子
+    /// 必须在当前物品的 meleeRange 范围内
     /// </summary>
+    private bool TryGetMeleeTarget(out Vector2Int targetGrid)
+    {
+        targetGrid = Vector2Int.zero;
+
+        HotbarSlot slot = equipmentManager?.CurrentSlot;
+        if (slot == null || slot.IsEmpty) return false;
+        if (!(slot.itemData is ConsumableData cd) || cd.meleeDamage <= 0) return false;
+
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, groundLayer);
+        if (hits.Length == 0) return false;
+
+        float targetY = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloorWorldY(playerUnit.CurrentFloor) : 0f;
+
+        RaycastHit bestHit = hits[0];
+        float minYDiff = float.MaxValue;
+        foreach (RaycastHit h in hits)
+        {
+            float yDiff = Mathf.Abs(h.point.y - targetY);
+            if (yDiff < minYDiff) { minYDiff = yDiff; bestHit = h; }
+        }
+
+        Vector3 hitPoint = bestHit.point;
+        hitPoint.y = targetY;
+        Vector3 snapped = GridManager.Instance.SnapToGrid(hitPoint, playerUnit.CurrentFloor);
+        targetGrid = GridManager.Instance.WorldToGrid(snapped);
+
+        // 检查是否在近战范围内
+        int range = Mathf.Max(cd.meleeRange, 1); // 最少 1 格
+        int dist = Mathf.Abs(targetGrid.x - playerUnit.CurrentGridPosition.x) +
+                   Mathf.Abs(targetGrid.y - playerUnit.CurrentGridPosition.y);
+
+        return dist <= range;
+    }
+
+    /// <summary>
+    /// 获取当前物品的近战范围格子集合（用于 Gizmos 显示）
+    /// </summary>
+    private HashSet<Vector2Int> GetMeleeRange()
+    {
+        HotbarSlot slot = equipmentManager?.CurrentSlot;
+        if (slot == null || slot.IsEmpty) return null;
+        if (!(slot.itemData is ConsumableData cd) || cd.meleeDamage <= 0) return null;
+
+        int range = Mathf.Max(cd.meleeRange, 1);
+        var result = new HashSet<Vector2Int>();
+        Vector2Int center = playerUnit.CurrentGridPosition;
+
+        for (int x = -range; x <= range; x++)
+        {
+            for (int y = -range; y <= range; y++)
+            {
+                if (Mathf.Abs(x) + Mathf.Abs(y) > range) continue;
+                if (x == 0 && y == 0) continue; // 排除玩家自身格子
+
+                Vector2Int pos = center + new Vector2Int(x, y);
+                if (GridManager.Instance.IsValid(pos))
+                    result.Add(pos);
+            }
+        }
+
+        return result;
+    }
+
+    // ============ 拾取输入 ============
+
     private void HandlePickupInput()
     {
-        // 拾取随时可用，不检查isInputEnabled
         if (Input.GetKeyDown(pickupKey))
-        {
             TryPickupNearbyItems();
+    }
+
+    private void CheckNearbyItems()
+    {
+        foreach (var item in nearbyItems)
+            if (item != null) item.ShowHighlight(false);
+        nearbyItems.Clear();
+
+        WorldItem[] allItems = FindObjectsOfType<WorldItem>();
+        foreach (var item in allItems)
+        {
+            if (item == null || item.IsPickedUp) continue;
+            float distance = Vector3.Distance(playerUnit.transform.position, item.transform.position);
+            if (distance <= pickupDetectionRange)
+            {
+                nearbyItems.Add(item);
+                item.ShowHighlight(true);
+            }
         }
     }
 
-    /// <summary>
-    /// 处理回合相关输入
-    /// </summary>
+    private void TryPickupNearbyItems()
+    {
+        if (nearbyItems.Count == 0) return;
+
+        int pickedCount = 0;
+        foreach (var item in nearbyItems.ToArray())
+        {
+            if (item != null && !item.IsPickedUp)
+            {
+                if (playerInventory != null && playerInventory.AddItem(item.ItemData, item.Quantity))
+                {
+                    item.Pickup(playerUnit.gameObject);
+                    pickedCount++;
+                    Debug.Log($"[Input] Picked up: {item.ItemData.Name} x{item.Quantity}");
+                }
+            }
+        }
+
+        nearbyItems.Clear();
+    }
+
+    // ============ 回合输入 ============
+
     private void HandleTurnInput()
     {
-        // 结束回合
         if (Input.GetKeyDown(endTurnKey))
-        {
             EndPlayerTurn();
-        }
 
-        // 切换楼层
         if (Input.GetKeyDown(changeFloorKey) && availableFloorConnection != null)
-        {
             UseFloorConnection();
+    }
+
+    // ============ 鼠标移动输入 ============
+
+    private void HandleMouseInput()
+    {
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, groundLayer);
+
+        if (hits.Length > 0)
+        {
+            float targetY = FloorManager.Instance != null
+                ? FloorManager.Instance.GetFloorWorldY(playerUnit.CurrentFloor)
+                : 0f;
+
+            RaycastHit? correctHit = null;
+            float minYDiff = float.MaxValue;
+
+            foreach (RaycastHit h in hits)
+            {
+                float yDiff = Mathf.Abs(h.point.y - targetY);
+                if (yDiff < minYDiff) { minYDiff = yDiff; correctHit = h; }
+            }
+
+            if (correctHit.HasValue)
+            {
+                // 把命中点 Y 强制对齐到当前楼层
+                Vector3 hitPoint = correctHit.Value.point;
+                hitPoint.y = targetY;
+
+                // 吸附到最近格子中心，消除射线命中点的浮点偏差
+                Vector3 snappedPoint = GridManager.Instance.SnapToGrid(hitPoint, playerUnit.CurrentFloor);
+                Vector2Int gridPos = GridManager.Instance.WorldToGrid(snappedPoint);
+
+                if (hoveredGridPos == null || hoveredGridPos.Value != gridPos)
+                {
+                    hoveredGridPos = gridPos;
+                    OnGridHovered(gridPos);
+                }
+
+                if (Input.GetMouseButtonDown(1))
+                    OnGridClicked(gridPos);
+            }
+        }
+        else
+        {
+            hoveredGridPos = null;
         }
     }
+
+    private void OnGridHovered(Vector2Int gridPos)
+    {
+        // 预留：可以用来显示路径预览
+    }
+
+    private void OnGridClicked(Vector2Int gridPos)
+    {
+        if (!turnBasedUnit.CanAct) return;
+
+        // IsWalkable 快速检查（O(1)），避免点击障碍物还去算寻路
+        if (!GridManager.Instance.IsWalkable(gridPos, playerUnit.CurrentFloor))
+            return;
+
+        // 寻路只算一次
+        List<Vector2Int> path = PathfindingService.FindPath(
+            playerUnit.CurrentGridPosition, gridPos, playerUnit.CurrentFloor);
+
+        if (path == null || path.Count == 0) return;
+
+        // 检查 AP 是否足够
+        if (!turnBasedUnit.HasEnoughMovementPoints(path.Count))
+        {
+            Debug.Log($"[Input] Not enough AP! Need: {path.Count}, Have: {turnBasedUnit.RemainingActionPoints}");
+            return;
+        }
+
+        // 不再调用 CanMoveTo（内部会重复算一遍移动范围）
+        // 直接移动，path 非空已经证明目标可达
+        ClearMovementRange();
+        playerUnit.MoveToGrid(gridPos);
+    }
+
+    // ============ 楼层切换 ============
+
+    private void CheckFloorConnection()
+    {
+        if (FloorManager.Instance == null)
+        {
+            availableFloorConnection = null;
+            isShowingFloorPrompt = false;
+            return;
+        }
+
+        FloorConnection connection = FloorManager.Instance.GetConnection(
+            playerUnit.CurrentGridPosition, playerUnit.CurrentFloor);
+
+        if (connection != null && !connection.Equals(availableFloorConnection))
+        {
+            availableFloorConnection = connection;
+            isShowingFloorPrompt = true;
+        }
+        else if (connection == null && availableFloorConnection != null)
+        {
+            availableFloorConnection = null;
+            isShowingFloorPrompt = false;
+        }
+    }
+
+    private void UseFloorConnection()
+    {
+        if (availableFloorConnection == null || !turnBasedUnit.CanAct) return;
+
+        if (turnBasedUnit.StartAction())
+        {
+            ClearMovementRange();
+            playerUnit.MoveToGrid(availableFloorConnection.gridPosition, availableFloorConnection.toFloor);
+        }
+    }
+
+    // ============ 回合事件 ============
 
     private void OnTurnSystemStart(TurnData turnData)
     {
         if (turnData.currentFaction == TurnFaction.Player && !isInputEnabled)
-        {
             OnPlayerTurnStart();
-        }
     }
 
     private void OnFactionChanged(TurnFaction newFaction, int factionTurnNumber)
     {
         isInputEnabled = (newFaction == TurnFaction.Player);
-        
+
         if (!isInputEnabled)
         {
             ClearMovementRange();
@@ -177,269 +471,12 @@ public class PlayerInputController : MonoBehaviour
         isShowingFloorPrompt = false;
     }
 
-    // ============ 输入处理 ============
-
-    private void HandleMouseInput()
-    {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        // 使用RaycastAll获取所有击中的物体
-        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, groundLayer);
-
-        if (hits.Length > 0)
-        {
-            // 找到与玩家同楼层的地面
-            RaycastHit? correctHit = null;
-            float targetY = FloorManager.Instance != null 
-                ? FloorManager.Instance.GetFloorWorldY(playerUnit.CurrentFloor)
-                : 0f;
-
-            float minYDiff = float.MaxValue;
-
-            foreach (RaycastHit h in hits)
-            {
-                // 计算击中点与目标楼层的Y坐标差
-                float yDiff = Mathf.Abs(h.point.y - targetY);
-                
-                // 选择最接近目标楼层的击中点
-                if (yDiff < minYDiff)
-                {
-                    minYDiff = yDiff;
-                    correctHit = h;
-                }
-            }
-
-            // 如果找到了合适的击中点
-            if (correctHit.HasValue)
-            {
-                hit = correctHit.Value;
-                
-                // 强制使用玩家当前楼层的Y坐标
-                Vector3 adjustedPoint = hit.point;
-                adjustedPoint.y = targetY;
-                
-                Vector2Int gridPos = GridManager.Instance.WorldToGrid(adjustedPoint);
-
-                if (hoveredGridPos == null || hoveredGridPos.Value != gridPos)
-                {
-                    hoveredGridPos = gridPos;
-                    OnGridHovered(gridPos);
-                }
-
-                if (Input.GetMouseButtonDown(1))
-                {
-                    OnGridClicked(gridPos);
-                }
-            }
-        }
-        else
-        {
-            if (hoveredGridPos != null)
-            {
-                hoveredGridPos = null;
-            }
-        }
-    }
-
-    private void HandleKeyboardInput()
-    {
-        if (Input.GetKeyDown(endTurnKey))
-        {
-            EndPlayerTurn();
-        }
-
-        if (Input.GetKeyDown(changeFloorKey) && availableFloorConnection != null)
-        {
-            UseFloorConnection();
-        }
-    }
-
-    // ============ 物品拾取逻辑 ============
-
-    /// <summary>
-    /// 检测附近的可拾取物品（随时检测，不受回合限制）
-    /// </summary>
-    private void CheckNearbyItems()
-    {
-        // 清除旧的高亮
-        foreach (var item in nearbyItems)
-        {
-            if (item != null)
-            {
-                item.ShowHighlight(false);
-            }
-        }
-        nearbyItems.Clear();
-
-        // 查找场景中所有物品
-        WorldItem[] allItems = FindObjectsOfType<WorldItem>();
-        
-        foreach (var item in allItems)
-        {
-            if (item == null || item.IsPickedUp) continue;
-
-            // 检查是否在拾取范围内（使用简单的距离计算）
-            float distance = Vector3.Distance(playerUnit.transform.position, item.transform.position);
-            if (distance <= pickupDetectionRange)
-            {
-                nearbyItems.Add(item);
-                item.ShowHighlight(true);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 尝试拾取附近的物品（随时可用，不受回合限制）
-    /// </summary>
-    private void TryPickupNearbyItems()
-    {
-        if (nearbyItems.Count == 0)
-        {
-            Debug.Log("[Input] No items nearby to pickup");
-            return;
-        }
-
-        Debug.Log($"[Input] Attempting to pickup {nearbyItems.Count} item(s)");
-
-        // 拾取所有附近的物品
-        int pickedCount = 0;
-        
-        // 使用ToArray避免修改集合问题
-        foreach (var item in nearbyItems.ToArray())
-        {
-            if (item != null && !item.IsPickedUp)
-            {
-                // 尝试添加到背包
-                if (playerInventory != null && playerInventory.AddItem(item.ItemData, item.Quantity))
-                {
-                    // 拾取成功
-                    item.Pickup(playerUnit.gameObject);
-                    pickedCount++;
-                    
-                    Debug.Log($"[Input] ✓ Picked up: {item.ItemData.Name} x{item.Quantity}");
-                }
-                else
-                {
-                    Debug.Log($"[Input] ✗ Cannot pickup {item.ItemData.Name}: inventory full or too heavy");
-                }
-            }
-        }
-
-        if (pickedCount > 0)
-        {
-            Debug.Log($"[Input] Successfully picked up {pickedCount} item(s)");
-        }
-
-        // 清空列表
-        nearbyItems.Clear();
-    }
-
-    private void CheckFloorConnection()
-    {
-        if (FloorManager.Instance == null)
-        {
-            availableFloorConnection = null;
-            isShowingFloorPrompt = false;
-            return;
-        }
-
-        FloorConnection connection = FloorManager.Instance.GetConnection(
-            playerUnit.CurrentGridPosition, 
-            playerUnit.CurrentFloor
-        );
-
-        if (connection != null && !connection.Equals(availableFloorConnection))
-        {
-            availableFloorConnection = connection;
-            isShowingFloorPrompt = true;
-            Debug.Log($"[Input] Floor connection available: {connection.connectionType} to Floor {connection.toFloor}");
-        }
-        else if (connection == null && availableFloorConnection != null)
-        {
-            availableFloorConnection = null;
-            isShowingFloorPrompt = false;
-        }
-    }
-
-    private void UseFloorConnection()
-    {
-        if (availableFloorConnection == null || !turnBasedUnit.CanAct)
-            return;
-
-        Debug.Log($"[Input] Using {availableFloorConnection.connectionType} to floor {availableFloorConnection.toFloor}");
-
-        if (turnBasedUnit.StartAction())
-        {
-            ClearMovementRange();
-            playerUnit.MoveToGrid(availableFloorConnection.gridPosition, availableFloorConnection.toFloor);
-        }
-    }
-
-    // ============ 网格点击处理 ============
-
-    private void OnGridHovered(Vector2Int gridPos)
-    {
-        if (currentMovementRange != null && currentMovementRange.Contains(gridPos))
-        {
-            List<Vector2Int> path = PathfindingService.FindPath(playerUnit.CurrentGridPosition, gridPos);
-        }
-    }
-    /// <summary>
-    /// 处理网格点击事件
-    /// </summary>  
-    private void OnGridClicked(Vector2Int gridPos)
-    {
-        if (!turnBasedUnit.CanAct)
-            return;
-
-        // 计算路径长度
-        List<Vector2Int> path = PathfindingService.FindPath(
-            playerUnit.CurrentGridPosition, 
-            gridPos, 
-            playerUnit.CurrentFloor
-        );
-
-        if (path == null || path.Count == 0)
-        {
-            Debug.Log("[Input] No valid path");
-            return;
-        }
-
-        // 检查是否有足够的移动点数
-        int pathCost = path.Count;
-        if (!turnBasedUnit.HasEnoughMovementPoints(pathCost))
-        {
-            Debug.Log($"[Input] Not enough movement points! Need: {pathCost}, Have: {turnBasedUnit.RemainingActionPoints}");
-            return;
-        }
-
-        if (playerUnit.CanMoveTo(gridPos))
-        {
-            Debug.Log($"[Input] Moving to grid: {gridPos}");
-            // 1. 先扣 AP
-            //turnBasedUnit.ConsumeActionPoint(pathCost);
-
-            // 2. 再移动
-            ClearMovementRange();
-            playerUnit.MoveToGrid(gridPos);
-        }
-    }
-
     private void OnUnitMoveComplete()
     {
-        int remaining = turnBasedUnit.RemainingActionPoints;    
-        // 不调用EndAction()！让玩家可以继续行动
-        // 移动完成后，立即重新计算并显示移动范围
         if (turnBasedUnit.CanAct)
-        {
             ShowMovementRange();
-
-        }
         else
-        {
             ClearMovementRange();
-        }
     }
 
     private void EndPlayerTurn()
@@ -451,17 +488,12 @@ public class PlayerInputController : MonoBehaviour
         }
     }
 
-    // ============ 移动范围管理 ============
+    // ============ 移动范围 ============
 
     private void ShowMovementRange()
     {
-        if (!turnBasedUnit.CanAct) //如果玩家不能行动，则清除移动范围
-        {
-            currentMovementRange = null;
-            return;
-        }
-
-        currentMovementRange = playerUnit.GetMovementRange(); //获取玩家可移动范围
+        if (!turnBasedUnit.CanAct) { currentMovementRange = null; return; }
+        currentMovementRange = playerUnit.GetMovementRange();
     }
 
     private void ClearMovementRange()
@@ -474,9 +506,7 @@ public class PlayerInputController : MonoBehaviour
     void OnDestroy()
     {
         if (playerUnit != null)
-        {
             playerUnit.OnMoveComplete -= OnUnitMoveComplete;
-        }
 
         if (TurnSystem.Instance != null)
         {
@@ -495,63 +525,58 @@ public class PlayerInputController : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        if (!Application.isPlaying)
-            return;
-            
-        if (currentMovementRange == null)
+        if (!Application.isPlaying || playerUnit == null) return;
+
+        int playerFloor = playerUnit.CurrentFloor;
+
+        // 移动范围（绿色）
+        if (currentMovementRange != null && !isMeleeMode)
         {
-            // 每10帧输出一次，避免刷屏
-            if (Time.frameCount % 10 == 0)
+            Gizmos.color = new Color(0, 1, 0, 0.25f);
+            foreach (Vector2Int pos in currentMovementRange)
             {
-                //Debug.Log($"[Gizmos] Frame {Time.frameCount}: currentMovementRange is NULL");
+                Vector3 worldPos = FloorManager.Instance != null
+                    ? FloorManager.Instance.GridToWorld(pos, playerFloor)
+                    : GridManager.Instance.GridToWorld(pos);
+                Gizmos.DrawCube(worldPos + Vector3.up * 0.01f,
+                    Vector3.one * GridManager.Instance.CellSize * 0.9f);
             }
-            return;
         }
 
-        //Debug.Log($"[Gizmos] Frame {Time.frameCount}: Drawing {currentMovementRange.Count} cells");
-
-        // 获取玩家当前楼层
-        int playerFloor = playerUnit != null ? playerUnit.CurrentFloor : 0;
-
-        // 绘制移动范围 - 统一颜色，清晰显示
-        Gizmos.color = new Color(0, 1, 0, 0.25f);  // 统一的绿色半透明
-        
-        foreach (Vector2Int pos in currentMovementRange)
+        // 近战范围（红色）
+        if (isMeleeMode)
         {
-            Vector3 worldPos;
-            
-            if (FloorManager.Instance != null)
+            var meleeRange = GetMeleeRange();
+            if (meleeRange != null)
             {
-                worldPos = FloorManager.Instance.GridToWorld(pos, playerFloor);//将网格坐标转换为世界坐标
+                foreach (Vector2Int pos in meleeRange)
+                {
+                    Vector3 worldPos = FloorManager.Instance != null
+                        ? FloorManager.Instance.GridToWorld(pos, playerFloor)
+                        : GridManager.Instance.GridToWorld(pos);
+                    Gizmos.color = new Color(1, 0, 0, 0.35f);
+                    Gizmos.DrawCube(worldPos + Vector3.up * 0.02f,
+                        Vector3.one * GridManager.Instance.CellSize * 0.9f);
+                }
             }
-            else
-            {
-                worldPos = GridManager.Instance.GridToWorld(pos);
-            }
-            
-            // 降低高度，更贴地
-            Gizmos.DrawCube(worldPos + Vector3.up * 0.01f, 
-                Vector3.one * GridManager.Instance.CellSize * 0.9f);
         }
 
-        // 绘制悬停的格子 - 黄色高亮
-        if (hoveredGridPos.HasValue && currentMovementRange.Contains(hoveredGridPos.Value))
+        // 鼠标悬停格子高亮
+        if (hoveredGridPos.HasValue)
         {
-            Gizmos.color = new Color(1, 1, 0, 0.5f);  // 黄色，更明显
-            
-            Vector3 hoverPos;
-            if (FloorManager.Instance != null)
+            bool inMeleeRange = isMeleeMode && GetMeleeRange()?.Contains(hoveredGridPos.Value) == true;
+            bool inMoveRange = !isMeleeMode && currentMovementRange != null &&
+                               currentMovementRange.Contains(hoveredGridPos.Value);
+
+            if (inMeleeRange || inMoveRange)
             {
-                hoverPos = FloorManager.Instance.GridToWorld(hoveredGridPos.Value, playerFloor);
+                Gizmos.color = new Color(1, 1, 0, 0.5f);
+                Vector3 hoverPos = FloorManager.Instance != null
+                    ? FloorManager.Instance.GridToWorld(hoveredGridPos.Value, playerFloor)
+                    : GridManager.Instance.GridToWorld(hoveredGridPos.Value);
+                Gizmos.DrawCube(hoverPos + Vector3.up * 0.03f,
+                    Vector3.one * GridManager.Instance.CellSize * 0.95f);
             }
-            else
-            {
-                hoverPos = GridManager.Instance.GridToWorld(hoveredGridPos.Value);
-            }
-            
-            // 悬停格子稍微高一点，更明显
-            Gizmos.DrawCube(hoverPos + Vector3.up * 0.02f, 
-                Vector3.one * GridManager.Instance.CellSize * 0.95f);
         }
     }
 
@@ -559,34 +584,43 @@ public class PlayerInputController : MonoBehaviour
     {
         if (!isInputEnabled) return;
 
-        GUIStyle style = new GUIStyle(GUI.skin.box);
-        style.fontSize = 14;
-        style.alignment = TextAnchor.MiddleCenter;
+        GUIStyle style = new GUIStyle(GUI.skin.box)
+        {
+            fontSize = 14,
+            alignment = TextAnchor.MiddleCenter
+        };
         style.normal.textColor = Color.white;
 
-        string hint = turnBasedUnit.CanAct 
-            ? $"Right Click: Move | {changeFloorKey}: Change Floor | {endTurnKey}: End Turn" 
-            : $"{endTurnKey}: End Turn";
+        string hint;
+        if (isMeleeMode)
+        {
+            style.normal.textColor = Color.red;
+            hint = "[ MELEE MODE ] LClick: Attack | W: Cancel";
+        }
+        else if (turnBasedUnit.CanAct)
+        {
+            hint = "RClick:Move | LClick:Throw | W:Melee | Q:Pickup | E:Floor | Space:EndTurn";
+        }
+        else
+        {
+            hint = "Space: End Turn";
+        }
 
-        GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height - 50, 400, 30), hint, style);
+        GUI.Box(new Rect(Screen.width / 2 - 280, Screen.height - 50, 560, 30), hint, style);
 
         if (isShowingFloorPrompt && availableFloorConnection != null)
         {
-            GUIStyle promptStyle = new GUIStyle(GUI.skin.box);
-            promptStyle.fontSize = 18;
-            promptStyle.alignment = TextAnchor.MiddleCenter;
+            GUIStyle promptStyle = new GUIStyle(GUI.skin.box)
+            {
+                fontSize = 18,
+                alignment = TextAnchor.MiddleCenter
+            };
             promptStyle.normal.textColor = Color.yellow;
-            
-            Texture2D bgTexture = new Texture2D(1, 1);
-            bgTexture.SetPixel(0, 0, new Color(0, 0, 0, 0.8f));
-            bgTexture.Apply();
-            promptStyle.normal.background = bgTexture;
 
             string floorPrompt = $"[{availableFloorConnection.connectionType}]\n" +
-                                $"Press [{changeFloorKey}] to go to Floor {availableFloorConnection.toFloor}\n" +
-                                $"(Current Floor: {playerUnit.CurrentFloor})";
+                                 $"Press [{changeFloorKey}] to go to Floor {availableFloorConnection.toFloor}";
 
-            GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height / 2 - 50, 400, 100), floorPrompt, promptStyle);
+            GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height / 2 - 50, 400, 80), floorPrompt, promptStyle);
         }
     }
 }

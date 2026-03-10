@@ -21,24 +21,62 @@ public class MovementExecutor : IActionExecutor
     {
         Vector2Int targetGrid = GridManager.Instance.WorldToGrid(context.TargetPosition);
         Vector2Int currentGrid = unitMovement.CurrentGridPosition;
+        int currentFloor = unitMovement.CurrentFloor;
         
-        // 如果目标格子被占据，找相邻格子
-        if (GridManager.Instance.IsWalkable(targetGrid, unitMovement.CurrentFloor))
+        // 从 blackboard 读取目标楼层
+        int targetFloor = currentFloor;
+        if (context.Blackboard.ContainsKey("lastSeenFloor"))
+        {
+            targetFloor = (int)context.Blackboard["lastSeenFloor"];
+        }
+        
+        // 如果需要跨楼层
+        if (currentFloor != targetFloor)
+        {
+            yield return MoveToFloor(targetFloor);
+            yield break;
+        }
+        
+        // 同楼层移动
+        if (GridManager.Instance.IsOccupied(targetGrid, currentFloor))
         {
             targetGrid = FindNearestEmptyAdjacentTile(targetGrid, currentGrid);
         }
         
         if (targetGrid == currentGrid)
         {
-            yield break; // 已经在最近位置
+            yield break;
         }
         
-        unitMovement.MoveToGrid(targetGrid, context.TargetFloor != -1 ? context.TargetFloor : unitMovement.CurrentFloor);
+        List<Vector2Int> fullPath = PathfindingService.FindPath(currentGrid, targetGrid, currentFloor);
         
-        while (unitMovement.IsMoving)
+        if (fullPath == null || fullPath.Count == 0)
         {
-            yield return null;
+            Debug.LogWarning("[MovementExecutor] No path found");
+            yield break;
         }
+        
+        var turnUnit = owner.GetComponent<TurnBasedUnit>();
+        int availableSteps = turnUnit != null ? turnUnit.RemainingActionPoints : fullPath.Count;
+        int stepsToTake = Mathf.Min(availableSteps, fullPath.Count);
+        Vector2Int finalStep = fullPath[stepsToTake - 1];
+        
+        Debug.Log($"[MovementExecutor] Moving {stepsToTake} steps towards {targetGrid}, AP: {availableSteps}");
+        
+        unitMovement.MoveToGrid(finalStep, currentFloor);
+
+        // 等一帧确保 IsMoving 有机会变成 true
+        yield return null;
+
+        // MoveToGrid 静默失败（路径被阻挡或目标被占据）
+        if (!unitMovement.IsMoving)
+        {
+            Debug.LogWarning($"[MovementExecutor] MoveToGrid failed for {finalStep}");
+            yield break;
+        }
+
+        while (unitMovement.IsMoving)
+            yield return null;
     }
 
     private Vector2Int FindNearestEmptyAdjacentTile(Vector2Int target, Vector2Int from)
@@ -55,7 +93,7 @@ public class MovementExecutor : IActionExecutor
         {
             Vector2Int adjacent = target + dir;
             if (GridManager.Instance.IsWalkable(adjacent, unitMovement.CurrentFloor) &&
-                !GridManager.Instance.IsOccupied(adjacent))
+                !GridManager.Instance.IsOccupied(adjacent, unitMovement.CurrentFloor))
             {
                 float dist = Vector2Int.Distance(adjacent, from);
                 if (dist < bestDistance)
@@ -68,6 +106,7 @@ public class MovementExecutor : IActionExecutor
         
         return bestTile;
     }
+
     private IEnumerator MoveToFloor(int targetFloor)
     {
         var connection = GetNearestFloorConnection(targetFloor);

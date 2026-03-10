@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: Wine
+  m_EditorClassIdentifier: Assembly-CSharp::ConsumableData
+  ID: 2002
+  Name: wine
+  description: "\u7269\u54C1\u63CF\u8FF0"
+  Type: 0
+  rarity: 0
+  UseCost: 1
+  EffectType: 
+  EffectValue: 1
+  Sound: 
+  Animation: 
+  VFX: 
+  icon: {fileID: 0}
+  Prefab: {fileID: 0}
+  weight: 1
+  value: 10
+  maxStack: 10
+  isThrowable: 1
+  throwableConfig:
+    flightMode: 0
+    throwRange: 9
+    flightSpeed: 24.6
+    arcHeight: 0.93
+    directDamage: 23
+    splashRadius: 1
+    splashDamage: 23
+    canDamageSelf: 0
+    hitLayer:
+      serializedVersion: 2
+      m_Bits: 384
+    breakOnImpact: 0
+    canPickupAfterThrow: 1
+    impactVFXPrefab: {fileID: 0}
+    debrisPrefab: {fileID: 0}
+    throwSound: 
+    impactSound: 
+  healAmount: 0
+  staminaAmount: 0
+  sanityAmount: 0
+  damageAmount: 5
+  damageRange: 1
+  damageLayer:
+    serializedVersion: 2
+    m_Bits: 256

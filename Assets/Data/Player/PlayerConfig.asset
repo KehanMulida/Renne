@@ -19,7 +19,7 @@ MonoBehaviour:
   MaxStamina: 100
   CurrentStamina: 100
   StaminaRegenPerTurn: 10
-  MoveRange: 5
+  MoveRange: 10
   MoveSpeed: 5
   MoveStaminaCost: 5
   Reaction: 1

@@ -3,70 +3,58 @@ using System.Collections.Generic;
 
 /// <summary>
 /// 寻路节点（仅用于A*算法的内部计算）
-/// 职责：存储A*算法中每个节点的代价信息
-/// 注意：这个类只在寻路算法内部使用，外部不应访问
 /// </summary>
 public class PathNode
 {
-    public Vector2Int position;  // 节点的网格坐标
-    public PathNode parent;      // 父节点，用于回溯路径
-    public int gCost;            // G成本：从起点到当前节点的实际代价
-    public int hCost;            // H成本：从当前节点到终点的启发式估计代价
-    public int fCost => gCost + hCost;  // F成本 = G + H，用于选择最优节点
+    public Vector2Int position;
+    public PathNode parent;
+    public int gCost;
+    public int hCost;
+    public int fCost => gCost + hCost;
 
     public PathNode(Vector2Int pos)
     {
         position = pos;
-        gCost = int.MaxValue;  // 初始化为最大值，表示未访问
+        gCost = int.MaxValue;
     }
 }
 
 /// <summary>
 /// 寻路服务 - 纯静态工具类（支持多楼层）
-/// 职责：
-/// 1. 提供A*寻路算法
-/// 2. 提供移动范围计算（Dijkstra算法）
-/// 特点：
-/// - 无状态，所有方法都是静态的
-/// - 不依赖任何GameObject，可以在任何地方调用
-/// - 只依赖GridManager获取网格数据
-/// - 支持多楼层寻路（在同一楼层内）
-/// 优势：
-/// - 易于测试（纯函数）
-/// - 可复用性强
-/// - 性能好（无实例化开销）
+/// 修改点：
+/// 1. FindPath 终点会检查占据状态，避免移动到已有单位的格子
+/// 2. CalculateMovementRange 使用 ignoreOccupied=true，让范围显示不受占据影响
+///    但 FindPath 中路径节点仍然绕开占据格子
 /// </summary>
 public static class PathfindingService
 {
     /// <summary>
     /// A*寻路算法（支持楼层）
-    /// 用途：找到从起点到终点的最短路径
-    /// 参数：
-    ///   start - 起始网格坐标
-    ///   end - 目标网格坐标
-    ///   floor - 楼层编号（默认0）
-    /// 返回：
-    ///   路径上的网格坐标列表（不包含起点），如果无法到达则返回null
-    /// 算法特点：
-    ///   - 使用曼哈顿距离作为启发式函数（适合四方向移动）
-    ///   - 考虑地形移动消耗
-    ///   - 保证找到最优路径
-    ///   - 只在指定楼层内寻路
+    /// 注意：
+    /// - 起点忽略占据检查（单位自己站着的格子）
+    /// - 终点检查占据状态（不能走到有其他单位的格子）
+    /// - 路径中间格子也会绕开被占据的格子（通过 GetNeighbors 实现）
     /// </summary>
     public static List<Vector2Int> FindPath(Vector2Int start, Vector2Int end, int floor = 0)
     {
-        // 前置检查：起点和终点必须都可行走
-        if (!GridManager.Instance.IsWalkable(start, floor) || !GridManager.Instance.IsWalkable(end, floor))
+        // 起点只检查静态障碍物（单位站在自己格子上是正常的）
+        if (!GridManager.Instance.IsWalkable(start, floor, ignoreOccupied: true))
         {
+            Debug.LogWarning($"[Pathfinding] Start position {start} is not walkable");
             return null;
         }
 
-        // 数据结构初始化
+        // 终点检查静态障碍物和占据状态
+        if (!GridManager.Instance.IsWalkable(end, floor, ignoreOccupied: false))
+        {
+            Debug.LogWarning($"[Pathfinding] End position {end} is not walkable or occupied");
+            return null;
+        }
+
         Dictionary<Vector2Int, PathNode> allNodes = new Dictionary<Vector2Int, PathNode>();
         List<PathNode> openSet = new List<PathNode>();
         HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>();
 
-        // 初始化起点和终点
         PathNode startNode = GetOrCreateNode(start, allNodes);
         PathNode endNode = GetOrCreateNode(end, allNodes);
 
@@ -74,11 +62,10 @@ public static class PathfindingService
         startNode.hCost = CalculateDistance(start, end);
         openSet.Add(startNode);
 
-        // A*主循环
         while (openSet.Count > 0)
         {
             PathNode currentNode = GetLowestFCostNode(openSet);
-            
+
             if (currentNode.position == end)
             {
                 return ReconstructPath(currentNode);
@@ -87,15 +74,14 @@ public static class PathfindingService
             openSet.Remove(currentNode);
             closedSet.Add(currentNode.position);
 
-            // 获取相邻节点（传入楼层参数）
+            // GetNeighbors 默认 ignoreOccupied=false，路径会绕开其他单位
             foreach (Vector2Int neighborPos in GridManager.Instance.GetNeighbors(currentNode.position, floor))
             {
-                if (closedSet.Contains(neighborPos))
-                    continue;
+                if (closedSet.Contains(neighborPos)) continue;
 
                 PathNode neighborNode = GetOrCreateNode(neighborPos, allNodes);
                 GridCell cell = GridManager.Instance.GetCell(neighborPos, floor);
-                
+
                 int tentativeGCost = currentNode.gCost + cell.moveCost;
 
                 if (tentativeGCost < neighborNode.gCost)
@@ -112,23 +98,13 @@ public static class PathfindingService
             }
         }
 
-        return null; // 无法找到路径
+        return null;
     }
 
     /// <summary>
-    /// 计算移动范围（Dijkstra算法变种，支持楼层）
-    /// 用途：计算单位在指定移动力下能到达的所有格子
-    /// 参数：
-    ///   startPos - 起始位置
-    ///   maxMovePoints - 最大移动力
-    ///   floor - 楼层编号（默认0）
-    /// 返回：
-    ///   所有可到达格子的集合
-    /// 算法特点：
-    ///   - 考虑地形移动消耗
-    ///   - 使用广度优先搜索的变种
-    ///   - 适合计算技能范围、攻击范围等
-    ///   - 只在指定楼层内计算
+    /// 计算移动范围（Dijkstra算法，支持楼层）
+    /// 注意：使用 GetNeighborsIgnoreOccupied，让范围显示不受其他单位位置影响
+    /// 这样玩家可以看到完整的可移动范围，只是实际点击时终点不能有其他单位
     /// </summary>
     public static HashSet<Vector2Int> CalculateMovementRange(Vector2Int startPos, int maxMovePoints, int floor = 0)
     {
@@ -144,13 +120,12 @@ public static class PathfindingService
             Vector2Int current = frontier.Dequeue();
             int currentCost = costSoFar[current];
 
-            if (currentCost > maxMovePoints)
-                continue;
+            if (currentCost > maxMovePoints) continue;
 
             reachableCells.Add(current);
 
-            // 获取相邻格子（传入楼层参数）
-            foreach (Vector2Int neighbor in GridManager.Instance.GetNeighbors(current, floor))
+            // 忽略占据状态来计算范围（让玩家看到完整移动范围）
+            foreach (Vector2Int neighbor in GridManager.Instance.GetNeighborsIgnoreOccupied(current, floor))
             {
                 GridCell cell = GridManager.Instance.GetCell(neighbor, floor);
                 int newCost = currentCost + cell.moveCost;
@@ -170,11 +145,7 @@ public static class PathfindingService
     }
 
     // ============ 私有辅助方法 ============
-    
-    /// <summary>
-    /// 获取或创建节点
-    /// 避免重复创建相同位置的节点
-    /// </summary>
+
     private static PathNode GetOrCreateNode(Vector2Int pos, Dictionary<Vector2Int, PathNode> nodes)
     {
         if (!nodes.ContainsKey(pos))
@@ -184,16 +155,12 @@ public static class PathfindingService
         return nodes[pos];
     }
 
-    /// <summary>
-    /// 从节点列表中找到F成本最低的节点
-    /// 如果F成本相同，选择H成本更小的（更接近目标）
-    /// </summary>
     private static PathNode GetLowestFCostNode(List<PathNode> nodes)
     {
         PathNode lowest = nodes[0];
         for (int i = 1; i < nodes.Count; i++)
         {
-            if (nodes[i].fCost < lowest.fCost || 
+            if (nodes[i].fCost < lowest.fCost ||
                 (nodes[i].fCost == lowest.fCost && nodes[i].hCost < lowest.hCost))
             {
                 lowest = nodes[i];
@@ -202,34 +169,22 @@ public static class PathfindingService
         return lowest;
     }
 
-    /// <summary>
-    /// 计算两点之间的曼哈顿距离
-    /// 曼哈顿距离 = |x1-x2| + |y1-y2|
-    /// 适用于只能四方向移动的网格（不能斜向移动）
-    /// </summary>
     private static int CalculateDistance(Vector2Int a, Vector2Int b)
     {
         return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
     }
 
-    /// <summary>
-    /// 重建路径
-    /// 从终点通过parent指针回溯到起点
-    /// 返回的路径不包含起点（因为单位已经在起点了）
-    /// </summary>
     private static List<Vector2Int> ReconstructPath(PathNode endNode)
     {
         List<Vector2Int> path = new List<Vector2Int>();
         PathNode current = endNode;
 
-        // 通过parent指针回溯
         while (current.parent != null)
         {
             path.Add(current.position);
             current = current.parent;
         }
 
-        // 反转路径（因为是从终点往回走的）
         path.Reverse();
         return path;
     }

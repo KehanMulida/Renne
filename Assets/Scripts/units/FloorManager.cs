@@ -69,6 +69,8 @@ public class FloorData
 /// - 低耦合：不依赖具体的移动逻辑
 /// - 灵活配置：支持多种连接类型
 /// </summary>
+// 执行顺序最高，确保在 GridManager(-100) 之前完成 Awake
+[DefaultExecutionOrder(-200)]
 public class FloorManager : MonoBehaviour
 {
     public static FloorManager Instance { get; private set; }
