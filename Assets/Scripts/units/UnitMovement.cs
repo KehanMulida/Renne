@@ -401,7 +401,7 @@ public class UnitMovement : MonoBehaviour
 
         TurnBasedUnit turnUnit = GetComponent<TurnBasedUnit>();
         if (turnUnit != null && turnUnit.IsMyTurn)
-            turnUnit.ConsumeActionPoint(path.Count);
+            turnUnit.ConsumeAP(path.Count);
 
         OnMoveComplete?.Invoke();
 

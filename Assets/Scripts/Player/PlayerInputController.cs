@@ -40,6 +40,9 @@ public class PlayerInputController : MonoBehaviour
     // 近战模式状态
     private bool isMeleeMode = false;
 
+    // 反应窗口状态（敌人射击时临时开放移动）
+    private bool isReactionWindowOpen = false;
+
     // ============ 运行时数据 ============
 
     private HashSet<Vector2Int> currentMovementRange;
@@ -106,29 +109,52 @@ public class PlayerInputController : MonoBehaviour
         else
             Debug.LogWarning("[PlayerInputController] EquipmentManager not found on player");
 
+        // 监听反应窗口事件
+        if (turnBasedUnit != null)
+        {
+            turnBasedUnit.OnReactionWindowOpened += OnReactionWindowOpened;
+            turnBasedUnit.OnReactionWindowClosed += OnReactionWindowClosed;
+        }
+
         Debug.Log("[PlayerInputController] Initialized successfully");
     }
 
     void Update()
     {
-        // ---- 始终可用（不受回合限制）----
         CheckNearbyItems();
         HandlePickupInput();
 
-        // ---- 快捷栏瞄准（始终更新，让预瞄线实时显示）----
         if (equipmentManager != null)
-            equipmentManager.UpdateAiming();
+            equipmentManager.UpdateAiming(isMeleeMode);
 
-        // ---- 快捷栏输入（始终可用）----
         HandleHotbarInput();
 
-        // ---- 移动 & 回合（仅玩家回合且未移动时）----
+        // 反应窗口：不是玩家回合也可以移动一次
+        if (isReactionWindowOpen && !playerUnit.IsMoving)
+        {
+            HandleMouseInput();
+            return;
+        }
+
+        // 正常回合输入
         if (!isInputEnabled || playerUnit.IsMoving)
             return;
 
         CheckFloorConnection();
         HandleMouseInput();
         HandleTurnInput();
+    }
+
+    private void OnReactionWindowOpened()
+    {
+        isReactionWindowOpen = true;
+        Debug.Log("[Input] Reaction window opened, move to dodge!");
+    }
+
+    private void OnReactionWindowClosed()
+    {
+        isReactionWindowOpen = false;
+        Debug.Log("[Input] Reaction window closed");
     }
 
     // ============ 快捷栏输入 ============
@@ -473,6 +499,13 @@ public class PlayerInputController : MonoBehaviour
 
     private void OnUnitMoveComplete()
     {
+        // 反应窗口中移动完成，关闭窗口
+        if (isReactionWindowOpen)
+        {
+            turnBasedUnit.CloseReactionWindow();
+            return;
+        }
+
         if (turnBasedUnit.CanAct)
             ShowMovementRange();
         else

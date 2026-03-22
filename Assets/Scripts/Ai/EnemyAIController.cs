@@ -15,7 +15,31 @@ public class EnemyAIController : MonoBehaviour, IDamageable
     private bool isExecuting = false;
 
     private int searchConfidence = 0;
-    private const int MAX_SEARCH_CONFIDENCE = 3;
+
+    // 运行时 delay 覆盖（由 CombatModeManager 修改，不直接改 ScriptableObject）
+    private float runtimeTurnDelay = -1f;
+    private float runtimeActionInterval = -1f;
+
+    private float TurnDelay => runtimeTurnDelay >= 0 ? runtimeTurnDelay : config.turnStartDelay;
+    private float ActionInterval => runtimeActionInterval >= 0 ? runtimeActionInterval : config.actionInterval;
+
+    /// <summary>由 CombatModeManager 调用，覆盖运行时 delay</summary>
+    public void SetRuntimeDelays(float turnDelay, float actionInterval)
+    {
+        runtimeTurnDelay = turnDelay;
+        runtimeActionInterval = actionInterval;
+    }
+
+    /// <summary>由 CombatModeManager 调用，恢复默认 delay</summary>
+    public void ResetRuntimeDelays()
+    {
+        runtimeTurnDelay = -1f;
+        runtimeActionInterval = -1f;
+    }
+
+    // 缓存组件引用，避免每次 EvaluateState 都调用 GetComponent
+    private EnemyEquipment enemyEquipment;
+    // MAX_SEARCH_CONFIDENCE 移到 config.searchConfidenceMax，不再硬编码
 
     private int currentHp;
     private int currentSanity;
@@ -45,6 +69,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable
         blackboard    = new Dictionary<string, object>();
         turnBasedUnit = GetComponent<TurnBasedUnit>();
         unitMovement  = GetComponent<UnitMovement>();
+        enemyEquipment = GetComponent<EnemyEquipment>(); // 可为 null（无武器敌人）
         currentHp     = config.maxHp;
         currentSanity = config.maxSanity;
 
@@ -61,7 +86,10 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             turnBasedUnit.OnMyTurnEnd   += OnMyTurnEnd;
         }
 
-        // 记录初始位置
+        // 向 CombatModeManager 注册（只注册敌人，TurnBasedUnit 自动注册单位）
+        if (CombatModeManager.Instance != null)
+            CombatModeManager.Instance.RegisterEnemy(this);
+
         currentTurnVisitedCells.Add(unitMovement.CurrentGridPosition);
         SetPatrolTarget();
     }
@@ -73,6 +101,10 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             turnBasedUnit.OnMyTurnStart -= OnMyTurnStart;
             turnBasedUnit.OnMyTurnEnd   -= OnMyTurnEnd;
         }
+
+        // 死亡时注销
+        if (CombatModeManager.Instance != null)
+            CombatModeManager.Instance.UnregisterEnemy(this);
     }
 
     // ============ Update ============
@@ -90,15 +122,24 @@ public class EnemyAIController : MonoBehaviour, IDamageable
         {
             isExecuting = true;
 
-            // 上一回合的访问格子 = 本回合的否定格子
             lastTurnVisitedCells = new HashSet<Vector2Int>(currentTurnVisitedCells);
             currentTurnVisitedCells.Clear();
-
-            // 记录回合开始时的位置
             currentTurnVisitedCells.Add(unitMovement.CurrentGridPosition);
+            blackboard["hasAttackedThisTurn"] = false;
 
-            Invoke(nameof(ExecuteSingleAction), 0.5f);
+            StartCoroutine(StartTurnDelayed());
         }
+    }
+
+    private IEnumerator StartTurnDelayed()
+    {
+        if (TurnDelay > 0.05f)
+            yield return new WaitForSeconds(TurnDelay);
+        else
+            yield return null;
+
+        if (isExecuting)
+            ExecuteSingleAction();
     }
 
     private void OnMyTurnEnd()
@@ -118,12 +159,19 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             if (blackboard["lastSeenTarget"] is Transform t)
             {
                 float dist = Vector3.Distance(transform.position, t.position);
-                blackboard["inCombatRange"] = dist <= config.attackRange;
+
+                float range = enemyEquipment != null
+                    ? enemyEquipment.GetAttackRange(config)
+                    : 1;
+
+                bool inRange = dist <= range;
+                bool canShoot = enemyEquipment == null || !enemyEquipment.HasWeapon || enemyEquipment.HasAmmo;
+                blackboard["inCombatRange"] = inRange && canShoot;
             }
 
-            searchConfidence = MAX_SEARCH_CONFIDENCE;
-            bool inRange = blackboard.ContainsKey("inCombatRange") && (bool)blackboard["inCombatRange"];
-            return inRange ? "Combat" : "Chase";
+            searchConfidence = config.searchConfidenceMax;
+            bool combatReady = blackboard.ContainsKey("inCombatRange") && (bool)blackboard["inCombatRange"];
+            return combatReady ? "Combat" : "Chase";
         }
 
         if (blackboard.ContainsKey("lastSeenPosition"))
@@ -138,6 +186,11 @@ public class EnemyAIController : MonoBehaviour, IDamageable
                 blackboard.Remove("inCombatRange");
                 blackboard.Remove("hasVisualContact");
                 searchConfidence = 0;
+
+                // 通知 CombatModeManager 退出战斗
+                if (CombatModeManager.Instance != null)
+                    CombatModeManager.Instance.NotifyEnemyExitCombat(this);
+
                 SetPatrolTarget();
                 return "Patrol";
             }
@@ -145,11 +198,16 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             return "Chase(searching)";
         }
 
+        // 无视野无追击目标，回到 Patrol
         if (blackboard.ContainsKey("lastHeardPosition"))
         {
             blackboard.Remove("lastHeardPosition");
             blackboard.Remove("lastHeardFloor");
         }
+
+        // 通知退出战斗
+        if (CombatModeManager.Instance != null)
+            CombatModeManager.Instance.NotifyEnemyExitCombat(this);
 
         SetPatrolTarget();
         return "Patrol";
@@ -166,7 +224,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable
         }
 
         string state = EvaluateState();
-        Debug.Log($"[AI:{gameObject.name}] {state} | grid:{unitMovement.CurrentGridPosition} | AP:{turnBasedUnit.RemainingActionPoints}");
+        Debug.Log($"[AI:{gameObject.name}] {state} | grid:{unitMovement.CurrentGridPosition} | AP:{turnBasedUnit.RemainingActionPoints} | inCombatRange:{blackboard.ContainsKey("inCombatRange") && (bool)blackboard["inCombatRange"]}");
 
         behaviorTree.Tick();
         StartCoroutine(WaitForMovementComplete());
@@ -177,25 +235,34 @@ public class EnemyAIController : MonoBehaviour, IDamageable
         yield return null;
         yield return new WaitUntil(() => !unitMovement.IsMoving);
 
-        // 记录移动后的位置到本回合访问格子
         currentTurnVisitedCells.Add(unitMovement.CurrentGridPosition);
 
-        // 保持朝向
-        if (unitMovement.CurrentGridPosition != GridManager.Instance.WorldToGrid(
-            transform.position - transform.forward))
-        {
-            // UnitMovement 已经处理了朝向，不需要额外处理
-        }
-
         if (turnBasedUnit.CanAct)
-            Invoke(nameof(ExecuteSingleAction), 0.3f);
+        {
+            bool attacked = blackboard.ContainsKey("hasAttackedThisTurn") &&
+                            (bool)blackboard["hasAttackedThisTurn"];
+            if (attacked)
+            {
+                Debug.Log($"[AI:{gameObject.name}] Attacked this turn, ending turn");
+                EndTurn();
+                yield break;
+            }
+
+            // ActionInterval 很小时直接用协程等待，避免 Invoke 竞争导致卡死
+            if (ActionInterval > 0.05f)
+                yield return new WaitForSeconds(ActionInterval);
+
+            // 确认回合还在进行中才继续
+            if (isExecuting && turnBasedUnit.CanAct)
+                ExecuteSingleAction();
+        }
         else
             EndTurn();
     }
 
     private void EndTurn()
     {
-       // Debug.Log($"[AI:{gameObject.name}] EndTurn | conf:{searchConfidence}");
+        Debug.Log($"[AI:{gameObject.name}] EndTurn | conf:{searchConfidence}");
 
         if (TurnSystem.Instance != null && turnBasedUnit.IsMyTurn)
             TurnSystem.Instance.EndCurrentTurn();
@@ -210,43 +277,43 @@ public class EnemyAIController : MonoBehaviour, IDamageable
         int currentFloor = unitMovement.CurrentFloor;
 
         // 先尝试找一个不在上回合访问格子里的目标
-        for (int attempt = 0; attempt < 20; attempt++)
+        for (int attempt = 0; attempt < config.patrolMaxAttempts; attempt++)
         {
             Vector2Int offset = new Vector2Int(
-                Random.Range(-6, 6),
-                Random.Range(-6, 6)
+                Random.Range(-config.patrolMaxDistance, config.patrolMaxDistance),
+                Random.Range(-config.patrolMaxDistance, config.patrolMaxDistance)
             );
 
-            // 至少走 3 格
-            if (Mathf.Abs(offset.x) + Mathf.Abs(offset.y) < 3) continue;
+            if (Mathf.Abs(offset.x) + Mathf.Abs(offset.y) < config.patrolMinDistance) continue;
 
             Vector2Int targetGrid = currentGrid + offset;
 
             if (!GridManager.Instance.IsValid(targetGrid)) continue;
             if (!GridManager.Instance.IsWalkable(targetGrid, currentFloor)) continue;
 
-            // 否定格子：目标本身不能是上回合走过的格子
             if (lastTurnVisitedCells.Contains(targetGrid)) continue;
 
             var path = PathfindingService.FindPath(currentGrid, targetGrid, currentFloor);
-            if (path == null || path.Count < 3) continue;
+            if (path == null || path.Count < config.patrolMinDistance) continue;
 
-            // 路径的第一步也尽量不走上回合走过的格子
             bool firstStepVisited = path.Count > 0 && lastTurnVisitedCells.Contains(path[0]);
-            if (firstStepVisited && attempt < 15) continue; // 前15次尝试避开，后5次放宽
+            if (firstStepVisited && attempt < config.patrolMaxAttempts - 5) continue;
 
             blackboard["patrolTarget"] = FloorManager.Instance != null
                 ? FloorManager.Instance.GridToWorld(targetGrid, currentFloor)
                 : GridManager.Instance.GridToWorld(targetGrid);
 
-           // Debug.Log($"[AI:{gameObject.name}] Patrol target: {targetGrid} | avoiding {lastTurnVisitedCells.Count} cells");
+            Debug.Log($"[AI:{gameObject.name}] Patrol target: {targetGrid} | avoiding {lastTurnVisitedCells.Count} cells");
             return;
         }
 
-        // 实在找不到，放弃否定格子限制随便选一个
+        // 放弃否定格子限制随便选一个
         for (int attempt = 0; attempt < 10; attempt++)
         {
-            Vector2Int offset = new Vector2Int(Random.Range(-6, 6), Random.Range(-6, 6));
+            Vector2Int offset = new Vector2Int(
+                Random.Range(-config.patrolMaxDistance, config.patrolMaxDistance),
+                Random.Range(-config.patrolMaxDistance, config.patrolMaxDistance)
+            );
             if (Mathf.Abs(offset.x) + Mathf.Abs(offset.y) < 2) continue;
 
             Vector2Int targetGrid = currentGrid + offset;
@@ -262,7 +329,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             return;
         }
 
-        // 最后兜底：原地不动
+        // 兜底：原地不动
         blackboard["patrolTarget"] = FloorManager.Instance != null
             ? FloorManager.Instance.GridToWorld(currentGrid, currentFloor)
             : GridManager.Instance.GridToWorld(currentGrid);
@@ -279,6 +346,10 @@ public class EnemyAIController : MonoBehaviour, IDamageable
                 blackboard["lastSeenTarget"]   = evt.Target;
                 blackboard["hasVisualContact"]  = true;
                 blackboard["lastSeenFloor"]     = evt.Floor;
+
+                // 通知 CombatModeManager 进入战斗模式
+                if (CombatModeManager.Instance != null)
+                    CombatModeManager.Instance.NotifyEnemyEnterCombat(this);
                 break;
 
             case PerceptionType.VisualLost:

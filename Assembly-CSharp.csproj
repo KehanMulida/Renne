@@ -76,6 +76,7 @@
     <Compile Include="Assets\Scripts\Sound\SoundListener.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Demo\Scripts\csEyeController.cs" />
     <Compile Include="Assets\Scripts\units\GridManager.cs" />
+    <Compile Include="Assets\Scripts\Ai\EnemyEquipment.cs" />
     <Compile Include="Assets\Scripts\Ai\IActionExecutor.cs" />
     <Compile Include="Assets\Scripts\Diagnose\SystemDiagnostic.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerInputController.cs" />
@@ -90,6 +91,8 @@
     <Compile Include="Assets\Scripts\units\FloorConnectionMarker.cs" />
     <Compile Include="Assets\Scripts\Items\ItemData.cs" />
     <Compile Include="Assets\Scripts\Ai\MovementExecutor.cs" />
+    <Compile Include="Assets\Scripts\Combat\CombatModeManager.cs" />
+    <Compile Include="Assets\Scripts\Items\BulletProjectile.cs" />
     <Compile Include="Assets\Scripts\Events\IDamageable.cs" />
     <Compile Include="Assets\Scripts\Ai\BehaviourTree\BTRunner.cs" />
     <Compile Include="Assets\Scripts\units\TurnSystem.cs" />
@@ -98,6 +101,7 @@
     <Compile Include="Assets\Scripts\Items\ThrowableProjectile.cs" />
     <Compile Include="Assets\Scripts\units\DynamicObstacle.cs" />
     <Compile Include="Assets\Scripts\Ai\Sensor\SoundPerception.cs" />
+    <Compile Include="Assets\Scripts\Combat\ChargeAction.cs" />
     <Compile Include="Assets\Scripts\Sound\SoundEmitter.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorVisibilityController.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Examples\csRevealerSpawner.cs" />

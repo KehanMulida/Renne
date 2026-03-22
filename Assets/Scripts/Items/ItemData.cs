@@ -200,23 +200,76 @@ public class ItemData : ScriptableObject
 [CreateAssetMenu(fileName = "WeaponData", menuName = "SRPG/Item Data/Weapon", order = 11)]
 public class WeaponData : ItemData
 {
-    [Header("武器专属属性")]
+    [Header("武器基础属性")]
     public string WeaponType = "Gun";
     public int Damage = 20;
     public int AttackRange = 5;
-    public bool IshasBullet = true;
-    public int MaxBullet = 7;
     public int NoiceLevel = 2;
+
+    [Header("弹药")]
+    [Tooltip("是否使用弹药")]
+    public bool IshasBullet = true;
+
+    [Tooltip("最大弹药量")]
+    public int MaxBullet = 7;
+
+    [Header("射击精度")]
+    [Tooltip("精准度（0~100）\n100=完全准确无偏移\n0=最大角度偏移")]
+    [Range(0, 100)]
     public int Accuracy = 70;
 
-    [Header("子弹预制体")]
+    [Tooltip("最大散布角度（度）\nAccuracy=0时偏移此角度，Accuracy=100时无偏移")]
+    [Range(0f, 45f)]
+    public float MaxSpreadAngle = 20f;
+
+    [Header("暴击")]
+    [Tooltip("暴击率（0~100）")]
+    [Range(0, 100)]
+    public int CriticalChance = 10;
+
+    [Tooltip("暴击伤害倍率")]
+    public float CriticalMultiplier = 2f;
+
+    [Header("子弹配置")]
+    [Tooltip("子弹飞行速度（世界单位/秒）")]
+    public float BulletSpeed = 30f;
+
+    [Tooltip("子弹最大飞行距离（世界单位）")]
+    public float BulletMaxDistance = 50f;
+
+    [Tooltip("子弹 Prefab（挂有 BulletProjectile 组件）")]
     public GameObject BulletPrefab;
+
+    [Tooltip("命中特效 Prefab（可选）")]
+    public GameObject HitVFXPrefab;
+
+    [Tooltip("枪口特效 Prefab（可选）")]
+    public GameObject MuzzleVFXPrefab;
 
     public WeaponData()
     {
         Type = ItemType.Weapon;
         UseCost = 1;
     }
+
+    /// <summary>
+    /// 根据 Accuracy 计算本次射击的角度偏移
+    /// Accuracy=100 → 偏移0度  Accuracy=0 → 偏移MaxSpreadAngle度
+    /// </summary>
+    public float CalculateSpreadAngle()
+    {
+        float inaccuracy = 1f - Accuracy / 100f;
+        float spread = inaccuracy * MaxSpreadAngle;
+        return UnityEngine.Random.Range(-spread, spread);
+    }
+
+    /// <summary>根据暴击率判断是否暴击</summary>
+    public bool RollCritical() =>
+        UnityEngine.Random.Range(0, 100) < CriticalChance;
+
+    /// <summary>计算实际伤害（含暴击，命中由子弹物理判定）</summary>
+    public int CalculateDamage() =>
+        RollCritical() ? Mathf.RoundToInt(Damage * CriticalMultiplier) : Damage;
 
     public override string GetDetailedInfo()
     {
@@ -225,7 +278,8 @@ public class WeaponData : ItemData
         info += $"\n类型: {WeaponType}";
         info += $"\n伤害: {Damage}";
         info += $"\n射程: {AttackRange}";
-        info += $"\n精准度: {Accuracy}%";
+        info += $"\n精准度: {Accuracy}% (最大散布 ±{MaxSpreadAngle}°)";
+        info += $"\n暴击: {CriticalChance}% x{CriticalMultiplier}";
         if (IshasBullet) info += $"\n弹药: {MaxBullet}";
         info += $"\n声音: {NoiceLevel}";
         return info;

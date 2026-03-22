@@ -3,20 +3,32 @@
   "WorkspaceRootPath": "E:\\Renne\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\player\\equipmentmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\player\\equipmentmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\ai\\combatexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\ai\\combatexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\ai\\enemyaicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\ai\\enemyaicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\units\\turnbasedunit.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\units\\turnbasedunit.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\Renne\\Library\\PackageCache\\com.unity.render-pipelines.universal@14.0.11\\Shaders\\Lit.shader||{3B902123-F8A7-4915-9F01-361F908088D0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Library\\PackageCache\\com.unity.render-pipelines.universal@14.0.11\\Shaders\\Lit.shader||{3B902123-F8A7-4915-9F01-361F908088D0}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|e:\\renne\\assets\\scripts\\ai\\investigationexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\ai\\investigationexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\ai\\investigationexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\ai\\behaviourtree\\btparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\ai\\behaviourtree\\btparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\units\\turnbasedunit.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\units\\turnbasedunit.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5E3BF0D8-97D0-F187-DF34-2AD9A89391BB}|Assembly-CSharp.csproj|E:\\Renne\\assets\\scripts\\sound\\soundmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -91,6 +103,44 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "EquipmentManager.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\EquipmentManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\EquipmentManager.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Player\\EquipmentManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Player\\EquipmentManager.cs",
+              "ViewState": "AgIAAMsAAAAAAAAAAAAiwO0AAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-17T16:55:32.717Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CombatExecutor.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Ai\\CombatExecutor.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Ai\\CombatExecutor.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Ai\\CombatExecutor.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Ai\\CombatExecutor.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-15T04:39:26.053Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "EnemyAIController.cs",
+              "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Ai\\EnemyAIController.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Ai\\EnemyAIController.cs",
+              "ToolTip": "E:\\Renne\\Assets\\Scripts\\Ai\\EnemyAIController.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Ai\\EnemyAIController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-12T23:05:47.693Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "Lit.shader",
               "DocumentMoniker": "E:\\Renne\\Library\\PackageCache\\com.unity.render-pipelines.universal@14.0.11\\Shaders\\Lit.shader",
               "RelativeDocumentMoniker": "Library\\PackageCache\\com.unity.render-pipelines.universal@14.0.11\\Shaders\\Lit.shader",
@@ -98,12 +148,11 @@
               "RelativeToolTip": "Library\\PackageCache\\com.unity.render-pipelines.universal@14.0.11\\Shaders\\Lit.shader",
               "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002777|",
-              "WhenOpened": "2026-02-19T22:38:07.606Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-19T22:38:07.606Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "InvestigationExecutor.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
@@ -111,12 +160,11 @@
               "RelativeToolTip": "Assets\\Scripts\\Ai\\InvestigationExecutor.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAADwvxQAAAA1AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-10T19:14:15.875Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-10T19:14:15.875Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 6,
               "Title": "BTParser.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Ai\\BehaviourTree\\BTParser.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Ai\\BehaviourTree\\BTParser.cs",
@@ -134,13 +182,13 @@
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\TurnBasedUnit.cs",
               "ToolTip": "E:\\Renne\\Assets\\Scripts\\units\\TurnBasedUnit.cs",
               "RelativeToolTip": "Assets\\Scripts\\units\\TurnBasedUnit.cs",
-              "ViewState": "AgIAAHoAAAAAAAAAAAAiwJUAAACAAAAAAAAAAA==",
+              "ViewState": "AgIAAPsAAAAAAAAAAAAmwDABAABGAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-07T02:48:57.305Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 7,
               "Title": "SoundManager.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Sound\\SoundManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Sound\\SoundManager.cs",
@@ -152,7 +200,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 11,
               "Title": "ItemData.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Items\\ItemData.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Items\\ItemData.cs",
@@ -164,7 +212,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 9,
               "Title": "PlayerInputController.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\PlayerInputController.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\PlayerInputController.cs",
@@ -176,7 +224,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 12,
               "Title": "floor-visibility-system.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Camera\\floor-visibility-system.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Camera\\floor-visibility-system.cs",
@@ -187,7 +235,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 13,
               "Title": "FloorManager.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\FloorManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\FloorManager.cs",
@@ -199,7 +247,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 14,
               "Title": "UnitMovement.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\UnitMovement.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\UnitMovement.cs",
@@ -211,7 +259,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "SoundListener.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Sound\\SoundListener.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Sound\\SoundListener.cs",
@@ -223,7 +271,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 10,
               "Title": "Inventory.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\Inventory.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\Inventory.cs",
@@ -235,7 +283,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 15,
               "Title": "floor-system-core.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\floor-system-core.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\floor-system-core.cs",
@@ -246,7 +294,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 16,
               "Title": "sound-detection-system.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Sound\\sound-detection-system.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Sound\\sound-detection-system.cs",
@@ -257,7 +305,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 17,
               "Title": "diagnostic-tester.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Diagnose\\diagnostic-tester.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Diagnose\\diagnostic-tester.cs",
@@ -268,7 +316,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 18,
               "Title": "TurnSystem.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\TurnSystem.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\TurnSystem.cs",
@@ -280,7 +328,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 19,
               "Title": "GridManager.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\GridManager.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\GridManager.cs",
@@ -292,7 +340,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 21,
               "Title": "playerinput.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\Player\\playerinput.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\Player\\playerinput.cs",
@@ -304,7 +352,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 20,
               "Title": "complete-pathfinding-code.cs",
               "DocumentMoniker": "E:\\Renne\\Assets\\Scripts\\units\\complete-pathfinding-code.cs",
               "RelativeDocumentMoniker": "Assets\\Scripts\\units\\complete-pathfinding-code.cs",

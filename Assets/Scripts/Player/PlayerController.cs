@@ -32,11 +32,19 @@ public class PlayerController : MonoBehaviour, IDamageable
     public int MaxStamina => runtimeConfig?.MaxStamina ?? 100;
     public int CurrentStamina => runtimeConfig?.CurrentStamina ?? 100;
     public int MoveRange => runtimeConfig?.MoveRange ?? 5;
+    public int CombatMoveRange => runtimeConfig?.CombatMoveRange ?? 2;
+    public float TurnStartDelay => runtimeConfig?.TurnStartDelay ?? 0.5f;
+    public float ActionInterval => runtimeConfig?.ActionInterval ?? 0.3f;
+    public float CombatTurnStartDelay => runtimeConfig?.CombatTurnStartDelay ?? 0.1f;
+    public float CombatActionInterval => runtimeConfig?.CombatActionInterval ?? 0.1f;
     public float Reaction => runtimeConfig?.Reaction ?? 1f;
     public int MaxSanity => runtimeConfig?.MaxSanity ?? 100;
     public int CurrentSanity => runtimeConfig?.CurrentSanity ?? 100;
     public float BaseNoiceLevel => runtimeConfig?.BaseNoiceLevel ?? 2f;
     public int BaseVisibility => runtimeConfig?.BaseVisibility ?? 5;
+
+    /// <summary>运行时配置引用，供 TurnBasedUnit 等外部系统读取完整 Config</summary>
+    public PlayerConfig Config => runtimeConfig;
 
     // ============ 事件系统 ============
     

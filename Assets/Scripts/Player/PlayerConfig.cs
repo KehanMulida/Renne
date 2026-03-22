@@ -48,17 +48,61 @@ public class PlayerConfig : ScriptableObject
     public int StaminaRegenPerTurn = 10;
 
     [Header("移动能力")]
-    [Tooltip("每回合可移动的格子数")]
+    [Tooltip("正常模式每回合可移动的格子数")]
     [Range(1, 20)]
     public int MoveRange = 5;
-    
+
+    [Tooltip("战斗模式每回合可移动的格子数")]
+    [Range(1, 20)]
+    public int CombatMoveRange = 2;
+
     [Tooltip("移动速度（格子/秒）")]
     [Range(0.1f, 20f)]
     public float MoveSpeed = 5f;
-    
+
     [Tooltip("每次移动消耗的体力")]
     [Range(0, 50)]
     public int MoveStaminaCost = 5;
+
+    // ============ AP 状态（运行时，不序列化）============
+
+    [System.NonSerialized]
+    private bool isInCombatMode = false;
+
+    /// <summary>
+    /// 获取当前模式的 AP 值
+    /// TurnBasedUnit 回合开始时调用此方法
+    /// </summary>
+    public int GetCurrentAP() => isInCombatMode ? CombatMoveRange : MoveRange;
+
+    /// <summary>
+    /// 切换战斗模式（由 CombatModeManager 调用）
+    /// </summary>
+    public void SetCombatMode(bool inCombat)
+    {
+        isInCombatMode = inCombat;
+        Debug.Log($"[PlayerConfig:{Name}] CombatMode={inCombat} | AP={GetCurrentAP()}");
+    }
+
+    /// <summary>当前是否在战斗模式</summary>
+    public bool IsInCombatMode => isInCombatMode;
+
+    [Header("回合节奏")]
+    [Tooltip("正常模式回合开始延迟（秒）")]
+    [Range(0f, 2f)]
+    public float TurnStartDelay = 0.5f;
+
+    [Tooltip("正常模式行动间隔（秒）")]
+    [Range(0f, 1f)]
+    public float ActionInterval = 0.3f;
+
+    [Tooltip("战斗模式回合开始延迟（秒）")]
+    [Range(0f, 1f)]
+    public float CombatTurnStartDelay = 0.1f;
+
+    [Tooltip("战斗模式行动间隔（秒）")]
+    [Range(0f, 0.5f)]
+    public float CombatActionInterval = 0.1f;
 
     [Header("战斗属性")]
     [Tooltip("反应速度（影响先手、闪避等）")]

@@ -2,377 +2,312 @@ using UnityEngine;
 
 /// <summary>
 /// 回合制单位组件
-/// 职责：
-/// 1. 为单位添加回合制属性（阵营、行动状态等）
-/// 2. 监听回合系统事件，自动管理单位状态
-/// 3. 提供行动接口（开始行动、结束行动）
-/// 特点：
-/// - 与UnitMovement解耦，通过事件通信
-/// - 自动订阅和取消订阅回合系统事件
-/// - 可以独立存在，不依赖移动系统
+/// 职责：回合逻辑（是否轮到我、AP 消耗、事件触发）
+/// AP 数值从 PlayerConfig 或 EnemyConfig 的 GetCurrentAP() 读取
+/// 不持有任何 AP 数值，Config 负责正常/战斗模式的切换
 /// </summary>
 [RequireComponent(typeof(UnitMovement))]
 public class TurnBasedUnit : MonoBehaviour
 {
-    // ============ 配置参数 ============
-    
+    // ============ 配置 ============
+
     [Header("单位属性")]
-    [SerializeField] private TurnFaction faction = TurnFaction.Player;  // 单位所属阵营
-    [SerializeField] private int actionPointsPerTurn = 5;               // 每回合行动点数（改为移动点数）
-    [SerializeField] private bool useMovementPoints = true;             // 是否使用移动点数系统
+    [SerializeField] private TurnFaction faction = TurnFaction.Player;
 
     [Header("可选引用")]
-    [SerializeField] private GameObject selectionIndicator;  // 选中指示器（可选）
+    [SerializeField] private GameObject selectionIndicator;
 
     // ============ 运行时状态 ============
-    
-    private UnitMovement unitMovement;       // UnitMovement组件引用
-    private bool hasActedThisTurn = false;   // 本回合是否已行动（已废弃，改用移动点数）
-    private int remainingActionPoints = 0;   // 剩余行动点数（现在是剩余移动点数）
-    private bool isMyTurn = false;           // 是否是该单位的回合
 
-    // ============ 公开属性（只读）============
-    
-    /// <summary>单位阵营</summary>
+    private int remainingActionPoints = 0;
+    private bool isMyTurn = false;
+
+    // 组件缓存
+    private UnitMovement unitMovement;
+    private PlayerController playerController;
+    private EnemyAIController enemyController;
+
+    // 战斗模式状态
+    private bool isInCombatMode = false;
+    public bool IsInCombatMode => isInCombatMode;
+
+    // 反应窗口状态
+    // 敌人射击时开放，玩家移动一次后关闭
+    private bool isReactionWindowOpen = false;
+    public bool IsReactionWindowOpen => isReactionWindowOpen;
+
+    // 反应窗口事件（PlayerInputController 监听）
+    public event System.Action OnReactionWindowOpened;
+    public event System.Action OnReactionWindowClosed;
+
+    // ============ 公开属性 ============
+
     public TurnFaction Faction => faction;
-    
-    /// <summary>是否是该单位的回合</summary>
     public bool IsMyTurn => isMyTurn;
-    
-    /// <summary>本回合是否已行动（兼容旧版，实际使用移动点数）</summary>
-    public bool HasActedThisTurn => remainingActionPoints <= 0;
-    
-    /// <summary>剩余行动点数（移动点数）</summary>
     public int RemainingActionPoints => remainingActionPoints;
-    
-    /// <summary>是否可以行动（还有移动点数）</summary>
     public bool CanAct => isMyTurn && remainingActionPoints > 0;
+    public bool HasActedThisTurn => remainingActionPoints <= 0;
+    public bool HasEnoughMovementPoints(int required) => remainingActionPoints >= required;
 
-    // ============ 事件系统 ============
-    
-    /// <summary>单位回合开始事件：轮到该单位的阵营时触发</summary>
+    // ============ 事件 ============
+
     public event System.Action OnMyTurnStart;
-    
-    /// <summary>单位回合结束事件：该单位的阵营回合结束时触发</summary>
     public event System.Action OnMyTurnEnd;
-    
-    /// <summary>单位行动开始事件：单位开始执行行动时触发</summary>
     public event System.Action OnActionStart;
-    
-    /// <summary>单位行动结束事件：单位完成行动时触发</summary>
     public event System.Action OnActionEnd;
 
     // ============ 初始化 ============
 
     void Awake()
     {
-        unitMovement = GetComponent<UnitMovement>();
-        
+        unitMovement     = GetComponent<UnitMovement>();
+        playerController = GetComponent<PlayerController>();
+        enemyController  = GetComponent<EnemyAIController>();
+
         if (unitMovement == null)
-        {
-            Debug.LogError($"TurnBasedUnit on {gameObject.name} requires UnitMovement component!");
-        }
+            Debug.LogError($"[{gameObject.name}] TurnBasedUnit requires UnitMovement!");
     }
 
     void Start()
     {
-        Debug.Log($"[{gameObject.name}] TurnBasedUnit.Start() begins");
-        
-        // 订阅回合系统事件
+        // 向 CombatModeManager 注册并订阅事件
+        if (CombatModeManager.Instance != null)
+        {
+            CombatModeManager.Instance.RegisterUnit(this);
+            CombatModeManager.Instance.OnEnterCombatMode += OnEnterCombatMode;
+            CombatModeManager.Instance.OnExitCombatMode  += OnExitCombatMode;
+
+            // 只有玩家单位监听敌人攻击，开放反应窗口
+            if (faction == TurnFaction.Player)
+                CombatModeManager.Instance.OnEnemyAttackLaunched += OpenReactionWindow;
+        }
+
         if (TurnSystem.Instance != null)
         {
-            TurnSystem.Instance.OnTurnStart += HandleTurnStart;
-            TurnSystem.Instance.OnTurnEnd += HandleTurnEnd;
+            TurnSystem.Instance.OnTurnStart    += HandleTurnStart;
+            TurnSystem.Instance.OnTurnEnd      += HandleTurnEnd;
             TurnSystem.Instance.OnFactionChanged += HandleFactionChanged;
-            
-            Debug.Log($"[{gameObject.name}] Subscribed to TurnSystem events");
-            
-            // 立即检查当前回合状态
+
             if (TurnSystem.Instance.IsCurrentFaction(faction))
             {
-                Debug.Log($"[{gameObject.name}] System already started, initializing for my turn");
                 isMyTurn = true;
-                hasActedThisTurn = false;
-                
-                // 初始化移动点数
-                InitializeMovementPoints();
-                
+                remainingActionPoints = GetMaxAP();
+
                 if (faction == TurnFaction.Player && selectionIndicator != null)
-                {
                     selectionIndicator.SetActive(true);
-                }
-                
-                Debug.Log($"[{gameObject.name}] Invoking OnMyTurnStart event");
+
                 OnMyTurnStart?.Invoke();
             }
-            else
-            {
-                Debug.Log($"[{gameObject.name}] Not my turn, current faction: {TurnSystem.Instance.CurrentFaction}");
-            }
         }
         else
         {
-            Debug.LogError("TurnSystem not found! TurnBasedUnit requires TurnSystem in scene.");
-        }
-        var aiController = GetComponent<EnemyAIController>();
-        if (aiController != null && aiController.config != null)
-        {
-                actionPointsPerTurn = aiController.config.moveRange;
-        }
-        // 订阅移动完成事件（自动结束行动）
-        if (unitMovement != null)
-        {
-            unitMovement.OnMoveComplete += HandleMoveComplete;
-            Debug.Log($"[{gameObject.name}] Subscribed to UnitMovement events");
-        }
-
-        // 隐藏选中指示器（如果不是自己的回合）
-        if (selectionIndicator != null && !isMyTurn)
-        {
-            selectionIndicator.SetActive(false);
-        }
-        
-        Debug.Log($"[{gameObject.name}] TurnBasedUnit.Start() complete - Faction: {faction}, IsMyTurn: {isMyTurn}, RemainingPoints: {remainingActionPoints}");
-    }
-
-    /// <summary>
-    /// 初始化移动点数（独立方法，便于调试）
-    /// </summary>
-    private void InitializeMovementPoints()
-    {
-        if (useMovementPoints)
-        {
-            PlayerController playerCtrl = GetComponent<PlayerController>();
-            if (playerCtrl != null)
-            {
-                remainingActionPoints = playerCtrl.MoveRange;
-                Debug.Log($"[{gameObject.name}] ✓ Movement points from PlayerConfig: {remainingActionPoints}");
-            }
-            else
-            {
-                remainingActionPoints = actionPointsPerTurn;
-                Debug.Log($"[{gameObject.name}] ⚠ Movement points from default (no PlayerController): {remainingActionPoints}");
-            }
-        }
-        else
-        {
-            remainingActionPoints = actionPointsPerTurn;
-            Debug.Log($"[{gameObject.name}] Movement points from actionPointsPerTurn: {remainingActionPoints}");
+            Debug.LogError($"[{gameObject.name}] TurnSystem not found!");
         }
     }
 
     void OnDestroy()
     {
-        // 取消订阅，防止内存泄漏
         if (TurnSystem.Instance != null)
         {
-            TurnSystem.Instance.OnTurnStart -= HandleTurnStart;
-            TurnSystem.Instance.OnTurnEnd -= HandleTurnEnd;
+            TurnSystem.Instance.OnTurnStart      -= HandleTurnStart;
+            TurnSystem.Instance.OnTurnEnd        -= HandleTurnEnd;
             TurnSystem.Instance.OnFactionChanged -= HandleFactionChanged;
         }
 
         if (unitMovement != null)
-        {
             unitMovement.OnMoveComplete -= HandleMoveComplete;
+
+        if (CombatModeManager.Instance != null)
+        {
+            CombatModeManager.Instance.OnEnterCombatMode -= OnEnterCombatMode;
+            CombatModeManager.Instance.OnExitCombatMode  -= OnExitCombatMode;
+
+            if (faction == TurnFaction.Player)
+                CombatModeManager.Instance.OnEnemyAttackLaunched -= OpenReactionWindow;
         }
     }
 
-    // ============ 回合系统事件处理 ============
+    // ============ Config AP 读取 ============
 
     /// <summary>
-    /// 处理回合开始
+    /// 从 Config 获取当前模式的 AP 上限
+    /// Config 内部管理正常/战斗模式的切换
     /// </summary>
+    private int GetMaxAP()
+    {
+        if (playerController != null && playerController.Config != null)
+            return playerController.Config.GetCurrentAP();
+
+        if (enemyController != null && enemyController.config != null)
+            return enemyController.config.GetCurrentAP();
+
+        Debug.LogWarning($"[{gameObject.name}] No config found, defaulting AP to 1");
+        return 1;
+    }
+
+    // ============ 回合事件处理 ============
+
     private void HandleTurnStart(TurnData turnData)
     {
-        Debug.Log($"[{gameObject.name}] HandleTurnStart called - TurnData faction: {turnData.currentFaction}, My faction: {faction}");
-        
-        if (turnData.currentFaction == faction)
-        {
-            isMyTurn = true;
-            hasActedThisTurn = false;
-            
-            // 刷新移动点数
-            InitializeMovementPoints();
+        if (turnData.currentFaction != faction) return;
 
-            if (faction == TurnFaction.Player && selectionIndicator != null)
-            {
-                selectionIndicator.SetActive(true);
-            }
+        isMyTurn = true;
+        remainingActionPoints = GetMaxAP();
 
-            Debug.Log($"[{gameObject.name}] My turn started! Movement points: {remainingActionPoints}");
-            OnMyTurnStart?.Invoke();
-        }
+        if (faction == TurnFaction.Player && selectionIndicator != null)
+            selectionIndicator.SetActive(true);
+
+        Debug.Log($"[{gameObject.name}] Turn start | AP:{remainingActionPoints}");
+        OnMyTurnStart?.Invoke();
     }
 
-    /// <summary>
-    /// 处理回合结束
-    /// </summary>
     private void HandleTurnEnd(TurnData turnData)
     {
-        if (turnData.currentFaction == faction)
-        {
-            isMyTurn = false;
+        if (turnData.currentFaction != faction) return;
 
-            if (selectionIndicator != null)
-            {
-                selectionIndicator.SetActive(false);
-            }
+        isMyTurn = false;
 
-            Debug.Log($"[{gameObject.name}] My turn ended!");
-            OnMyTurnEnd?.Invoke();
-        }
+        if (selectionIndicator != null)
+            selectionIndicator.SetActive(false);
+
+        Debug.Log($"[{gameObject.name}] Turn end");
+        OnMyTurnEnd?.Invoke();
     }
 
-    /// <summary>
-    /// 处理阵营变更
-    /// </summary>
     private void HandleFactionChanged(TurnFaction newFaction, int turnNumber)
     {
         bool wasMyTurn = isMyTurn;
         isMyTurn = (newFaction == faction);
-        
-        Debug.Log($"[{gameObject.name}] Faction changed to {newFaction} - IsMyTurn: {isMyTurn}");
-        
-        // 如果从不是我的回合变成我的回合，触发OnMyTurnStart
+
         if (!wasMyTurn && isMyTurn)
         {
-            hasActedThisTurn = false;
-            remainingActionPoints = actionPointsPerTurn;
-            
+            remainingActionPoints = GetMaxAP();
+
             if (faction == TurnFaction.Player && selectionIndicator != null)
-            {
                 selectionIndicator.SetActive(true);
-            }
-            
-            Debug.Log($"[{gameObject.name}] My turn started via FactionChanged!");
+
+            Debug.Log($"[{gameObject.name}] Turn start via FactionChanged | AP:{remainingActionPoints}");
             OnMyTurnStart?.Invoke();
         }
+        else if (wasMyTurn && !isMyTurn)
+        {
+            if (selectionIndicator != null)
+                selectionIndicator.SetActive(false);
+
+            OnMyTurnEnd?.Invoke();
+        }
     }
 
-    /// <summary>
-    /// 处理移动完成
-    /// </summary>
     private void HandleMoveComplete()
     {
-        if (isMyTurn && useMovementPoints)
+        Debug.Log($"[{gameObject.name}] Move complete | AP remaining:{remainingActionPoints}");
+    }
+
+    // ============ 反应窗口 ============
+
+    /// <summary>
+    /// 敌人射击时调用，开放玩家反应移动窗口
+    /// 即使不是玩家回合也可以移动一次
+    /// </summary>
+    private void OpenReactionWindow(Vector3 bulletDirection)
+    {
+        // 没有 AP 就无法反应
+        if (remainingActionPoints <= 0)
         {
-            // 移动点数系统：移动1格消耗1点
-            // 实际消耗在UnitMovement中计算路径长度
+            Debug.Log($"[{gameObject.name}] No AP to react");
+            return;
+        }
+
+        isReactionWindowOpen = true;
+        Debug.Log($"[{gameObject.name}] Reaction window opened | AP:{remainingActionPoints}");
+        OnReactionWindowOpened?.Invoke();
+    }
+
+    /// <summary>
+    /// 玩家移动一次后关闭反应窗口
+    /// 由 PlayerInputController 在移动完成后调用
+    /// </summary>
+    public void CloseReactionWindow()
+    {
+        if (!isReactionWindowOpen) return;
+
+        isReactionWindowOpen = false;
+        Debug.Log($"[{gameObject.name}] Reaction window closed");
+        OnReactionWindowClosed?.Invoke();
+    }
+
+    private void OnEnterCombatMode()
+    {
+        isInCombatMode = true;
+        Debug.Log($"[{gameObject.name}] Entered combat mode");
+    }
+
+    private void OnExitCombatMode()
+    {
+        isInCombatMode = false;
+        Debug.Log($"[{gameObject.name}] Exited combat mode");
+    }
+
+    // ============ AP 消耗接口 ============
+
+    /// <summary>
+    /// 消耗指定数量 AP
+    /// 战斗模式下 AP 归零后自动结束回合，触发快速切换
+    /// </summary>
+    public void ConsumeAP(int points = 1)
+    {
+        remainingActionPoints = Mathf.Max(0, remainingActionPoints - points);
+        Debug.Log($"[{gameObject.name}] ConsumeAP:{points} | Remaining:{remainingActionPoints} | CombatMode:{isInCombatMode}");
+
+        // 战斗模式下 AP 耗尽立即结束回合
+        if (isInCombatMode && remainingActionPoints <= 0 && isMyTurn)
+        {
+            Debug.Log($"[{gameObject.name}] Combat mode: AP exhausted, auto ending turn");
+            if (TurnSystem.Instance != null)
+                TurnSystem.Instance.EndCurrentTurn();
         }
     }
 
-    // ============ 公开接口 - 行动管理 ============
+    /// <summary>消耗所有剩余 AP</summary>
+    public void ConsumeAllAP()
+    {
+        ConsumeAP(remainingActionPoints);
+    }
 
-    /// <summary>
-    /// 开始行动
-    /// </summary>
+    /// <summary>直接设置剩余 AP（buff/debuff 用）</summary>
+    public void SetAP(int value)
+    {
+        remainingActionPoints = Mathf.Clamp(value, 0, GetMaxAP());
+        Debug.Log($"[{gameObject.name}] SetAP:{remainingActionPoints}");
+    }
+
+    // ============ 行动接口 ============
+
     public bool StartAction()
     {
-        if (!CanAct)
-        {
-            Debug.LogWarning($"[{gameObject.name}] Cannot start action!");
-            return false;
-        }
-
-        Debug.Log($"[{gameObject.name}] Action started!");
+        if (!CanAct) return false;
         OnActionStart?.Invoke();
         return true;
     }
 
-    /// <summary>
-    /// 结束行动
-    /// </summary>
     public void EndAction()
     {
         if (!isMyTurn) return;
-
-        hasActedThisTurn = true;
-        Debug.Log($"[{gameObject.name}] Action ended!");
         OnActionEnd?.Invoke();
     }
 
-    /// <summary>
-    /// 消耗行动点
-    /// </summary>
-    public void ConsumeActionPoint(int points = 1)
-    {
-        remainingActionPoints = Mathf.Max(0, remainingActionPoints - points);
-        Debug.Log($"[{gameObject.name}] Consumed {points} movement point(s). Remaining: {remainingActionPoints}");
-
-        if (remainingActionPoints <= 0)
-        {
-            hasActedThisTurn = true;
-            Debug.Log($"[{gameObject.name}] No movement points left");
-        }
-    }
-
-    /// <summary>
-    /// 检查是否有足够的移动点数
-    /// </summary>
-    public bool HasEnoughMovementPoints(int required)
-    {
-        return remainingActionPoints >= required;
-    }
-
-    /// <summary>
-    /// 重置行动状态
-    /// </summary>
-    public void ResetActionState()
-    {
-        hasActedThisTurn = false;
-        remainingActionPoints = actionPointsPerTurn;
-        Debug.Log($"[{gameObject.name}] Action state reset!");
-    }
-
-    /// <summary>
-    /// 跳过行动
-    /// </summary>
     public void SkipAction()
     {
-        if (!isMyTurn) return;
-
-        hasActedThisTurn = true;
         remainingActionPoints = 0;
-        Debug.Log($"[{gameObject.name}] Action skipped!");
-        OnActionEnd?.Invoke();
     }
 
-    // ============ 调试可视化 ============
-
-    void OnDrawGizmos()
+    public void ResetActionState()
     {
-        if (!Application.isPlaying) return;
-
-        if (isMyTurn)
-        {
-            Gizmos.color = hasActedThisTurn ? Color.gray : Color.green;
-        }
-        else
-        {
-            Gizmos.color = new Color(1, 1, 1, 0.3f);
-        }
-
-        Gizmos.DrawSphere(transform.position + Vector3.up * 2f, 0.3f);
-
-        Color factionColor = faction == TurnFaction.Player ? Color.blue : Color.red;
-        Gizmos.color = factionColor;
-        Gizmos.DrawWireSphere(transform.position + Vector3.up * 2.5f, 0.2f);
+        remainingActionPoints = GetMaxAP();
     }
 
-    void OnGUI()
-    {
-        if (!Application.isPlaying || !isMyTurn) return;
+    // ============ 兼容旧接口 ============
 
-        Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 2.8f);
-        if (screenPos.z > 0)
-        {
-            GUIStyle style = new GUIStyle();
-            style.fontSize = 16;
-            style.normal.textColor = hasActedThisTurn ? Color.gray : Color.yellow;
-            style.alignment = TextAnchor.MiddleCenter;
-
-            GUI.Label(new Rect(screenPos.x - 25, Screen.height - screenPos.y - 10, 50, 20), 
-                      $"AP:{remainingActionPoints}", style);
-        }
-    }
+    [System.Obsolete("Use ConsumeAP(int points) instead")]
+    public void ConsumeActionPoint(int points = 1) => ConsumeAP(points);
 }

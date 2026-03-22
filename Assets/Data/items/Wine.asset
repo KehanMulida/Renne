@@ -50,8 +50,8 @@ MonoBehaviour:
   healAmount: 0
   staminaAmount: 0
   sanityAmount: 0
-  damageAmount: 5
-  damageRange: 1
-  damageLayer:
+  meleeDamage: 10
+  meleeRange: 1
+  meleeLayer:
     serializedVersion: 2
     m_Bits: 256

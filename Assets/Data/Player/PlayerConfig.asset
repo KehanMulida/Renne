@@ -19,16 +19,21 @@ MonoBehaviour:
   MaxStamina: 100
   CurrentStamina: 100
   StaminaRegenPerTurn: 10
-  MoveRange: 10
-  MoveSpeed: 5
+  MoveRange: 8
+  CombatMoveRange: 3
+  MoveSpeed: 6
   MoveStaminaCost: 5
+  TurnStartDelay: 0.5
+  ActionInterval: 0.3
+  CombatTurnStartDelay: 0.1
+  CombatActionInterval: 0.1
   Reaction: 1
   AttackPower: 10
   Defense: 5
   MaxSanity: 100
   CurrentSanity: 100
   BaseNoiceLevel: 10
-  HearingRange: 14
+  HearingRange: 10.6
   BaseVisibility: 5
   ViewAngle: 120
   Prefab: {fileID: 6147953553251091065, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}

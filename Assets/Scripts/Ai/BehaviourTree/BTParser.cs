@@ -51,18 +51,17 @@ public static class BTParser
                 condition.key = data.key;
                 condition.checkExists = data.exists;
                 
-                if (data.value != null)
+                if (!string.IsNullOrEmpty(data.value))
                 {
-                    string valueStr = data.value.ToString();
-                    if (valueStr == "True" || valueStr == "true")
+                    if (data.value == "true" || data.value == "True")
                         condition.expectedValue = true;
-                    else if (valueStr == "False" || valueStr == "false")
+                    else if (data.value == "false" || data.value == "False")
                         condition.expectedValue = false;
                     else
                         condition.expectedValue = data.value;
                 }
                 
-                Debug.Log($"[BTParser] Created Condition: key={condition.key}, exists={condition.checkExists}, value={condition.expectedValue}");
+                Debug.Log($"[BTParser] Condition: key={condition.key} exists={condition.checkExists} value={condition.expectedValue} ({condition.expectedValue?.GetType().Name})");
                 return condition;
 
             case "Action":
@@ -86,7 +85,7 @@ class NodeData
     public string type;
     public string name;
     public string key;
-    public object value;
+    public string value;   // JsonUtility 不支持 object，改为 string 后在 BTParser 里手动转型
     public bool exists;
     public string executor;
     public string[] keys;

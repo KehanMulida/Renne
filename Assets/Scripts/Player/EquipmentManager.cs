@@ -132,10 +132,17 @@ public class EquipmentManager : MonoBehaviour
     /// <summary>
     /// 更新瞄准目标位置
     /// 由 PlayerInputController.Update 每帧调用
-    /// 返回：当前是否正在瞄准（当前槽位是可投掷物品且鼠标指向有效位置）
+    /// inMeleeMode = true 时禁用抛物线瞄准显示
     /// </summary>
-    public bool UpdateAiming()
+    public bool UpdateAiming(bool inMeleeMode = false)
     {
+        // 近战模式下不显示投掷瞄准线
+        if (inMeleeMode)
+        {
+            isAiming = false;
+            return false;
+        }
+
         if (CurrentSlot == null || CurrentSlot.IsEmpty || !CurrentSlot.itemData.IsThrowable)
         {
             isAiming = false;
@@ -153,6 +160,14 @@ public class EquipmentManager : MonoBehaviour
         }
 
         return isAiming;
+    }
+
+    /// <summary>
+    /// 立即清除瞄准状态，进入近战模式时调用
+    /// </summary>
+    public void ClearAiming()
+    {
+        isAiming = false;
     }
 
     /// <summary>
@@ -220,7 +235,7 @@ public class EquipmentManager : MonoBehaviour
         inventory.RemoveItem(item, 1);
 
         if (turnBasedUnit != null)
-            turnBasedUnit.ConsumeActionPoint(item.UseCost);
+            turnBasedUnit.ConsumeAP(item.UseCost);
 
         OnItemUsed?.Invoke(item);
         SyncHotbarFromInventory();
@@ -266,7 +281,7 @@ public class EquipmentManager : MonoBehaviour
             inventory.RemoveItem(cd, 1);
 
         if (turnBasedUnit != null)
-            turnBasedUnit.ConsumeActionPoint(Mathf.Max(cd.UseCost, 1));
+            turnBasedUnit.ConsumeAP(Mathf.Max(cd.UseCost, 1));
 
         OnItemUsed?.Invoke(CurrentSlot.itemData);
         SyncHotbarFromInventory();
@@ -290,7 +305,7 @@ public class EquipmentManager : MonoBehaviour
             DebugLog($"Used [{item.Name}]");
 
             if (turnBasedUnit != null)
-                turnBasedUnit.ConsumeActionPoint(item.UseCost);
+                turnBasedUnit.ConsumeAP(item.UseCost);
 
             OnItemUsed?.Invoke(item);
             SyncHotbarFromInventory();
