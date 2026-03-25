@@ -367,6 +367,6 @@ public class Inventory : MonoBehaviour
             info += $"... +{slots.Count - 3} more";
         }
 
-        GUI.Box(new Rect(10, 400, 200, 120), info, style);
+        GUI.Box(new Rect(50, 400, 200, 120), info, style);
     }
 }

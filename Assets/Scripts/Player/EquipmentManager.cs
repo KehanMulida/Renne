@@ -409,6 +409,6 @@ public class EquipmentManager : MonoBehaviour
         else if (CurrentSlot != null && !CurrentSlot.IsEmpty)
             info += "\n[RClick=Use]";
 
-        GUI.Box(new Rect(10, 200, 210, 180), info, style);
+        GUI.Box(new Rect(50, 200, 210, 180), info, style);
     }
 }
