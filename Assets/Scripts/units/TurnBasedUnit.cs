@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// 回合制单位组件
@@ -31,14 +32,18 @@ public class TurnBasedUnit : MonoBehaviour
     private bool isInCombatMode = false;
     public bool IsInCombatMode => isInCombatMode;
 
-    // 反应窗口状态
-    // 敌人射击时开放，玩家移动一次后关闭
+    // 反应窗口（QTE）状态
+    // 敌人射击前开放，玩家行动一次或超时后关闭
     private bool isReactionWindowOpen = false;
     public bool IsReactionWindowOpen => isReactionWindowOpen;
 
-    // 反应窗口事件（PlayerInputController 监听）
-    public event System.Action OnReactionWindowOpened;
-    public event System.Action OnReactionWindowClosed;
+    private Coroutine _reactionTimeoutCoroutine;
+
+    // 反应窗口事件（PlayerInputController / UI 监听）
+    public event System.Action           OnReactionWindowOpened;
+    public event System.Action           OnReactionWindowClosed;
+    /// <summary>每帧广播 QTE 剩余秒数（UI 用于显示倒计时进度条）</summary>
+    public event System.Action<float>    OnReactionWindowTick;
 
     // ============ 公开属性 ============
 
@@ -55,6 +60,12 @@ public class TurnBasedUnit : MonoBehaviour
     public event System.Action OnMyTurnEnd;
     public event System.Action OnActionStart;
     public event System.Action OnActionEnd;
+
+    /// <summary>
+    /// 本单位消耗 AP 时触发，参数为本次实际消耗量
+    /// MissionManager 订阅此事件以追踪 APConsumed 条件
+    /// </summary>
+    public event System.Action<int> OnAPConsumed;
 
     // ============ 初始化 ============
 
@@ -77,9 +88,8 @@ public class TurnBasedUnit : MonoBehaviour
             CombatModeManager.Instance.OnEnterCombatMode += OnEnterCombatMode;
             CombatModeManager.Instance.OnExitCombatMode  += OnExitCombatMode;
 
-            // 只有玩家单位监听敌人攻击，开放反应窗口
-            if (faction == TurnFaction.Player)
-                CombatModeManager.Instance.OnEnemyAttackLaunched += OpenReactionWindow;
+            // OpenReactionWindow 现在由 CombatModeManager.NotifyAttackLaunched 直接调用（含 qteDuration）
+            // 不再通过 OnEnemyAttackLaunched 事件订阅，避免双重触发
         }
 
         if (TurnSystem.Instance != null)
@@ -122,8 +132,7 @@ public class TurnBasedUnit : MonoBehaviour
             CombatModeManager.Instance.OnEnterCombatMode -= OnEnterCombatMode;
             CombatModeManager.Instance.OnExitCombatMode  -= OnExitCombatMode;
 
-            if (faction == TurnFaction.Player)
-                CombatModeManager.Instance.OnEnemyAttackLaunched -= OpenReactionWindow;
+            // OpenReactionWindow 已改为直接调用，不再通过事件订阅
         }
     }
 
@@ -151,8 +160,22 @@ public class TurnBasedUnit : MonoBehaviour
     {
         if (turnData.currentFaction != faction) return;
 
+        // 敌人已死亡（尸体状态），自动跳过回合
+        if (enemyController != null && !enemyController.IsAlive)
+        {
+            Debug.Log($"[{gameObject.name}] Dead, skipping turn");
+            if (TurnSystem.Instance != null)
+                TurnSystem.Instance.EndCurrentTurn();
+            return;
+        }
+
         isMyTurn = true;
         remainingActionPoints = GetMaxAP();
+
+        // 玩家回合开始时强制关闭 QTE 窗口
+        // 避免敌人回合的 QTE 残留导致玩家输入走 QTE 路径（2格限制/跳过AP检查）
+        if (faction == TurnFaction.Player)
+            CloseReactionWindow();
 
         if (faction == TurnFaction.Player && selectionIndicator != null)
             selectionIndicator.SetActive(true);
@@ -181,7 +204,21 @@ public class TurnBasedUnit : MonoBehaviour
 
         if (!wasMyTurn && isMyTurn)
         {
+            // 敌人已死亡，自动跳过
+            if (enemyController != null && !enemyController.IsAlive)
+            {
+                Debug.Log($"[{gameObject.name}] Dead, skipping turn via FactionChanged");
+                isMyTurn = false;
+                if (TurnSystem.Instance != null)
+                    TurnSystem.Instance.EndCurrentTurn();
+                return;
+            }
+
             remainingActionPoints = GetMaxAP();
+
+            // 玩家回合开始时强制关闭 QTE 窗口（同 HandleTurnStart）
+            if (faction == TurnFaction.Player)
+                CloseReactionWindow();
 
             if (faction == TurnFaction.Player && selectionIndicator != null)
                 selectionIndicator.SetActive(true);
@@ -195,44 +232,66 @@ public class TurnBasedUnit : MonoBehaviour
                 selectionIndicator.SetActive(false);
 
             OnMyTurnEnd?.Invoke();
+            // QTE 不在此触发——敌人回合刚开始时敌人还没行动
+            // QTE 在 MoveExecutor / BulletProjectile.Fire 里触发（敌人真正行动时）
         }
     }
 
     private void HandleMoveComplete()
     {
-        Debug.Log($"[{gameObject.name}] Move complete | AP remaining:{remainingActionPoints}");
+        // Debug.Log($"[{gameObject.name}] Move complete | AP remaining:{remainingActionPoints}");
     }
 
     // ============ 反应窗口 ============
 
     /// <summary>
-    /// 敌人射击时调用，开放玩家反应移动窗口
-    /// 即使不是玩家回合也可以移动一次
+    /// 敌人攻击前调用，开放 QTE 反应窗口。
+    /// 窗口持续 duration 秒（EnemyConfig.qteWindowDuration），玩家可移动或交互来躲避。
+    /// 没有 AP 时无法反应，窗口不会开放。
     /// </summary>
-    private void OpenReactionWindow(Vector3 bulletDirection)
+    public void OpenReactionWindow(Vector3 bulletDirection, float duration = 3f)
     {
-        // 没有 AP 就无法反应
-        if (remainingActionPoints <= 0)
-        {
-            Debug.Log($"[{gameObject.name}] No AP to react");
-            return;
-        }
-
+        // QTE 移动是负节奏的免费行动（IsMyTurn=false 时移动不消耗 AP）
+        // 不检查 remainingActionPoints，让玩家始终能在敌人回合前抢先移动一格
         isReactionWindowOpen = true;
-        Debug.Log($"[{gameObject.name}] Reaction window opened | AP:{remainingActionPoints}");
+        Debug.Log($"[{gameObject.name}] QTE opened | AP:{remainingActionPoints} | duration:{duration}s");
         OnReactionWindowOpened?.Invoke();
+
+        // 启动自动超时：如果玩家在 duration 秒内没有行动，窗口自动关闭
+        if (_reactionTimeoutCoroutine != null)
+            StopCoroutine(_reactionTimeoutCoroutine);
+        _reactionTimeoutCoroutine = StartCoroutine(ReactionWindowTimeoutRoutine(duration));
+    }
+
+    private IEnumerator ReactionWindowTimeoutRoutine(float duration)
+    {
+        float remaining = duration;
+        while (remaining > 0f && isReactionWindowOpen)
+        {
+            remaining -= Time.deltaTime;
+            OnReactionWindowTick?.Invoke(Mathf.Max(0f, remaining));
+            yield return null;
+        }
+        CloseReactionWindow();
     }
 
     /// <summary>
-    /// 玩家移动一次后关闭反应窗口
-    /// 由 PlayerInputController 在移动完成后调用
+    /// 玩家行动（移动/交互）后手动关闭反应窗口，或超时后自动关闭。
+    /// 由 PlayerInputController 在移动/交互完成后调用。
     /// </summary>
     public void CloseReactionWindow()
     {
         if (!isReactionWindowOpen) return;
 
         isReactionWindowOpen = false;
-        Debug.Log($"[{gameObject.name}] Reaction window closed");
+
+        if (_reactionTimeoutCoroutine != null)
+        {
+            StopCoroutine(_reactionTimeoutCoroutine);
+            _reactionTimeoutCoroutine = null;
+        }
+
+        Debug.Log($"[{gameObject.name}] QTE closed");
         OnReactionWindowClosed?.Invoke();
     }
 
@@ -248,19 +307,44 @@ public class TurnBasedUnit : MonoBehaviour
         Debug.Log($"[{gameObject.name}] Exited combat mode");
     }
 
+    /// <summary>
+    /// 战斗模式切换时立即刷新当前回合剩余 AP
+    /// 取当前剩余值与新上限的较小值，确保不超过战斗模式限制
+    /// 仅对当前正在行动的回合生效（isMyTurn == true）
+    /// 非当前回合的单位在其回合开始时会自动读取新 AP 上限，无需处理
+    /// 由 CombatModeManager 在 Enter/ExitCombatMode 更新完所有 Config 后调用
+    /// </summary>
+    public void RefreshCombatAP()
+    {
+        if (!isMyTurn) return;
+        int newMax = GetMaxAP();
+        int clamped = Mathf.Min(remainingActionPoints, newMax);
+        // Debug.Log($"[{gameObject.name}] RefreshCombatAP | NewMax:{newMax} | {remainingActionPoints}→{clamped}");
+        remainingActionPoints = clamped;
+    }
+
     // ============ AP 消耗接口 ============
 
     /// <summary>
     /// 消耗指定数量 AP
-    /// 战斗模式下 AP 归零后自动结束回合，触发快速切换
+    /// 仅对玩家单位：战斗模式下 AP 归零后自动结束回合，触发快速切换。
+    /// 敌人单位不走此路径——EnemyAIController.EndTurn() 会在所有 Enemy 完成行动后
+    /// 统一调用 TurnSystem.EndCurrentTurn()，确保不会在其他 Enemy 的移动协程
+    /// 尚未结束时提前切换回合（导致 AI 在玩家回合继续移动的视觉 Bug）。
     /// </summary>
     public void ConsumeAP(int points = 1)
     {
+        // 计算实际消耗量（不超过当前剩余），用于 OnAPConsumed 事件上报精确值
+        int actual = Mathf.Min(points, remainingActionPoints);
         remainingActionPoints = Mathf.Max(0, remainingActionPoints - points);
-        Debug.Log($"[{gameObject.name}] ConsumeAP:{points} | Remaining:{remainingActionPoints} | CombatMode:{isInCombatMode}");
+        if (actual > 0) OnAPConsumed?.Invoke(actual);
+        // Debug.Log($"[{gameObject.name}] ConsumeAP:{points} | Remaining:{remainingActionPoints} | CombatMode:{isInCombatMode}");
 
-        // 战斗模式下 AP 耗尽立即结束回合
-        if (isInCombatMode && remainingActionPoints <= 0 && isMyTurn)
+        // 战斗模式下 AP 耗尽立即结束回合（仅玩家）
+        // Enemy 单位由 EnemyAIController.EndTurn() 统一处理，不在此自动结束，
+        // 避免多个 Enemy 并行行动时提前切换回合、留下游荡的移动协程
+        if (remainingActionPoints <= 0 && isMyTurn && isInCombatMode
+            && faction == TurnFaction.Player)
         {
             Debug.Log($"[{gameObject.name}] Combat mode: AP exhausted, auto ending turn");
             if (TurnSystem.Instance != null)
@@ -278,7 +362,7 @@ public class TurnBasedUnit : MonoBehaviour
     public void SetAP(int value)
     {
         remainingActionPoints = Mathf.Clamp(value, 0, GetMaxAP());
-        Debug.Log($"[{gameObject.name}] SetAP:{remainingActionPoints}");
+        // Debug.Log($"[{gameObject.name}] SetAP:{remainingActionPoints}");
     }
 
     // ============ 行动接口 ============

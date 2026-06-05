@@ -45,11 +45,27 @@ public class EnemyConfig : ScriptableObject
     [System.NonSerialized]
     private bool isInCombatMode = false;
 
+    [System.NonSerialized]
+    private float _missionAPMultiplier = 1f;
+
     /// <summary>
-    /// 获取当前模式的 AP 值
+    /// 获取当前模式的 AP 值（已应用任务倍率）
     /// TurnBasedUnit 回合开始时调用此方法
     /// </summary>
-    public int GetCurrentAP() => isInCombatMode ? combatMoveRange : moveRange;
+    public int GetCurrentAP()
+    {
+        int base_ = isInCombatMode ? combatMoveRange : moveRange;
+        return Mathf.Max(1, Mathf.RoundToInt(base_ * _missionAPMultiplier));
+    }
+
+    /// <summary>
+    /// 设置任务 AP 倍率（由 EnemyAIController.SetMissionContext 调用）
+    /// </summary>
+    public void SetMissionAPMultiplier(float multiplier)
+    {
+        _missionAPMultiplier = Mathf.Max(0f, multiplier);
+        Debug.Log($"[EnemyConfig] APMultiplier={_missionAPMultiplier} | EffectiveAP={GetCurrentAP()}");
+    }
 
     /// <summary>
     /// 切换战斗模式（由 CombatModeManager 调用）
@@ -110,6 +126,12 @@ public class EnemyConfig : ScriptableObject
 
     [Tooltip("每次行动后的间隔（秒）")]
     public float actionInterval = 0.3f;
+
+    [Tooltip("敌人行动时给玩家的 QTE 反应窗口时长（秒）\n" +
+             "0 = 此敌人不触发 QTE\n" +
+             "移动/攻击时均会触发，玩家可在此期间移动2格或使用道具")]
+    [Range(0f, 5f)]
+    public float qteWindowDuration = 2f;
 
     // ============ 行为树 ============
 

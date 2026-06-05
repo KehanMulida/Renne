@@ -272,7 +272,7 @@ public class EquipmentManager : MonoBehaviour
             if (alreadyHit.Contains(damageable)) continue;
             alreadyHit.Add(damageable);
 
-            damageable.TakeDamage(cd.meleeDamage);
+            damageable.TakeDamage(cd.meleeDamage, gameObject);
             DebugLog($"Melee [{CurrentSlot.itemData.Name}] dealt {cd.meleeDamage} to {hit.transform.root.name}");
         }
 
@@ -409,6 +409,6 @@ public class EquipmentManager : MonoBehaviour
         else if (CurrentSlot != null && !CurrentSlot.IsEmpty)
             info += "\n[RClick=Use]";
 
-        GUI.Box(new Rect(50, 200, 210, 180), info, style);
+        GUI.Box(new Rect(10, 200, 210, 180), info, style);
     }
 }

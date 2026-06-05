@@ -32,6 +32,13 @@ public class SoundPerception : IPerceptionModule
         if (distance > config.hearingRange) return;
         if (GetFloor(owner) != soundEvent.floor) return;
 
+        // 忽略自己发出的声音
+        if (soundEvent.source != null && soundEvent.source == owner.gameObject) return;
+
+        // 忽略同阵营 Enemy 发出的声音（Enemy 之间不互相感知移动声）
+        if (soundEvent.source != null &&
+            soundEvent.source.GetComponent<EnemyAIController>() != null) return;
+
         // 转向声音方向
         TurnTowardsSound(soundEvent.position);
 

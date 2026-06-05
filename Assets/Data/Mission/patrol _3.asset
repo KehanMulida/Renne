@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dce463f78fb677e41bf103adc3cecc5d, type: 3}
+  m_Name: patrol _3
+  m_EditorClassIdentifier: 
+  missionId: patrol_test_03
+  displayName: 
+  description: 
+  behaviourProfile: 5
+  combatResponse: 0
+  assignedEnemies:
+  - E01
+  - E02
+  targetZoneId: FruitStore_01
+  progressOnSuccess: 5
+  progressOnFail: 0
+  repeatCount: 1
+  successConditions:
+  - target: 6
+    check: 18
+    op: 5
+    targetId: 
+    flagKey: 
+    zoneId: FruitStore_01
+    zoneType: 0
+    numericValue: 7
+    boolValue: 0
+    stringValue: 
+    itemId: 
+    objectId: 
+  successLogic: 1
+  failConditions: []
+  failLogic: 1
+  leaderId: E01
+  formationDistance: 3
+  moveInGroup: 0
+  persistAcrossPhases: 0
+  apMultiplier: 2.81
+  speedMultiplier: 2.19
+  defaultActionWeights:
+  - actionKey: patrol
+    weight: 0.857
+  enemyActionProfiles: []
+  dialogueOnStart: 
+  dialogueOnSuccess: 
+  dialogueOnFail: 

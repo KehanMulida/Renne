@@ -1,0 +1,101 @@
+{
+  "initialPhase": "Phase_01",
+  "phases": [
+    {
+      "id": "Phase_01",
+      "displayName": "第一阶段（占位）",
+      "missionPool": "MP_Phase01",
+      "progressThreshold": 60.0,
+      "isEnding": false,
+      "onEnter": {
+        "dialogue": "events/phase01_start",
+        "music": "",
+        "cutscene": ""
+      },
+      "transitions": [
+        { "to": "Phase_02_Good", "trigger": "allMissionsSettled",    "value": 0 },
+        { "to": "Phase_02_Bad",  "trigger": "planProgressThreshold", "value": 0 },
+        { "to": "Ending_Bad",    "trigger": "planProgress100",       "value": 0 },
+        { "to": "Ending_Good",   "trigger": "allEnemiesDefeated",    "value": 0 },
+        { "to": "Ending_Good",   "trigger": "playerEscaped",         "value": 0 }
+      ]
+    },
+    {
+      "id": "Phase_02_Good",
+      "displayName": "第二阶段（好路线，占位）",
+      "missionPool": "",
+      "progressThreshold": 90.0,
+      "isEnding": false,
+      "onEnter": {
+        "dialogue": "events/phase02_good_start",
+        "music": "",
+        "cutscene": ""
+      },
+      "transitions": [
+        { "to": "Ending_Good", "trigger": "missionSuccess",      "value": 0 },
+        { "to": "Ending_Bad",  "trigger": "missionFailed",       "value": 0 },
+        { "to": "Ending_Bad",  "trigger": "planProgress100",     "value": 0 },
+        { "to": "Ending_Good", "trigger": "allEnemiesDefeated",  "value": 0 },
+        { "to": "Ending_Good", "trigger": "playerEscaped",       "value": 0 }
+      ]
+    },
+    {
+      "id": "Phase_02_Bad",
+      "displayName": "第二阶段（坏路线，占位）",
+      "missionPool": "",
+      "progressThreshold": 90.0,
+      "isEnding": false,
+      "onEnter": {
+        "dialogue": "events/phase02_bad_start",
+        "music": "",
+        "cutscene": ""
+      },
+      "transitions": [
+        { "to": "Ending_Neutral", "trigger": "missionSuccess",     "value": 0 },
+        { "to": "Ending_Bad",     "trigger": "missionFailed",      "value": 0 },
+        { "to": "Ending_Bad",     "trigger": "planProgress100",    "value": 0 },
+        { "to": "Ending_Good",    "trigger": "allEnemiesDefeated", "value": 0 },
+        { "to": "Ending_Neutral", "trigger": "playerEscaped",      "value": 0 }
+      ]
+    },
+    {
+      "id": "Ending_Good",
+      "displayName": "好结局（占位）",
+      "missionPool": "",
+      "progressThreshold": 0,
+      "isEnding": true,
+      "onEnter": {
+        "dialogue": "events/ending_good",
+        "music": "",
+        "cutscene": ""
+      },
+      "transitions": []
+    },
+    {
+      "id": "Ending_Neutral",
+      "displayName": "中立结局（占位）",
+      "missionPool": "",
+      "progressThreshold": 0,
+      "isEnding": true,
+      "onEnter": {
+        "dialogue": "events/ending_neutral",
+        "music": "",
+        "cutscene": ""
+      },
+      "transitions": []
+    },
+    {
+      "id": "Ending_Bad",
+      "displayName": "坏结局（占位）",
+      "missionPool": "",
+      "progressThreshold": 0,
+      "isEnding": true,
+      "onEnter": {
+        "dialogue": "events/ending_bad",
+        "music": "",
+        "cutscene": ""
+      },
+      "transitions": []
+    }
+  ]
+}

@@ -43,7 +43,8 @@ public class BulletProjectile : MonoBehaviour
         Vector3 targetDirection,
         int damage,
         GameObject shooter,
-        LayerMask hitLayer)
+        LayerMask hitLayer,
+        float qteDuration = 0f)
     {
         GameObject go;
 
@@ -76,9 +77,9 @@ public class BulletProjectile : MonoBehaviour
         bullet.lastPosition = origin;
         bullet.hitLayer     = hitLayer;
 
-        // 子弹生成时通知 CombatModeManager，目标方可以开始反应移动
+        // 子弹生成瞬间触发 QTE（敌人正在攻击中，玩家可以在飞行途中躲避）
         if (CombatModeManager.Instance != null)
-            CombatModeManager.Instance.NotifyAttackLaunched(shooter, targetDirection.normalized);
+            CombatModeManager.Instance.NotifyEnemyAction(shooter, targetDirection.normalized, qteDuration);
 
         return bullet;
     }
@@ -90,6 +91,9 @@ public class BulletProjectile : MonoBehaviour
     void Update()
     {
         if (hasHit) return;
+
+        // weaponData 还未初始化（Fire() 还没调用），等下一帧
+        if (weaponData == null) return;
 
         float moveDistance = weaponData.BulletSpeed * Time.deltaTime;
         Vector3 newPosition = transform.position + direction * moveDistance;
@@ -135,7 +139,7 @@ public class BulletProjectile : MonoBehaviour
         IDamageable damageable = hit.collider.GetComponentInParent<IDamageable>();
         if (damageable != null && damageable.IsAlive)
         {
-            damageable.TakeDamage(damage);
+            damageable.TakeDamage(damage, shooter);
             Debug.Log($"[Bullet] Hit {hit.collider.transform.root.name} for {damage} dmg");
         }
 

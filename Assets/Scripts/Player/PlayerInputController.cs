@@ -31,9 +31,12 @@ public class PlayerInputController : MonoBehaviour
     [SerializeField] private KeyCode pickupKey = KeyCode.Q;
     [SerializeField] private float pickupDetectionRange = 2f;
 
+    [Header("场景物品交互输入")]
+    [SerializeField] private KeyCode interactKey = KeyCode.R;
+
     [Header("快捷栏输入")]
-    [Tooltip("切换近战模式")]
-    [SerializeField] private KeyCode meleeModeKey = KeyCode.W;
+    [Tooltip("切换近战模式（持有有近战伤害的消耗品时生效）")]
+    [SerializeField] private KeyCode meleeModeKey = KeyCode.F;
     [Tooltip("投掷 / 近战攻击（左键）")]
     [SerializeField] private KeyCode throwKey = KeyCode.Mouse0;
 
@@ -48,6 +51,10 @@ public class PlayerInputController : MonoBehaviour
     private HashSet<Vector2Int> currentMovementRange;
     private Vector2Int? hoveredGridPos;
     private bool isInputEnabled = false;
+
+    // 附近可交互的场景物品
+    private List<SceneItemInstance> nearbySceneItems = new List<SceneItemInstance>();
+    private SceneItemInstance closestSceneItem = null;
     private FloorConnection availableFloorConnection = null;
     private bool isShowingFloorPrompt = false;
     private List<WorldItem> nearbyItems = new List<WorldItem>();
@@ -121,28 +128,35 @@ public class PlayerInputController : MonoBehaviour
 
     void Update()
     {
+        // 无论是否轮到玩家，都持续检测附近物品（用于高亮显示）
         CheckNearbyItems();
         HandlePickupInput();
+        CheckNearbySceneItems();
 
         if (equipmentManager != null)
             equipmentManager.UpdateAiming(isMeleeMode);
 
         HandleHotbarInput();
 
-        // 反应窗口：不是玩家回合也可以移动一次
+        // QTE 反应窗口：敌人攻击前的躲避时机
+        // 玩家可以移动（右键）或交互（R键）来闪避
         if (isReactionWindowOpen && !playerUnit.IsMoving)
         {
-            HandleMouseInput();
+            HandleMouseInput();    // 右键移动躲避
+            HandleInteractInput(); // R键与场景物品交互（推箱子遮挡、开门等）
             return;
         }
 
-        // 正常回合输入
+        // 正常回合输入（需要轮到玩家）
         if (!isInputEnabled || playerUnit.IsMoving)
             return;
 
         CheckFloorConnection();
         HandleMouseInput();
         HandleTurnInput();
+
+        // 场景物品交互（F 键，消耗 AP，仅在玩家回合）
+        HandleInteractInput();
     }
 
     private void OnReactionWindowOpened()
@@ -175,8 +189,31 @@ public class PlayerInputController : MonoBehaviour
         HotbarSlot slot = equipmentManager.CurrentSlot;
         bool hasItem = slot != null && !slot.IsEmpty;
 
-        // W 键：切换近战模式
-        // 只有当前物品有近战伤害配置时才能进入近战模式
+        // W 键：直接使用当前消耗品（回血、恢复体力等即时效果）
+        // W 键：使用道具
+        // QTE 窗口期间也允许使用（敌人行动中，玩家可以喝药/使用补给），使用后关闭 QTE
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            // QTE 期间绕过 canAct（IsMyTurn=false），使用后关闭反应窗口
+            bool isQteUse = isReactionWindowOpen;
+            if (!canAct && !isQteUse) return;
+
+            if (hasItem && slot.itemData is ConsumableData)
+            {
+                isMeleeMode = false;
+                bool used = equipmentManager.UseItem();
+                if (used)
+                {
+                    Debug.Log($"[Input] Used item: {slot.itemData.Name}" +
+                              (isQteUse ? " (QTE)" : ""));
+                    // QTE 期间使用道具后关闭反应窗口（道具 or 移动 二选一）
+                    if (isQteUse)
+                        turnBasedUnit.CloseReactionWindow();
+                }
+            }
+        }
+
+        // F 键：切换近战模式（仅对有近战伤害的消耗品生效）
         if (Input.GetKeyDown(meleeModeKey))
         {
             bool canMelee = hasItem && slot.itemData is ConsumableData cd && cd.meleeDamage > 0;
@@ -291,6 +328,61 @@ public class PlayerInputController : MonoBehaviour
             TryPickupNearbyItems();
     }
 
+    // ============ 场景物品交互（F 键）============
+
+    /// <summary>
+    /// 持续扫描附近的 SceneItemInstance，记录最近的可交互物体
+    /// 每帧调用，用于 UI 提示和高亮（无论是否玩家回合）
+    /// </summary>
+    private void CheckNearbySceneItems()
+    {
+        nearbySceneItems.Clear();
+        closestSceneItem = null;
+
+        if (GridManager.Instance == null) return;
+
+        // 用格子距离判断，而不是世界坐标距离
+        // 这样推倒的书架覆盖多格时，玩家站在任意相邻格都能触发
+        Vector2Int playerCell = playerUnit.CurrentGridPosition;
+        int closestDist = int.MaxValue;
+
+        foreach (var item in Object.FindObjectsOfType<SceneItemInstance>())
+        {
+            if (item == null || item.IsDestroyed) continue;
+            if (item.Data == null || !item.Data.PlayerCanInteract) continue;
+
+            int gridDist = item.MinGridDistanceTo(playerCell);
+            if (gridDist <= item.Data.interactionRange)
+            {
+                nearbySceneItems.Add(item);
+                if (gridDist < closestDist)
+                {
+                    closestDist = gridDist;
+                    closestSceneItem = item;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// F 键：与最近的场景物品交互（仅在玩家回合内调用）
+    /// </summary>
+    private void HandleInteractInput()
+    {
+        if (!Input.GetKeyDown(interactKey)) return;
+        if (closestSceneItem == null)
+        {
+            Debug.Log("[Input] 附近没有可交互的场景物品（F 键）");
+            return;
+        }
+
+        bool success = closestSceneItem.TryInteract(playerUnit.gameObject);
+        if (success)
+            Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互成功");
+        else
+            Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互失败（可能是 AP 不足或被锁住）");
+    }
+
     private void CheckNearbyItems()
     {
         foreach (var item in nearbyItems)
@@ -397,6 +489,33 @@ public class PlayerInputController : MonoBehaviour
 
     private void OnGridClicked(Vector2Int gridPos)
     {
+        // QTE 反应窗口：绕过 CanAct（敌人回合，IsMyTurn=false）
+        // 玩家可以移动最多 2 格，或者使用道具（W 键，见 HandleHotbarInput）
+        // QTE 移动不消耗玩家正式回合 AP（IsMyTurn=false，UnitMovement 不会调用 ConsumeAP）
+        if (isReactionWindowOpen)
+        {
+            if (!GridManager.Instance.IsWalkable(gridPos, playerUnit.CurrentFloor)) return;
+
+            // QTE 允许移动最多 2 格（曼哈顿距离 ≤ 2）
+            const int qteMaxCells = 2;
+            int manhattan = Mathf.Abs(gridPos.x - playerUnit.CurrentGridPosition.x)
+                          + Mathf.Abs(gridPos.y - playerUnit.CurrentGridPosition.y);
+            if (manhattan > qteMaxCells)
+            {
+                Debug.Log($"[QTE] 最多移动 {qteMaxCells} 格");
+                return;
+            }
+
+            // 寻路确认可达
+            var qtePath = PathfindingService.FindPath(
+                playerUnit.CurrentGridPosition, gridPos, playerUnit.CurrentFloor);
+            if (qtePath == null || qtePath.Count == 0) return;
+
+            ClearMovementRange();
+            playerUnit.MoveToGrid(gridPos, playerUnit.CurrentFloor, Mathf.Min(qteMaxCells, qtePath.Count));
+            return;
+        }
+
         if (!turnBasedUnit.CanAct) return;
 
         // IsWalkable 快速检查（O(1)），避免点击障碍物还去算寻路
@@ -416,8 +535,6 @@ public class PlayerInputController : MonoBehaviour
             return;
         }
 
-        // 不再调用 CanMoveTo（内部会重复算一遍移动范围）
-        // 直接移动，path 非空已经证明目标可达
         ClearMovementRange();
         playerUnit.MoveToGrid(gridPos);
     }

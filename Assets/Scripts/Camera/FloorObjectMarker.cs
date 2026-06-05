@@ -56,15 +56,37 @@ public class FloorObjectMarker : MonoBehaviour
         {
             // 从旧楼层移除
             FloorVisibilityController.Instance.UnregisterObjectFromFloor(gameObject, floor);
-            
+
             // 注册到新楼层
             floor = newFloor;
             FloorVisibilityController.Instance.RegisterObjectToFloor(gameObject, floor);
+
+            // 强制立即刷新可见性，不等平滑插值
+            FloorVisibilityController.Instance.RefreshVisibility();
         }
         else
         {
             floor = newFloor;
         }
+    }
+
+    public void Initialize(bool autoDetect)
+    {
+        if (FloorVisibilityController.Instance == null) return;
+        if (FloorManager.Instance == null) return;
+
+        // 先从所有楼层移除，清除 ScanAndRegisterFloorObjects 的旧注册
+        for (int i = 0; i < FloorManager.Instance.NumberOfFloors; i++)
+            FloorVisibilityController.Instance.UnregisterObjectFromFloor(gameObject, i);
+
+        // 检测当前楼层
+        if (autoDetect)
+            floor = FloorManager.Instance.GetFloorFromWorldY(transform.position.y);
+
+        // 重新注册到正确楼层并刷新
+        FloorVisibilityController.Instance.RegisterObjectToFloor(gameObject, floor);
+        FloorVisibilityController.Instance.RefreshVisibility();
+        Debug.Log($"[FloorObjectMarker] {gameObject.name} 初始化注册到楼层 {floor}");
     }
 
     void OnDrawGizmosSelected()

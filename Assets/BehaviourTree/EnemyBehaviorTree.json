@@ -1,0 +1,176 @@
+{
+  "type": "Selector",
+  "name": "Root",
+  "children": [
+
+    {
+      "type": "Selector",
+      "name": "CombatLayer",
+      "children": [
+
+        {
+          "type": "Sequence",
+          "name": "Combat_InRange",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "Condition", "key": "inCombatRange", "value": "true" },
+            { "type": "Action", "executor": "combat", "keys": ["lastSeenTarget"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Chase_Aggressive",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "TacticCondition", "value": "Aggressive" },
+            { "type": "Action", "executor": "move", "keys": ["lastSeenPosition", "lastSeenFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Chase_Engage",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "TacticCondition", "value": "Engage" },
+            { "type": "Action", "executor": "move", "keys": ["lastSeenPosition", "lastSeenFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Defensive_Hold",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "TacticCondition", "value": "Defensive" }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "CallSupport",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "TacticCondition", "value": "CallSupport" },
+            { "type": "Action", "executor": "investigate", "keys": ["lastSeenPosition", "lastSeenFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Retreat",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "TacticCondition", "value": "Retreat" },
+            { "type": "Action", "executor": "move", "keys": ["patrolTarget"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Chase_FloorFollow",
+          "children": [
+            { "type": "Condition", "key": "pendingFollowFloor", "exists": true },
+            { "type": "Action", "executor": "floorChase", "keys": ["pendingFollowFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Chase_LastSeen",
+          "children": [
+            { "type": "Condition", "key": "lastSeenPosition", "exists": true },
+            { "type": "Action", "executor": "move", "keys": ["lastSeenPosition", "lastSeenFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Investigate_Sound",
+          "children": [
+            { "type": "Condition", "key": "lastHeardPosition", "exists": true },
+            { "type": "Action", "executor": "investigate", "keys": ["lastHeardPosition", "lastHeardFloor"] }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "type": "Selector",
+      "name": "MissionLayer",
+      "children": [
+
+        {
+          "type": "Sequence",
+          "name": "Mission_FollowLeader",
+          "children": [
+            { "type": "Condition", "key": "leaderId", "exists": true },
+            { "type": "Action", "executor": "followLeader", "keys": ["leaderId", "formationDistance"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Mission_ObjectiveDestroy_Interact",
+          "comment": "ObjectiveDestroy：已在目标区域内时与 WorldItem 交互触发完成；未到达则 yield break 回落到 MoveToZone",
+          "children": [
+            { "type": "Condition", "key": "targetObjectId", "exists": true },
+            { "type": "WeightCondition", "key": "weight_interact", "threshold": 0.5 },
+            { "type": "Action", "executor": "objectiveInteract", "keys": ["targetObjectId", "targetZoneId"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Mission_Mobile_MoveToZone",
+          "children": [
+            { "type": "Condition", "key": "targetZoneId", "exists": true },
+            { "type": "WeightCondition", "key": "weight_follow", "threshold": 0.5 },
+            { "type": "Action", "executor": "moveToZone", "keys": ["targetZoneId"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Mission_Defensive_HoldZone",
+          "children": [
+            { "type": "Condition", "key": "targetZoneId", "exists": true },
+            { "type": "WeightCondition", "key": "weight_defend", "threshold": 0.5 },
+            { "type": "Action", "executor": "holdZone", "keys": ["targetZoneId"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Mission_Investigative",
+          "children": [
+            { "type": "Condition", "key": "targetZoneId", "exists": true },
+            { "type": "WeightCondition", "key": "weight_investigate", "threshold": 0.5 },
+            { "type": "Action", "executor": "moveToZone", "keys": ["targetZoneId"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Mission_PatrolInZone",
+          "children": [
+            { "type": "Condition", "key": "targetZoneId", "exists": true },
+            { "type": "WeightCondition", "key": "weight_patrol", "threshold": 0.3 },
+            { "type": "Action", "executor": "patrolInZone", "keys": ["targetZoneId"] }
+          ]
+        },
+
+        {
+          "type": "Action",
+          "name": "DefaultPatrol",
+          "executor": "move",
+          "keys": ["patrolTarget"]
+        }
+
+      ]
+    }
+
+  ]
+}

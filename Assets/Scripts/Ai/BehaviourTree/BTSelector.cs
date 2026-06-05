@@ -107,13 +107,20 @@ public class BTAction : BTNode
     public string[] blackboardKeys;
     private Coroutine currentCoroutine;
     private MonoBehaviour coroutineRunner;
+    private bool isExecuting;
 
-    // 三态：Idle = 未开始，Running = 执行中，Done = 已完成
-    private enum ActionState { Idle, Running, Done }
-    private ActionState state = ActionState.Idle;
+    public bool IsExecuting => isExecuting;
 
-    /// <summary>供 BTRunner.IsActionRunning 查询</summary>
-    public bool IsExecuting => state == ActionState.Running;
+    public void SetCoroutineRunner(MonoBehaviour runner)
+    {
+        coroutineRunner = runner;
+    }
+
+    public void Reset()
+    {
+        if (!isExecuting)
+            currentCoroutine = null;
+    }
 
     public override NodeState Evaluate(Dictionary<string, object> blackboard,
                                        Dictionary<string, IActionExecutor> executors)
@@ -125,68 +132,67 @@ public class BTAction : BTNode
         }
 
         var executor = executors[executorName];
-
-        // 已完成：返回 Success，等待外部 Reset
-        if (state == ActionState.Done)
-            return NodeState.Success;
-
-        // 未开始：启动协程
-        if (state == ActionState.Idle)
+        
+        if (!executor.CanExecute())
         {
-            if (!executor.CanExecute())
-                return NodeState.Failure;
-
-            if (coroutineRunner == null)
-            {
-                Debug.LogError("[BTAction] coroutineRunner not set.");
-                return NodeState.Failure;
-            }
-
-            var context = BuildContext(blackboard);
-            currentCoroutine = coroutineRunner.StartCoroutine(ExecuteAction(executor, context));
-            state = ActionState.Running;
+            return NodeState.Failure;
         }
 
-        // 执行中：返回 Running
+        // 如果还没开始执行，启动协程
+        if (!isExecuting)
+        {
+            var context = BuildContext(blackboard);
+
+            // 从 blackboard 里读取正确的 coroutineRunner，避免多个 Enemy 共用同一个
+            if (coroutineRunner == null)
+            {
+                if (blackboard.TryGetValue("__owner", out var ownerObj) &&
+                    ownerObj is MonoBehaviour mb)
+                    coroutineRunner = mb;
+                else
+                    coroutineRunner = GameObject.FindObjectOfType<EnemyAIController>();
+            }
+
+            // Debug.Log($"[BTAction] Starting coroutine for {executorName} on {coroutineRunner?.gameObject.name}");
+            currentCoroutine = coroutineRunner.StartCoroutine(ExecuteAction(executor, context));
+            isExecuting = true;
+        }
+
         return NodeState.Running;
-    }
-
-    /// <summary>
-    /// 每回合 tick 前调用，重置状态让 Action 可以重新执行
-    /// 由 BTRunner.ResetAll 在每次 Tick 前统一调用
-    /// </summary>
-    public void Reset()
-    {
-        if (state == ActionState.Running && currentCoroutine != null)
-            coroutineRunner?.StopCoroutine(currentCoroutine);
-
-        state = ActionState.Idle;
-        currentCoroutine = null;
-    }
-
-    public void SetCoroutineRunner(MonoBehaviour runner)
-    {
-        coroutineRunner = runner;
     }
 
     private IEnumerator ExecuteAction(IActionExecutor executor, ActionContext context)
     {
         yield return executor.Execute(context);
-        state = ActionState.Done;
+        isExecuting = false;
+        // Debug.Log($"[BTAction] Executor {executorName} completed");
+        
+        // 如果是巡逻移动完成，设置新的随机巡逻点
+        if (executorName == "move" && context.Blackboard.ContainsKey("patrolTarget"))
+        {
+            var controller = coroutineRunner as EnemyAIController;
+            if (controller != null)
+            {
+                // 设置新的随机巡逻目标
+                var unitMovement = controller.GetComponent<UnitMovement>();
+                Vector2Int randomOffset = new Vector2Int(Random.Range(-5, 5), Random.Range(-5, 5));
+                Vector2Int targetGrid = unitMovement.CurrentGridPosition + randomOffset;
+                context.Blackboard["patrolTarget"] = FloorManager.Instance.GridToWorld(targetGrid, unitMovement.CurrentFloor);
+            }
+        }
     }
-
     private ActionContext BuildContext(Dictionary<string, object> blackboard)
     {
         var context = new ActionContext();
         context.Blackboard = blackboard;
         context.TargetFloor = -1;
-
+        
         if (blackboardKeys == null) return context;
-
+        
         foreach (var key in blackboardKeys)
         {
             if (!blackboard.TryGetValue(key, out var value) || value == null) continue;
-
+            
             if (value is Vector3 vec3)
                 context.TargetPosition = vec3;
             else if (value is Transform trans)
@@ -194,7 +200,7 @@ public class BTAction : BTNode
             else if (value is int floor)
                 context.TargetFloor = floor;
         }
-
+        
         return context;
     }
 }

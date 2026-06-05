@@ -181,7 +181,7 @@ public class ThrowableProjectile : MonoBehaviour
             if (mb != null && mb.gameObject == thrower) return;
         }
 
-        damageable.TakeDamage(damage);
+        damageable.TakeDamage(damage, thrower);
         Debug.Log($"[Projectile] Dealt {damage} dmg to {(damageable as MonoBehaviour)?.gameObject.name}");
     }
 

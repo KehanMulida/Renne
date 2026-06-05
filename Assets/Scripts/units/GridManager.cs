@@ -59,9 +59,13 @@ public class GridManager : MonoBehaviour
 
     [Header("障碍物检测")]
     [SerializeField] private LayerMask obstacleLayer;
-    // 检测半径自动根据 cellSize 缩放，也可在 Inspector 手动覆盖
-    [SerializeField] private bool autoCalculateCheckRadius = true;
-    [SerializeField] private float obstacleCheckRadius = 0.4f;
+
+    [Tooltip("溢出阈值（0~0.5）\n障碍物与格子重叠面积占格子面积的比例超过此值才标记为不可走\n" +
+             "0   = 只要碰到就占用\n" +
+             "0.3 = 超出30%才占用（推荐）\n" +
+             "与 DynamicObstacle.overflowThreshold 保持一致")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float overflowThreshold = 0.3f;
 
     [Header("调试")]
     [SerializeField] private bool showOccupiedCells = true;   // Gizmos 显示被占据的格子
@@ -105,11 +109,6 @@ public class GridManager : MonoBehaviour
 
     private void InitializeGrid()
     {
-        if (autoCalculateCheckRadius)
-        {
-            obstacleCheckRadius = cellSize * 0.4f;
-        }
-
         if (useFloorSystem && FloorManager.Instance != null)
         {
             Debug.Log($"[GridManager] FloorManager found with {FloorManager.Instance.NumberOfFloors} floors, using multi-floor mode");
@@ -118,7 +117,7 @@ public class GridManager : MonoBehaviour
         else
         {
             if (useFloorSystem)
-                Debug.LogWarning("[GridManager] useFloorSystem=true but FloorManager.Instance is null! Falling back to single floor. Check that FloorManager exists in scene.");
+                Debug.LogWarning("[GridManager] useFloorSystem=true but FloorManager.Instance is null! Falling back to single floor.");
             InitializeSingleFloorGrid();
         }
     }
@@ -190,6 +189,25 @@ public class GridManager : MonoBehaviour
                     {
                         if (!IsValid(new Vector2Int(x, z))) continue;
 
+                        // 溢出阈值判断：计算障碍物和格子的 XZ 平面重叠比例
+                        // 只有重叠面积占格子面积的比例 >= (1 - overflowThreshold) 才标记不可走
+                        Vector3 cellCenter = gridOrigin + new Vector3(x * cellSize, 0, z * cellSize);
+                        float cellMinX = cellCenter.x - cellSize * 0.5f;
+                        float cellMaxX = cellCenter.x + cellSize * 0.5f;
+                        float cellMinZ = cellCenter.z - cellSize * 0.5f;
+                        float cellMaxZ = cellCenter.z + cellSize * 0.5f;
+
+                        float overlapX = Mathf.Min(bounds.max.x, cellMaxX) - Mathf.Max(bounds.min.x, cellMinX);
+                        float overlapZ = Mathf.Min(bounds.max.z, cellMaxZ) - Mathf.Max(bounds.min.z, cellMinZ);
+
+                        if (overlapX <= 0 || overlapZ <= 0) continue;
+
+                        // 分轴判断：X 和 Z 各自的比例都必须超过阈值才占用
+                        // 避免面积比例在瘦长物体上误判
+                        float ratioX = overlapX / cellSize;
+                        float ratioZ = overlapZ / cellSize;
+                        if (ratioX < (1f - overflowThreshold) || ratioZ < (1f - overflowThreshold)) continue;
+
                         Vector3Int key = new Vector3Int(x, z, floor);
                         if (gridCells.TryGetValue(key, out GridCell cell))
                         {
@@ -211,25 +229,57 @@ public class GridManager : MonoBehaviour
     private void InitializeSingleFloorGrid()
     {
         gridCells2D = new Dictionary<Vector2Int, GridCell>();
-        int obstacleCount = 0;
 
+        // 先创建所有格子
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 0; y < gridHeight; y++)
             {
                 Vector2Int gridPos = new Vector2Int(x, y);
                 Vector3 worldPos = gridOrigin + new Vector3(x * cellSize, 0, y * cellSize);
+                gridCells2D[gridPos] = new GridCell(gridPos, worldPos, 0);
+            }
+        }
 
-                GridCell cell = new GridCell(gridPos, worldPos, 0);
+        // 一次性获取所有障碍物，应用溢出阈值
+        Vector3 center = gridOrigin + new Vector3(gridWidth * cellSize * 0.5f, 0.5f, gridHeight * cellSize * 0.5f);
+        Vector3 half   = new Vector3(gridWidth * cellSize * 0.5f, 1f, gridHeight * cellSize * 0.5f);
+        Collider[] allObstacles = Physics.OverlapBox(center, half, Quaternion.identity, obstacleLayer);
 
-                Vector3 checkPos = new Vector3(worldPos.x, 0.5f, worldPos.z);
-                if (Physics.CheckSphere(checkPos, obstacleCheckRadius, obstacleLayer))
+        int obstacleCount = 0;
+
+        foreach (Collider col in allObstacles)
+        {
+            Bounds bounds = col.bounds;
+            Vector2Int minGrid = WorldToGrid(new Vector3(bounds.min.x, 0, bounds.min.z));
+            Vector2Int maxGrid = WorldToGrid(new Vector3(bounds.max.x, 0, bounds.max.z));
+
+            for (int x = minGrid.x; x <= maxGrid.x; x++)
+            {
+                for (int z = minGrid.y; z <= maxGrid.y; z++)
                 {
-                    cell.isWalkable = false;
-                    obstacleCount++;
-                }
+                    Vector2Int pos = new Vector2Int(x, z);
+                    if (!IsValid(pos)) continue;
 
-                gridCells2D[gridPos] = cell;
+                    Vector3 cellCenter = gridOrigin + new Vector3(x * cellSize, 0, z * cellSize);
+                    float overlapX = Mathf.Min(bounds.max.x, cellCenter.x + cellSize * 0.5f)
+                                   - Mathf.Max(bounds.min.x, cellCenter.x - cellSize * 0.5f);
+                    float overlapZ = Mathf.Min(bounds.max.z, cellCenter.z + cellSize * 0.5f)
+                                   - Mathf.Max(bounds.min.z, cellCenter.z - cellSize * 0.5f);
+
+                    if (overlapX <= 0 || overlapZ <= 0) continue;
+
+                    // 分轴判断：X 和 Z 各自的比例都必须超过阈值才占用
+                    float ratioX = overlapX / cellSize;
+                    float ratioZ = overlapZ / cellSize;
+                    if (ratioX < (1f - overflowThreshold) || ratioZ < (1f - overflowThreshold)) continue;
+
+                    if (gridCells2D.TryGetValue(pos, out GridCell cell))
+                    {
+                        cell.isWalkable = false;
+                        obstacleCount++;
+                    }
+                }
             }
         }
 

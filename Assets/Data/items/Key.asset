@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 642c8883dea73f7428dcf172134a26ff, type: 3}
+  m_Name: Key
+  m_EditorClassIdentifier: 
+  ID: 2900
+  Name: "\u7269\u54C1"
+  description: "\u7269\u54C1\u63CF\u8FF0"
+  Type: 3
+  rarity: 2
+  UseCost: 1
+  EffectType: 
+  EffectValue: 0
+  Sound: 
+  Animation: 
+  VFX: 
+  icon: {fileID: 0}
+  Prefab: {fileID: 0}
+  weight: 1
+  value: 10
+  maxStack: 1
+  isThrowable: 0
+  throwableConfig:
+    flightMode: 0
+    throwRange: 6
+    flightSpeed: 10
+    arcHeight: 2
+    directDamage: 20
+    splashRadius: 0
+    splashDamage: 0
+    canDamageSelf: 0
+    hitLayer:
+      serializedVersion: 2
+      m_Bits: 0
+    breakOnImpact: 1
+    canPickupAfterThrow: 0
+    impactVFXPrefab: {fileID: 0}
+    debrisPrefab: {fileID: 0}
+    throwSound: 
+    impactSound: 

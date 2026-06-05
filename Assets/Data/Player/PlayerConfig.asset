@@ -23,11 +23,12 @@ MonoBehaviour:
   CombatMoveRange: 3
   MoveSpeed: 6
   MoveStaminaCost: 5
-  TurnStartDelay: 0.5
+  QteWindowDuration: 5
+  TurnStartDelay: 0.521
   ActionInterval: 0.3
-  CombatTurnStartDelay: 0.1
-  CombatActionInterval: 0.1
-  Reaction: 1
+  CombatTurnStartDelay: 0.072
+  CombatActionInterval: 0.04
+  Reaction: 2.08
   AttackPower: 10
   Defense: 5
   MaxSanity: 100

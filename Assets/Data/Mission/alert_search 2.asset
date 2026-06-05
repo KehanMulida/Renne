@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dce463f78fb677e41bf103adc3cecc5d, type: 3}
+  m_Name: alert_search 2
+  m_EditorClassIdentifier: 
+  missionId: alert_search_02
+  displayName: 
+  description: 
+  behaviourProfile: 0
+  combatResponse: 0
+  assignedEnemies:
+  - E03
+  - E04
+  targetZoneId: floor1_corridor
+  progressOnSuccess: 10
+  progressOnFail: 0
+  repeatCount: 1
+  successConditions:
+  - target: 1
+    check: 3
+    op: 0
+    targetId: 
+    flagKey: 
+    zoneId: 
+    zoneType: 0
+    numericValue: 0
+    boolValue: 1
+    stringValue: 
+    itemId: 
+    objectId: 
+  successLogic: 0
+  failConditions:
+  - target: 6
+    check: 18
+    op: 5
+    targetId: 
+    flagKey: 
+    zoneId: floor1_corridor
+    zoneType: 7
+    numericValue: 10
+    boolValue: 0
+    stringValue: 
+    itemId: 
+    objectId: 
+  failLogic: 1
+  leaderId: E03
+  formationDistance: 2
+  moveInGroup: 1
+  persistAcrossPhases: 0
+  apMultiplier: 5.63
+  speedMultiplier: 2.36
+  defaultActionWeights:
+  - actionKey: patrol
+    weight: 0.83
+  enemyActionProfiles: []
+  dialogueOnStart: 
+  dialogueOnSuccess: 
+  dialogueOnFail: 

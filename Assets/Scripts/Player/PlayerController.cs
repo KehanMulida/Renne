@@ -43,7 +43,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     public float BaseNoiceLevel => runtimeConfig?.BaseNoiceLevel ?? 2f;
     public int BaseVisibility => runtimeConfig?.BaseVisibility ?? 5;
 
-    /// <summary>运行时配置引用，供 TurnBasedUnit 等外部系统读取完整 Config</summary>
+    /// <summary>运行时配置引用，供 TurnBasedUnit 等外部系统读取</summary>
     public PlayerConfig Config => runtimeConfig;
 
     // ============ 事件系统 ============
@@ -131,7 +131,7 @@ public class PlayerController : MonoBehaviour, IDamageable
     /// <summary>
     /// 受到伤害
     /// </summary>
-    public void TakeDamage(int damage)
+    public void TakeDamage(int damage, GameObject attacker = null)
     {
         if (runtimeConfig == null) return;
 

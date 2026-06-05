@@ -1,104 +1,72 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(UnitMovement))]
+[RequireComponent(typeof(TurnBasedUnit))]
 public class CombatExecutor : IActionExecutor
 {
     private Transform owner;
     private EnemyConfig config;
-    private EnemyEquipment equipment;
-
-    // 回合制游戏不需要实时冷却，改为每回合只能攻击一次的标记
-    private bool hasAttackedThisTurn = false;
+    private float lastAttackTime;
+    private EnemyEquipment enemyEquipment;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner     = owner;
-        this.config    = config;
-        this.equipment = owner.GetComponent<EnemyEquipment>();
-
-        // 监听回合开始事件，每回合重置攻击标记
-        TurnBasedUnit unit = owner.GetComponent<TurnBasedUnit>();
-        if (unit != null)
-            unit.OnMyTurnStart += ResetAttack;
-    }
-
-    private void ResetAttack()
-    {
-        hasAttackedThisTurn = false;
+        this.owner = owner;
+        this.config = config;
+        this.enemyEquipment = owner.GetComponent<EnemyEquipment>();
     }
 
     public bool CanExecute()
     {
-        if (hasAttackedThisTurn)
-        {
-            Debug.Log("[CombatExecutor] Already attacked this turn");
-            return false;
-        }
-        return true;
+        return Time.time - lastAttackTime > config.attackCooldown;
     }
 
+/// <summary>
+/// 执行攻击
+/// </summary>
+/// <param name="context">动作上下文</param>
+/// <returns>协程</returns>
     public IEnumerator Execute(ActionContext context)
     {
-        if (context.TargetObject == null)
-        {
-            Debug.LogWarning("[CombatExecutor] TargetObject is null, cannot attack");
-            yield break;
-        }
+        if (context.TargetObject == null) yield break;
 
-        float range = equipment != null
-            ? equipment.GetAttackRange(config)
-            : 1;
+        float distance = new Vector2(
+            owner.position.x - context.TargetObject.position.x,
+            owner.position.z - context.TargetObject.position.z).magnitude;
 
-        // 攻击范围也需要转世界单位
-        float rangeWorld = range * (GridManager.Instance != null ? GridManager.Instance.CellSize : 1f);
+        float attackRange = enemyEquipment != null && enemyEquipment.HasWeapon
+            ? enemyEquipment.GetAttackRange(config) * GridManager.Instance.CellSize
+            : 1f;
+        if (distance > attackRange) yield break;
 
-        float distance = Vector3.Distance(owner.position, context.TargetObject.position);
-        Debug.Log($"[CombatExecutor] Attacking | dist:{distance:F1} | range:{rangeWorld:F1}");
-
-        if (distance > rangeWorld)
-        {
-            Debug.LogWarning($"[CombatExecutor] Target out of range: {distance:F1} > {rangeWorld:F1}");
-            yield break;
-        }
-
+        // 前摇：转向目标（视觉提示）
         owner.LookAt(context.TargetObject);
-        yield return new WaitForSeconds(0.3f);
+        if (config.actionInterval > 0.01f)
+            yield return new WaitForSeconds(config.actionInterval);
 
-        if (equipment != null && equipment.HasWeapon)
+        // 发射攻击
+        // QTE 由 BulletProjectile.Fire() 内部触发（子弹生成瞬间），不在此等待
+        bool attacked = false;
+        if (enemyEquipment != null && enemyEquipment.HasWeapon && enemyEquipment.HasAmmo)
         {
-            bool fired = equipment.Shoot(context.TargetObject, config);
-            if (!fired)
-                FallbackMeleeAttack(context.TargetObject);
+            attacked = enemyEquipment.Shoot(context.TargetObject, config);
         }
         else
         {
-            FallbackMeleeAttack(context.TargetObject);
+            var damageable = context.TargetObject.GetComponent<IDamageable>();
+            if (damageable != null && damageable.IsAlive)
+            {
+                damageable.TakeDamage(config.attackDamage, owner.gameObject);
+                attacked = true;
+            }
         }
 
-        hasAttackedThisTurn = true;
-
-        // 写入 blackboard，让 EnemyAIController 知道本回合已攻击
-        context.Blackboard["hasAttackedThisTurn"] = true;
-
-        // 消耗武器对应的 AP
-        TurnBasedUnit turnUnit = owner.GetComponent<TurnBasedUnit>();
-        if (turnUnit != null)
+        if (attacked)
         {
-            int cost = (equipment != null && equipment.HasWeapon)
-                ? equipment.Weapon.UseCost
-                : 1;
-            turnUnit.ConsumeAP(cost);
-            Debug.Log($"[CombatExecutor] Consumed {cost} AP for attack");
-        }
-    }
-
-    private void FallbackMeleeAttack(Transform target)
-    {
-        var damageable = target.GetComponent<IDamageable>();
-        if (damageable != null && damageable.IsAlive)
-        {
-            damageable.TakeDamage(config.attackDamage);
-            Debug.Log($"[CombatExecutor] Melee: {config.attackDamage} dmg to {target.name}");
+            lastAttackTime = Time.time;
+            context.Blackboard["hasAttackedThisTurn"] = true;
         }
     }
 }

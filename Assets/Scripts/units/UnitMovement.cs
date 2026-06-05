@@ -86,13 +86,13 @@ public class UnitMovement : MonoBehaviour
     public void SetMoveRange(int range)
     {
         moveRange = Mathf.Max(1, range);
-        Debug.Log($"[{gameObject.name}] MoveRange set to {moveRange}");
+        // Debug.Log($"[{gameObject.name}] MoveRange set to {moveRange}");
     }
 
     public void SetMoveSpeed(float speed)
     {
         moveSpeed = Mathf.Max(0.1f, speed);
-        Debug.Log($"[{gameObject.name}] MoveSpeed set to {moveSpeed}");
+        // Debug.Log($"[{gameObject.name}] MoveSpeed set to {moveSpeed}");
     }
 
     public void SetVerticalMoveSpeed(float speed)
@@ -162,7 +162,7 @@ public class UnitMovement : MonoBehaviour
         // Step 3：位置确定后再标记占据（修复原来的顺序 bug）
         GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
 
-        Debug.Log($"[{gameObject.name}] Initialized at grid: {currentGridPosition}, floor: {currentFloor}, world: {transform.position}");
+        // Debug.Log($"[{gameObject.name}] Initialized at grid: {currentGridPosition}, floor: {currentFloor}, world: {transform.position}");
     }
 
     // ============ 公开接口 ============
@@ -170,8 +170,10 @@ public class UnitMovement : MonoBehaviour
     /// <summary>
     /// 移动到目标网格（支持跨楼层）
     /// 新增：移动前检查终点是否被其他单位占据
+    /// apCost：调用方预算的 AP 消耗（≥0 时使用该值，-1 = 默认用实际路径长度）
+    /// AI 执行器预先算好 stepsToTake 后传入，防止内部 re-pathfind 路径不同导致 AP 超耗
     /// </summary>
-    public void MoveToGrid(Vector2Int targetGridPos, int targetFloor = -1)
+    public void MoveToGrid(Vector2Int targetGridPos, int targetFloor = -1, int apCost = -1)
     {
         if (isMoving)
         {
@@ -184,7 +186,7 @@ public class UnitMovement : MonoBehaviour
 
         if (targetGridPos == currentGridPosition && targetFloor == currentFloor)
         {
-            Debug.Log($"[{gameObject.name}] Already at target position");
+            // Debug.Log($"[{gameObject.name}] Already at target position");
             return;
         }
 
@@ -221,7 +223,7 @@ public class UnitMovement : MonoBehaviour
             return;
         }
 
-        StartCoroutine(MoveAlongPathCoroutine(path));
+        StartCoroutine(MoveAlongPathCoroutine(path, apCost));
     }
 
     /// <summary>
@@ -304,12 +306,128 @@ public class UnitMovement : MonoBehaviour
         GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
 
         OnFloorChanged?.Invoke(currentFloor);
-        Debug.Log($"[{gameObject.name}] Floor changed: {oldFloor} -> {currentFloor}");
+        // Debug.Log($"[{gameObject.name}] Floor changed: {oldFloor} -> {currentFloor}");
+    }
+
+    // ============ 击退接口 ============
+
+    /// <summary>
+    /// 立即停止当前移动，清理网格占据状态。
+    /// 在 ApplyKnockback 之前调用，也可由外部系统（如 StunEffect）单独使用。
+    /// 移动中和静止时均安全调用。
+    /// </summary>
+    public void StopMovement()
+    {
+        if (!isMoving) return;
+
+        StopAllCoroutines();
+
+        // 确保当前格子被正确标记为占据
+        // （MoveAlongPathCoroutine 在移动开始时释放了旧格，途中逐格更新 currentGridPosition，
+        //  中途停止时 currentGridPosition 反映的是最后到达的格子，重新占据即可）
+        if (GridManager.Instance != null)
+            GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
+        // 视觉吸附到当前格子中心（消除半路中断的浮点偏移）
+        if (FloorManager.Instance != null)
+            transform.position = FloorManager.Instance.GridToWorld(currentGridPosition, currentFloor);
+        else if (GridManager.Instance != null)
+        {
+            Vector3 wp = GridManager.Instance.GridToWorld(currentGridPosition);
+            transform.position = new Vector3(wp.x, transform.position.y, wp.z);
+        }
+
+        if (animator != null) animator.SetBool(moveAnimationParam, false);
+
+        isMoving = false;
+        Debug.Log($"[{gameObject.name}] 移动被中断（StopMovement）");
+    }
+
+    /// <summary>
+    /// 击退：将单位沿 pushDir 方向推 distance 格并造成伤害。
+    /// 移动中和静止时均生效——移动中先中断再推开。
+    /// 无法行走的格子会阻止推进（推到第一个障碍物前为止）。
+    ///
+    /// 用法（SceneItemInstance）：
+    ///   unit.ApplyKnockback(new Vector2Int(1,0), 1, 10, gameObject);  // 向东推1格，10点伤害
+    /// </summary>
+    /// <param name="pushDir">格子方向（(1,0)=东，(-1,0)=西，(0,1)=北，(0,-1)=南）</param>
+    /// <param name="distance">推开格子数（默认1）</param>
+    /// <param name="damage">造成的伤害（0=仅位移不伤害）</param>
+    /// <param name="source">伤害来源（用于伤害归因）</param>
+    public void ApplyKnockback(Vector2Int pushDir, int distance = 1, int damage = 0, GameObject source = null)
+    {
+        if (GridManager.Instance == null) return;
+
+        // 1. 中断当前移动
+        if (isMoving) StopMovement();
+
+        // 2. 计算最远可达格（静态可走即可，忽略单位占据）
+        Vector2Int destination = currentGridPosition;
+        for (int i = 1; i <= distance; i++)
+        {
+            Vector2Int next = currentGridPosition + pushDir * i;
+            if (!GridManager.Instance.IsValid(next)) break;
+            if (!GridManager.Instance.IsWalkable(next, currentFloor, ignoreOccupied: true)) break;
+            destination = next;
+        }
+
+        // 3. 造成伤害（位移前）
+        if (damage > 0)
+        {
+            var damageable = GetComponent<IDamageable>();
+            if (damageable != null && damageable.IsAlive)
+                damageable.TakeDamage(damage, source);
+        }
+
+        if (destination == currentGridPosition)
+        {
+            Debug.Log($"[{gameObject.name}] 击退被阻（无可达格）");
+            return;
+        }
+
+        // 4. 平滑滑动到新格子
+        StartCoroutine(KnockbackCoroutine(destination));
+
+        Debug.Log($"[{gameObject.name}] 击退 {pushDir} → {destination}  伤害:{damage}");
+    }
+
+    private IEnumerator KnockbackCoroutine(Vector2Int targetCell)
+    {
+        isMoving = true;
+
+        // 更新网格占据
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
+        currentGridPosition = targetCell;
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
+        OnPositionChanged?.Invoke(currentGridPosition);
+
+        // 快速滑向目标（0.12s，ease-out）
+        Vector3 startPos = transform.position;
+        Vector3 endPos   = FloorManager.Instance != null
+            ? FloorManager.Instance.GridToWorld(targetCell, currentFloor)
+            : GridManager.Instance.GridToWorld(targetCell);
+        endPos.y = startPos.y;
+
+        const float duration = 0.12f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            transform.position = Vector3.Lerp(startPos, endPos, 1f - (1f - t) * (1f - t));
+            yield return null;
+        }
+        transform.position = endPos;
+
+        isMoving = false;
+        OnMoveComplete?.Invoke();
     }
 
     // ============ 私有方法 ============
 
-    private IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path)
+    private IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path, int apCost = -1)
     {
         isMoving = true;
 
@@ -401,14 +519,19 @@ public class UnitMovement : MonoBehaviour
 
         TurnBasedUnit turnUnit = GetComponent<TurnBasedUnit>();
         if (turnUnit != null && turnUnit.IsMyTurn)
-            turnUnit.ConsumeAP(path.Count);
+        {
+            // apCost >= 0：执行器已预算好步数，直接用（防止内部 re-pathfind 与外部路径不同导致 AP 超耗）
+            // apCost == -1：默认行为，按实际路径长度消耗（玩家移动、InvestigationExecutor 等直接移动到目标的场景）
+            int cost = apCost >= 0 ? apCost : path.Count;
+            turnUnit.ConsumeAP(cost);
+        }
 
         OnMoveComplete?.Invoke();
 
-        Debug.Log($"[{gameObject.name}] Move complete → grid: {currentGridPosition}, floor: {currentFloor}");
+        // Debug.Log($"[{gameObject.name}] Move complete → grid: {currentGridPosition}, floor: {currentFloor}");
     }
 
-    private IEnumerator MoveToFloorCoroutine(Vector2Int targetGridPos, int targetFloor, FloorConnection connection)
+    public IEnumerator MoveToFloorCoroutine(Vector2Int targetGridPos, int targetFloor, FloorConnection connection)
     {
         isMoving = true;
 
@@ -459,7 +582,8 @@ public class UnitMovement : MonoBehaviour
         transform.position = endFloorPos;
         currentGridPosition = targetGridPos;
 
-        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+        GridManager.Instance.SetOccupied(currentGridPosition, oldFloor, false);
+        GridManager.Instance.SetOccupied(targetGridPos, targetFloor, true);
 
         OnFloorChanged?.Invoke(currentFloor);
         Debug.Log($"[{gameObject.name}] Floor changed: {oldFloor} -> {currentFloor} via {connection.connectionType}");

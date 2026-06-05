@@ -88,6 +88,12 @@ public class PlayerConfig : ScriptableObject
     public bool IsInCombatMode => isInCombatMode;
 
     [Header("回合节奏")]
+    [Tooltip("战斗模式下敌人回合开始时玩家的 QTE 反应窗口时长（秒）\n" +
+             "负节奏机制：敌人回合一开始，玩家获得此窗口来移动1格躲避\n" +
+             "0 = 不开放 QTE")]
+    [Range(0f, 5f)]
+    public float QteWindowDuration = 2f;
+
     [Tooltip("正常模式回合开始延迟（秒）")]
     [Range(0f, 2f)]
     public float TurnStartDelay = 0.5f;

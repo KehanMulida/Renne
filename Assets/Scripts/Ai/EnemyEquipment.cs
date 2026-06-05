@@ -82,9 +82,17 @@ public class EnemyEquipment : MonoBehaviour
         }
 
         // 射击起点
-        Vector3 origin = muzzlePoint != null
-            ? muzzlePoint.position
-            : transform.position + Vector3.up * 1.5f;
+        Vector3 origin;
+        if (muzzlePoint != null)
+        {
+            origin = muzzlePoint.position;
+        }
+        else
+        {
+            origin = transform.position
+                   + Vector3.up * 1.0f
+                   + transform.forward * 0.5f;
+        }
 
         // 基础方向（朝向目标）
         Vector3 baseDirection = (target.position - origin).normalized;
@@ -111,7 +119,8 @@ public class EnemyEquipment : MonoBehaviour
             spreadDirection,
             damage,
             gameObject,
-            hitLayer
+            hitLayer,
+            qteDuration: config != null ? config.qteWindowDuration : 0f
         );
 
         // 扣除弹药

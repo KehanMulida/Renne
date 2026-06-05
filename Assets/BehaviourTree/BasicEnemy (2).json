@@ -12,6 +12,14 @@
     },
     {
       "type": "Sequence",
+      "name": "FloorChase",
+      "children": [
+        { "type": "Condition", "key": "pendingFollowFloor", "exists": true },
+        { "type": "Action", "executor": "floorChase", "keys": ["pendingFollowFloor"] }
+      ]
+    },
+    {
+      "type": "Sequence",
       "name": "Chase",
       "children": [
         { "type": "Condition", "key": "hasVisualContact", "value": "true" },

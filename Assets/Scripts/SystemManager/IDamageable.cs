@@ -13,10 +13,9 @@ public interface IDamageable
     /// 受到伤害
     /// </summary>
     /// <param name="damage">伤害值</param>
-    void TakeDamage(int damage);
-    
-    /// <summary>
-    /// 是否存活
-    /// </summary>
+    /// <param name="attacker">攻击者（可为 null）</param>
+    void TakeDamage(int damage, GameObject attacker = null);
+
+    /// <summary>是否存活</summary>
     bool IsAlive { get; }
 }

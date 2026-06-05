@@ -19,60 +19,57 @@ public class MovementExecutor : IActionExecutor
 
     public IEnumerator Execute(ActionContext context)
     {
-        Vector2Int targetGrid = GridManager.Instance.WorldToGrid(context.TargetPosition);
         Vector2Int currentGrid = unitMovement.CurrentGridPosition;
         int currentFloor = unitMovement.CurrentFloor;
-        
-        // 从 blackboard 读取目标楼层
-        int targetFloor = currentFloor;
-        if (context.Blackboard.ContainsKey("lastSeenFloor"))
+
+        // 敌人开始移动时触发 QTE（战斗模式下）
+        // 玩家可在敌人走动期间移动 2 格或使用道具
+        if (CombatModeManager.Instance != null &&
+            CombatModeManager.Instance.IsInCombatMode &&
+            config.qteWindowDuration > 0f)
         {
-            targetFloor = (int)context.Blackboard["lastSeenFloor"];
+            Vector3 moveDir = (context.TargetPosition - owner.position).normalized;
+            CombatModeManager.Instance.NotifyEnemyAction(owner.gameObject, moveDir, config.qteWindowDuration);
         }
-        
-        // 如果需要跨楼层
-        if (currentFloor != targetFloor)
-        {
-            yield return MoveToFloor(targetFloor);
-            yield break;
-        }
-        
-        // 同楼层移动
+
+        // Debug.Log($"[MovementExecutor] Execute | currentFloor:{currentFloor}");
+
+        Vector2Int targetGrid = GridManager.Instance.WorldToGrid(context.TargetPosition);
+        // Debug.Log($"[MovementExecutor] Moving to {targetGrid} on floor {currentFloor}");
+
         if (GridManager.Instance.IsOccupied(targetGrid, currentFloor))
-        {
             targetGrid = FindNearestEmptyAdjacentTile(targetGrid, currentGrid);
-        }
-        
+
         if (targetGrid == currentGrid)
         {
+            // Debug.Log("[MovementExecutor] Already at target");
             yield break;
         }
-        
+
         List<Vector2Int> fullPath = PathfindingService.FindPath(currentGrid, targetGrid, currentFloor);
-        
+
         if (fullPath == null || fullPath.Count == 0)
         {
-            Debug.LogWarning("[MovementExecutor] No path found");
+            Debug.LogWarning($"[MovementExecutor] No path found to {targetGrid}");
             yield break;
         }
-        
+
         var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int availableSteps = turnUnit != null ? turnUnit.RemainingActionPoints : fullPath.Count;
 
         int stepsToTake = GetOptimalSteps(fullPath, availableSteps, context);
 
-        // 已经在射程内（stepsToTake=0），不需要移动，直接结束让 BT 走 Combat 分支
         if (stepsToTake <= 0)
         {
-            Debug.Log("[MovementExecutor] Already in weapon range, skip movement");
+            // Debug.Log("[MovementExecutor] Already in weapon range, skip movement");
             yield break;
         }
 
         Vector2Int finalStep = fullPath[stepsToTake - 1];
+        // Debug.Log($"[MovementExecutor] Moving {stepsToTake} steps to {finalStep}");
 
-        Debug.Log($"[MovementExecutor] Moving {stepsToTake} steps towards {targetGrid}, AP: {availableSteps}");
-
-        unitMovement.MoveToGrid(finalStep, currentFloor);
+        // 传入 stepsToTake 作为 apCost，防止 MoveToGrid 内部 re-pathfind 路径不同导致 AP 超耗
+        unitMovement.MoveToGrid(finalStep, currentFloor, stepsToTake);
 
         yield return null;
 
@@ -112,43 +109,52 @@ public class MovementExecutor : IActionExecutor
         if (!context.Blackboard.TryGetValue("lastSeenPosition", out object posObj)) return maxSteps;
         Vector3 targetWorldPos = (Vector3)posObj;
 
-        // 当前距离
-        float currentDist = Vector3.Distance(
-            new Vector3(owner.position.x, targetWorldPos.y, owner.position.z),
-            targetWorldPos);
+        // 当前距离（XZ平面，避免Y差异干扰射程判断）
+        float currentDist = new Vector2(
+            owner.position.x - targetWorldPos.x,
+            owner.position.z - targetWorldPos.z).magnitude;
 
-        Debug.Log($"[MovementExecutor] Chase | currentDist:{currentDist:F1} | weaponRange:{weaponRangeWorld:F1} | maxSteps:{maxSteps}");
+        // 不同楼层时不判断射程，直接走向楼层连接点
+        int ownerFloor  = unitMovement.CurrentFloor;
+        int targetFloor = context.Blackboard.ContainsKey("lastSeenFloor")
+            ? (int)context.Blackboard["lastSeenFloor"] : ownerFloor;
+
+        if (ownerFloor != targetFloor)
+        {
+            // Debug.Log($"[MovementExecutor] Different floor ({ownerFloor}→{targetFloor}), moving to connection");
+            return maxSteps;
+        }
+
+        // Debug.Log($"[MovementExecutor] Chase | currentDist:{currentDist:F1} | weaponRange:{weaponRangeWorld:F1} | maxSteps:{maxSteps}");
 
         // 已经在射程内，不需要移动
         if (currentDist <= weaponRangeWorld)
         {
-            Debug.Log($"[MovementExecutor] Already in range, staying put");
+            // Debug.Log($"[MovementExecutor] Already in range, staying put");
             return 0;
         }
 
         // 从路径中找第一个进入射程的格子
         for (int i = 0; i < maxSteps; i++)
         {
-            // 用 FloorManager 获取正确的世界坐标（含楼层Y）
             Vector3 stepWorldPos = FloorManager.Instance != null
                 ? FloorManager.Instance.GridToWorld(path[i], unitMovement.CurrentFloor)
                 : GridManager.Instance.GridToWorld(path[i]);
 
-            // 用XZ平面距离避免Y差异干扰
-            float dist = Vector3.Distance(
-                new Vector3(stepWorldPos.x, targetWorldPos.y, stepWorldPos.z),
-                targetWorldPos);
+            float dist = new Vector2(
+                stepWorldPos.x - targetWorldPos.x,
+                stepWorldPos.z - targetWorldPos.z).magnitude;
 
-            Debug.Log($"[MovementExecutor] Step {i + 1}: grid{path[i]} dist:{dist:F1}");
+            // Debug.Log($"[MovementExecutor] Step {i + 1}: grid{path[i]} dist:{dist:F1}");
 
             if (dist <= weaponRangeWorld)
             {
-                Debug.Log($"[MovementExecutor] Stop at step {i + 1} (dist:{dist:F1} <= range:{weaponRangeWorld:F1})");
+                // Debug.Log($"[MovementExecutor] Stop at step {i + 1} (dist:{dist:F1} <= range:{weaponRangeWorld:F1})");
                 return i + 1;
             }
         }
 
-        Debug.Log($"[MovementExecutor] Cannot reach weapon range in {maxSteps} steps, moving max");
+        // Debug.Log($"[MovementExecutor] Cannot reach weapon range in {maxSteps} steps, moving max");
         return maxSteps;
     }
 
@@ -180,63 +186,4 @@ public class MovementExecutor : IActionExecutor
         return bestTile;
     }
 
-    private IEnumerator MoveToFloor(int targetFloor)
-    {
-        var connection = GetNearestFloorConnection(targetFloor);
-        if (connection == null) yield break;
-        
-        unitMovement.MoveToGrid(connection.gridPosition, unitMovement.CurrentFloor);
-        
-        while (unitMovement.IsMoving)
-        {
-            yield return null;
-        }
-
-        if (connection.connectionType == FloorConnectionType.Stairs)
-        {
-            yield return UseStairs(connection);
-        }
-        else if (connection.connectionType == FloorConnectionType.Elevator)
-        {
-            yield return UseElevator(connection);
-        }
-    }
-
-    private FloorConnection GetNearestFloorConnection(int toFloor)
-    {
-        if (FloorManager.Instance == null) return null;
-
-        FloorData floorData = FloorManager.Instance.GetFloor(unitMovement.CurrentFloor);
-        if (floorData == null || floorData.connections == null) return null;
-
-        FloorConnection nearestConnection = null;
-        float nearestDistance = float.MaxValue;
-
-        foreach (var connection in floorData.connections)
-        {
-            if (connection.toFloor == toFloor)
-            {
-                float distance = Vector2Int.Distance(unitMovement.CurrentGridPosition, connection.gridPosition);
-                if (distance < nearestDistance)
-                {
-                    nearestDistance = distance;
-                    nearestConnection = connection;
-                }
-            }
-        }
-
-        return nearestConnection;
-    }
-
-    private IEnumerator UseStairs(FloorConnection connection)
-    {
-        unitMovement.SetFloor(connection.toFloor);
-        yield return new WaitForSeconds(1f);
-    }
-
-    private IEnumerator UseElevator(FloorConnection connection)
-    {
-        unitMovement.SetFloor(connection.toFloor);
-        yield return new WaitForSeconds(2f);
-    }
 }

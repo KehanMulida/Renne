@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 0}
   m_Name: Wine
   m_EditorClassIdentifier: Assembly-CSharp::ConsumableData
-  ID: 2002
+  ID: 2003
   Name: wine
   description: "\u7269\u54C1\u63CF\u8FF0"
   Type: 0
@@ -31,8 +31,8 @@ MonoBehaviour:
   isThrowable: 1
   throwableConfig:
     flightMode: 0
-    throwRange: 9
-    flightSpeed: 24.6
+    throwRange: 8
+    flightSpeed: 20.48
     arcHeight: 0.93
     directDamage: 23
     splashRadius: 1

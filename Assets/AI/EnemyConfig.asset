@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 917f3bf238356194eb88b58fd0cc235f, type: 3}
+  m_Name: EnemyConfig
+  m_EditorClassIdentifier: 
+  visionRange: 15
+  visionAngle: 90
+  canSeeAcrossFloors: 0
+  hearingRange: 10
+  canHearAcrossFloors: 0
+  moveSpeed: 3
+  moveRange: 5
+  combatMoveRange: 2
+  chaseSpeed: 5
+  rotationSpeed: 5
+  patrolMinDistance: 3
+  patrolMaxDistance: 6
+  patrolMaxAttempts: 20
+  attackCooldown: 1
+  attackDamage: 10
+  maxHp: 100
+  maxSanity: 100
+  lowHpThreshold: 0.3
+  searchConfidenceMax: 3
+  soundInvestigateRounds: 2
+  investigationDuration: 5
+  turnStartDelay: 0.5
+  actionInterval: 0.3
+  behaviorTreeAsset: {fileID: 0}
