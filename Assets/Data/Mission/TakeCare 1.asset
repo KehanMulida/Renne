@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dce463f78fb677e41bf103adc3cecc5d, type: 3}
+  m_Name: TakeCare 1
+  m_EditorClassIdentifier: 
+  missionId: objectActivate_01
+  displayName: 
+  description: 
+  behaviourProfile: 8
+  combatResponse: 0
+  assignedEnemies:
+  - E03
+  targetZoneId: 
+  targetObjectId: 3004
+  interactMode: 1
+  progressOnSuccess: 10
+  progressOnFail: 0
+  repeatCount: 1
+  successConditions:
+  - target: 7
+    check: 24
+    op: 0
+    targetId: 
+    flagKey: 
+    zoneId: 
+    zoneType: 15
+    numericValue: 0
+    boolValue: 0
+    stringValue: Active
+    itemId: 
+    objectId: 3004
+  successLogic: 0
+  failConditions:
+  - target: 0
+    check: 16
+    op: 0
+    targetId: 
+    flagKey: 
+    zoneId: 
+    zoneType: 15
+    numericValue: 0
+    boolValue: 0
+    stringValue: 
+    itemId: 
+    objectId: 
+  failLogic: 1
+  leaderId: 
+  formationDistance: 2
+  moveInGroup: 0
+  persistAcrossPhases: 0
+  apMultiplier: 1
+  speedMultiplier: 1
+  defaultActionWeights:
+  - actionKey: patrol
+    weight: 0.731
+  enemyActionProfiles: []
+  dialogueOnStart: 
+  dialogueOnSuccess: 
+  dialogueOnFail: 

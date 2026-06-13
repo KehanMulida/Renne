@@ -423,13 +423,12 @@ public class EnemyAIController : MonoBehaviour, IDamageable
 
     private void ExecuteSingleAction()
     {
-        /*
-        // 临时诊断：打印当前 Blackboard 关键值
-        Debug.Log($"[AI:{enemyId}] Blackboard 状态：" +
-                  $"targetZoneId={blackboard["targetZoneId"]} " +
-                  $"weight_patrol={blackboard["weight_patrol"]} " +
-                  $"hasVisualContact={blackboard["hasVisualContact"]}");
-        */
+        // 临时诊断：打印任务相关 Blackboard 值
+        var bbKeys = string.Join(", ", blackboard.Keys);
+        Debug.Log($"[AI:{enemyId}] ExecuteSingleAction | Blackboard keys: {bbKeys}");
+        if (blackboard.TryGetValue("targetObjectId", out var dbgObj))
+            Debug.Log($"[AI:{enemyId}] targetObjectId={dbgObj}  weight_interact={( blackboard.TryGetValue("weight_interact", out var wi) ? wi : "missing")}  objectiveInteractMode={( blackboard.TryGetValue("objectiveInteractMode", out var om) ? om : "missing")}");
+        //
         if (!turnBasedUnit.CanAct)
         {
             EndTurn();
@@ -656,6 +655,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             ["patrolInZone"]      = new PatrolInZoneExecutor(),
             ["followLeader"]      = new FollowLeaderExecutor(),
             ["objectiveInteract"] = new ObjectiveInteractExecutor(),
+            ["moveToPosition"]    = new MoveToPositionExecutor(),
         };
 
         foreach (var executor in executors.Values)
@@ -737,12 +737,8 @@ public class EnemyAIController : MonoBehaviour, IDamageable
         foreach (var key in staleWeightKeys)
             blackboard.Remove(key);
 
-        blackboard.Remove("missionId");
-        blackboard.Remove("missionPhase");
-        blackboard.Remove("combatResponse");
-        blackboard.Remove("targetZoneId");
-        blackboard.Remove("leaderId");
-        blackboard.Remove("formationDistance");
+        // 清除所有任务相关 key，防止旧任务值残留影响新任务
+        MissionContext.ClearMissionBlackboard(blackboard);
 
         var top = CurrentMission;
         if (top == null)

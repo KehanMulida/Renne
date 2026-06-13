@@ -34,11 +34,19 @@ MonoBehaviour:
     preconditions: []
     allowParallel: 0
   - missionData: {fileID: 11400000, guid: 12b8bec3b5946b84ea4411ad61f6db5a, type: 2}
-    priority: 4
+    priority: 5
     preconditions: []
     allowParallel: 0
   - missionData: {fileID: 11400000, guid: 4cd5adadcf2af154f81826265dd91fdc, type: 2}
+    priority: 1
+    preconditions: []
+    allowParallel: 0
+  - missionData: {fileID: 11400000, guid: 2264d982ed2dac245af78aeed63ebaa7, type: 2}
     priority: 2
+    preconditions: []
+    allowParallel: 0
+  - missionData: {fileID: 11400000, guid: af740878c9d71cb4695954e7d0cb24c7, type: 2}
+    priority: 6
     preconditions: []
     allowParallel: 0
   showDebugInfo: 1

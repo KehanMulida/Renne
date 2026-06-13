@@ -265,6 +265,20 @@ public static class ConditionEvaluator
                 int accumulated = state.turnsInZone.TryGetValue(c.zoneId, out int tz) ? tz : 0;
                 return CompareFloat(accumulated, c.numericValue, c.op);
 
+            case ConditionCheck.ObjectActiveTurns:
+                if (state == null)
+                {
+                    Debug.LogWarning("[ConditionEvaluator] ObjectActiveTurns 需要传入 MissionRuntimeState");
+                    return false;
+                }
+                if (string.IsNullOrEmpty(c.objectId))
+                {
+                    Debug.LogWarning("[ConditionEvaluator] ObjectActiveTurns：objectId 为空，条件返回 false");
+                    return false;
+                }
+                int activeTurns = state.objectActiveTurns.TryGetValue(c.objectId, out int at) ? at : 0;
+                return CompareFloat(activeTurns, c.numericValue, c.op);
+
             case ConditionCheck.AnyEnemyInZone:
                 foreach (var e in Object.FindObjectsOfType<EnemyAIController>())
                 {
@@ -435,29 +449,35 @@ public static class ConditionEvaluator
             }
         }
 
-        // ── 1. 先在场景中查找 WorldItem（物体仍存在时优先读取实时状态）─────────
-        var item = FindWorldItemById(c.objectId);
-
         WorldItemState state;
-        string         faction;
+        string         faction = "";
 
-        if (item != null)
+        // ── 1. 优先查 WorldItem 实时状态 ─────────────────────────────────────
+        var worldItem = FindWorldItemById(c.objectId);
+        if (worldItem != null)
         {
-            state   = item.CurrentState;
-            faction = item.InteractedByFaction;
+            state   = worldItem.CurrentState;
+            faction = worldItem.InteractedByFaction;
+            Debug.Log($"[ConditionEval] WorldItem [{c.objectId}] state={state}");
         }
+        // ── 2. 再查 SceneItemInstance 实时状态（映射到 WorldItemState 语义）──
+        else if (FindSceneItemById(c.objectId) is { } sceneItem)
+        {
+            state = sceneItem.IsDestroyed ? WorldItemState.Interrupted :
+                    sceneItem.IsOpen      ? WorldItemState.Active      :
+                                           WorldItemState.Inactive;
+            Debug.Log($"[ConditionEval] SceneItem [{c.objectId}] IsOpen={sceneItem.IsOpen} IsDestroyed={sceneItem.IsDestroyed} → state={state}");
+        }
+        // ── 3. 最后查注册表（物体已销毁时的兜底）────────────────────────────
         else if (WorldItemRegistry.TryGetRecord(c.objectId, out var record))
         {
-            // ── 2. 物体已销毁，从注册表读取最后已知状态
             state   = record.state;
             faction = record.interactedByFaction;
-            Debug.Log($"[ConditionEvaluator] WorldItem [{c.objectId}] 已销毁，" +
-                      $"从注册表读取：state={state} faction={faction}");
+            Debug.Log($"[ConditionEval] [{c.objectId}] 从注册表读取 state={state}");
         }
         else
         {
-            // ── 3. 既不在场景也无注册记录：物体从未存在或从未被操作过
-            Debug.LogWarning($"[ConditionEvaluator] 找不到 WorldItem [{c.objectId}]（场景内不存在且无注册记录），条件返回 false");
+            Debug.LogWarning($"[ConditionEval] 找不到 WorldItem 或 SceneItem [{c.objectId}]，返回 false");
             return false;
         }
 

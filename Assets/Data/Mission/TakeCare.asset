@@ -15,40 +15,53 @@ MonoBehaviour:
   missionId: objectdefend_01
   displayName: 
   description: 
-  behaviourProfile: 6
+  behaviourProfile: 9
   combatResponse: 0
   assignedEnemies:
   - E03
   - E04
-  targetZoneId: 
+  targetZoneId: Storage_01
   targetObjectId: 3004
+  interactMode: 2
   progressOnSuccess: 10
   progressOnFail: 0
   repeatCount: 1
   successConditions:
-  - target: 0
-    check: 0
-    op: 0
+  - target: 7
+    check: 26
+    op: 5
     targetId: 
     flagKey: 
     zoneId: 
-    zoneType: 0
-    numericValue: 0
-    boolValue: 0
+    zoneType: 15
+    numericValue: 4
+    boolValue: 1
     stringValue: 
     itemId: 
-    objectId: 
+    objectId: 3004
   successLogic: 0
   failConditions:
-  - target: 0
-    check: 0
+  - target: 7
+    check: 28
     op: 0
     targetId: 
     flagKey: 
     zoneId: 
-    zoneType: 0
+    zoneType: 15
     numericValue: 0
-    boolValue: 0
+    boolValue: 1
+    stringValue: 
+    itemId: 
+    objectId: 3004
+  - target: 0
+    check: 17
+    op: 0
+    targetId: 
+    flagKey: 
+    zoneId: 
+    zoneType: 15
+    numericValue: 0
+    boolValue: 1
     stringValue: 
     itemId: 
     objectId: 
@@ -59,7 +72,9 @@ MonoBehaviour:
   persistAcrossPhases: 0
   apMultiplier: 1
   speedMultiplier: 1
-  defaultActionWeights: []
+  defaultActionWeights:
+  - actionKey: patrol
+    weight: 0.599
   enemyActionProfiles: []
   dialogueOnStart: 
   dialogueOnSuccess: 

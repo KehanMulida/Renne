@@ -113,8 +113,18 @@
 
         {
           "type": "Sequence",
+          "name": "Mission_MoveToPosition",
+          "comment": "通用定点移动：任何系统写入 targetGridPosition 即可驱动 AI 移动到指定格子，到达后自动清除 key",
+          "children": [
+            { "type": "Condition", "key": "targetGridPosition", "exists": true },
+            { "type": "Action", "executor": "moveToPosition", "keys": ["targetGridPosition", "targetPositionFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
           "name": "Mission_ObjectiveDestroy_Interact",
-          "comment": "ObjectiveDestroy：已在目标区域内时与 WorldItem 交互触发完成；未到达则 yield break 回落到 MoveToZone",
+          "comment": "物体交互：已在交互范围内时执行；不在范围时写入 targetGridPosition 交由 MoveToPosition 靠近",
           "children": [
             { "type": "Condition", "key": "targetObjectId", "exists": true },
             { "type": "WeightCondition", "key": "weight_interact", "threshold": 0.5 },

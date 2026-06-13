@@ -7,7 +7,8 @@ using UnityEngine;
 // ConditionEvaluator 轮询 WorldItem.CurrentState；物体销毁后从 WorldItemRegistry 读取
 public enum WorldItemState
 {
-    Active,       // 正常运转（默认，物体已放置且未被干预）
+    Inactive,     // 初始关闭状态，等待 AI 开启（ObjectiveActivate 任务起点）
+    Active,       // 正常运转（AI 开启后 / 默认放置状态）
     Interrupted,  // 被打断 / 破坏（玩家拾取或关闭，用于 ObjectiveGuard 失败判断）
     Completed,    // 交互完成（Enemy 完成 ObjectiveDestroy，或剧情触发）
 }
@@ -143,6 +144,17 @@ public class WorldItem : MonoBehaviour
         if (actor != null)
             interactedByFaction = ResolveFaction(actor);
         SetState(WorldItemState.Completed);
+    }
+
+    /// <summary>
+    /// Enemy 开启/修复物体时调用（ObjectiveActivate / ObjectiveRepair）
+    /// 将状态切换为 Active，供 ObjectiveGuard 成功条件和守卫巡逻使用
+    /// </summary>
+    public void TriggerActivate(GameObject actor = null)
+    {
+        if (actor != null)
+            interactedByFaction = ResolveFaction(actor);
+        SetState(WorldItemState.Active);
     }
 
     /// <summary>根据组件判断 actor 所属阵营字符串</summary>

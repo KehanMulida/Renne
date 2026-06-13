@@ -311,6 +311,9 @@ public class MissionManager : MonoBehaviour
         // 更新区域驻留计数器（供 TurnsInZone 条件使用）
         UpdateZoneTurnCounters(allEnemies);
 
+        // 更新物体运转回合计数器（供 ObjectActiveTurns 条件使用）
+        UpdateObjectActiveTurnCounters();
+
         CheckAllMissions();
 
         // 检查是否有新任务可以激活（前置条件可能刚被满足）
@@ -406,6 +409,85 @@ public class MissionManager : MonoBehaviour
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// 每敌人回合末调用：为所有激活任务更新物体持续运转回合计数。
+    /// 扫描成功/失败条件中引用了 ObjectActiveTurns 的 objectId，
+    /// 若对应 WorldItem.CurrentState == Active 则计数 +1，否则暂停（不清零）。
+    /// </summary>
+    private void UpdateObjectActiveTurnCounters()
+    {
+        if (activeMissions.Count == 0) return;
+
+        foreach (var state in activeMissions)
+        {
+            if (!state.isActive) continue;
+
+            var objectIds = new System.Collections.Generic.HashSet<string>();
+            CollectObjectActiveTurnIds(state.data.successConditions, objectIds);
+            CollectObjectActiveTurnIds(state.data.failConditions,    objectIds);
+            if (objectIds.Count == 0) continue;
+
+            foreach (var objectId in objectIds)
+            {
+                bool isActive = false;
+
+                // ── 优先查 WorldItem ───────────────────────────────────────
+                WorldItem worldItem = null;
+                foreach (var w in FindObjectsOfType<WorldItem>())
+                {
+                    if (string.Equals(w.ObjectId, objectId, System.StringComparison.OrdinalIgnoreCase))
+                    { worldItem = w; break; }
+                }
+
+                if (worldItem != null)
+                {
+                    isActive = worldItem.CurrentState == WorldItemState.Active;
+                }
+                else
+                {
+                    // ── 再查 SceneItemInstance（开关/门/设备等）─────────────
+                    SceneItemInstance sceneItem = null;
+                    foreach (var s in FindObjectsOfType<SceneItemInstance>())
+                    {
+                        if (string.Equals(s.Data?.sceneObjectId, objectId, System.StringComparison.OrdinalIgnoreCase))
+                        { sceneItem = s; break; }
+                    }
+
+                    if (sceneItem != null)
+                    {
+                        // SceneItem "正常运转" = 未被破坏且处于开启状态
+                        isActive = !sceneItem.IsDestroyed && sceneItem.IsOpen;
+                    }
+                    else
+                    {
+                        // ── 最后查注册表（物体已销毁时的兜底）────────────────
+                        if (WorldItemRegistry.TryGetRecord(objectId, out var record))
+                            isActive = record.state == WorldItemState.Active;
+                    }
+                }
+
+                if (isActive)
+                {
+                    state.objectActiveTurns.TryGetValue(objectId, out int prev);
+                    state.objectActiveTurns[objectId] = prev + 1;
+                    if (enableDebugLog)
+                        Debug.Log($"[MissionManager] ObjectActiveTurns [{objectId}] +1 = {state.objectActiveTurns[objectId]}");
+                }
+                // 未 Active（Interrupted / Inactive）：不操作，计数暂停保留
+            }
+        }
+    }
+
+    private static void CollectObjectActiveTurnIds(
+        List<MissionCondition> conditions,
+        System.Collections.Generic.HashSet<string> result)
+    {
+        if (conditions == null) return;
+        foreach (var c in conditions)
+            if (c.check == ConditionCheck.ObjectActiveTurns && !string.IsNullOrEmpty(c.objectId))
+                result.Add(c.objectId);
     }
 
     private static void CollectTurnsInZoneIds(

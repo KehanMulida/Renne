@@ -21,6 +21,8 @@ MonoBehaviour:
   - E03
   - E04
   targetZoneId: floor1_corridor
+  targetObjectId: 
+  interactMode: 0
   progressOnSuccess: 10
   progressOnFail: 0
   repeatCount: 1
@@ -46,7 +48,7 @@ MonoBehaviour:
     flagKey: 
     zoneId: floor1_corridor
     zoneType: 7
-    numericValue: 10
+    numericValue: 5
     boolValue: 0
     stringValue: 
     itemId: 

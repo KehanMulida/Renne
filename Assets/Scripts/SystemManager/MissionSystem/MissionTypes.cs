@@ -12,6 +12,17 @@ using UnityEngine;
 /// 决定 ActionLibrary 查表的 key，定义任务下 AI 的基础行为风格
 /// 不描述任务的目标，只描述 AI 的行动方式
 /// </summary>
+/// <summary>
+/// ObjectiveInteractExecutor 的交互模式
+/// 写入 Blackboard["objectiveInteractMode"]，执行器据此选择调用哪个 WorldItem 方法
+/// </summary>
+public enum ObjectiveInteractMode
+{
+    Destroy,   // TriggerComplete()  — ObjectiveDestroy：Enemy 破坏/完成物体
+    Activate,  // TriggerActivate()  — ObjectiveActivate：任务开始时 AI 开启物体
+    Repair,    // TriggerActivate()  — ObjectiveRepair：物体被打断后 AI 修复（逻辑同 Activate）
+}
+
 public enum MissionBehaviourProfile
 {
     Aggressive,    // 主动搜索和攻击，高机动，优先消灭威胁
@@ -21,10 +32,14 @@ public enum MissionBehaviourProfile
     Stealth,       // 低噪音行动，避免暴露位置，尽量不触发战斗
     Patrol,        // 在指定区域内持续巡逻（配合 targetZoneId 使用）；不填 targetZoneId 则全图巡逻
 
-    ObjectiveGuard,   // 守护目标物体持续运转（WorldItem.CurrentState==Active）
-                      // 物体被玩家打断 → WorldItem.State=Interrupted → 配合 failCondition 触发任务失败
-    ObjectiveDestroy, // 移动到目标物体位置并交互启动/破坏它
-                      // Enemy 到位后执行交互 → WorldItem.State=Completed → 配合 successCondition 触发成功
+    ObjectiveGuard,        // 守护目标物体持续运转（WorldItem.CurrentState==Active）
+                           // 物体被玩家打断 → WorldItem.State=Interrupted → 配合 failCondition 触发任务失败
+    ObjectiveDestroy,      // 移动到目标物体位置并交互破坏它
+                           // Enemy 到位后执行交互 → WorldItem.State=Completed → 配合 successCondition 触发成功
+    ObjectiveActivate,     // 任务开始时 AI 移动到物体并开启它（Inactive → Active）
+                           // 成功条件：StoryObjectState=Active；完成后通常衔接 ObjectiveGuardWithPatrol
+    ObjectiveGuardWithPatrol, // 守护物体同时在 targetZoneId 内巡逻
+                              // item 被打断时自动切换到 Repair 行为（weight_repair 权重），修复后继续巡逻
 }
 
 /// <summary>
@@ -145,6 +160,12 @@ public enum ConditionCheck
     // ⚠ 新增 check 必须追加到此处末尾，禁止插入到已有 check 中间（会导致 .asset 枚举值错位）
     // 用法：target=ActionPoints, check=APConsumed, op=GreaterThanOrEqual, numericValue=20
     APConsumed,            // 25 任务 assignedEnemies 累计消耗的 AP 总量（多 Enemy 求和）
+
+    // ── 物体持续运转回合 ───────────────────────────────────────────────────────
+    // 指定 WorldItem 保持 Active 状态的累计回合数（被 Interrupted 时暂停计数，修复后继续）
+    // 用法：target=WorldObject, check=ObjectActiveTurns, objectId="generator_b1",
+    //       op=GreaterThanOrEqual, numericValue=5
+    ObjectActiveTurns,     // 28
 
     // SceneItemInstance 实时状态（target=WorldObject, objectId = SceneItemData.sceneObjectId）
     // 直接读取运行时状态，不经过 WorldItemRegistry
@@ -279,9 +300,12 @@ public class MissionContext
     // 接收此 Context 的 Enemy 编号，用于防止 Leader 把自己写进 Blackboard 跟随自己
     private readonly string ownerEnemyId;
 
-    // ObjectiveGuard / ObjectiveDestroy 目标物体 ID
+    // ObjectiveGuard / ObjectiveDestroy / ObjectiveActivate 目标物体 ID
     // 对应 WorldItem.objectId，写入 Blackboard 供 ObjectiveInteractExecutor 使用
     public string targetObjectId = "";
+
+    // ObjectiveInteractExecutor 的交互模式（Destroy / Activate / Repair）
+    public ObjectiveInteractMode interactMode = ObjectiveInteractMode.Destroy;
 
     public MissionContext(MissionData data, string enemyId, int priority = 0)
     {
@@ -293,6 +317,7 @@ public class MissionContext
         repeatsDone      = 0;
         targetZoneId     = data.targetZoneId;
         targetObjectId   = data.targetObjectId ?? "";
+        interactMode     = data.interactMode;
         apMultiplier     = data.apMultiplier;
         speedMultiplier  = data.speedMultiplier;
         this.priority    = priority;
@@ -339,7 +364,10 @@ public class MissionContext
             blackboard["targetZoneId"] = targetZoneId;
 
         if (!string.IsNullOrEmpty(targetObjectId))
-            blackboard["targetObjectId"] = targetObjectId;
+        {
+            blackboard["targetObjectId"]        = targetObjectId;
+            blackboard["objectiveInteractMode"] = (int)interactMode;
+        }
 
         // 编队：leaderId 非空且不等于自身才写入
         // leaderId == ownerEnemyId 时表示 Leader 自己收到了自己的编队指令（自我跟随死循环），跳过
@@ -359,6 +387,13 @@ public class MissionContext
     /// 注意：weight_* 权重 key 由 ApplyTopContext 统一清除，不在此处处理
     /// </summary>
     public void RemoveFromBlackboard(Dictionary<string, object> blackboard)
+        => ClearMissionBlackboard(blackboard);
+
+    /// <summary>
+    /// 清除 Blackboard 中所有任务相关 key（静态，无需实例）
+    /// ApplyTopContext 在写入新任务前调用，确保旧任务值不残留
+    /// </summary>
+    public static void ClearMissionBlackboard(Dictionary<string, object> blackboard)
     {
         if (blackboard == null) return;
         blackboard.Remove("missionId");
@@ -366,6 +401,7 @@ public class MissionContext
         blackboard.Remove("combatResponse");
         blackboard.Remove("targetZoneId");
         blackboard.Remove("targetObjectId");
+        blackboard.Remove("objectiveInteractMode");
         blackboard.Remove("leaderId");
         blackboard.Remove("formationDistance");
         blackboard.Remove("moveInGroup");
@@ -467,22 +503,46 @@ public class MissionContext
                 break;
 
             case MissionBehaviourProfile.ObjectiveGuard:
-                // 守护目标物体：优先驻守 targetZoneId 区域，防止玩家接触物体
-                // 无 zone 时退化为原地低强度巡逻
+                // 守护目标物体：在 targetZoneId 区域内低烈度巡逻来回走动
+                // 无 zone 时全图低强度巡逻
                 if (hasTargetZone)
-                    list.Add(new ActionWeight { actionKey = "defend", weight = 0.85f });
+                    list.Add(new ActionWeight { actionKey = "patrol", weight = 0.6f });
                 else
-                    list.Add(new ActionWeight { actionKey = "patrol", weight = 0.5f });
+                    list.Add(new ActionWeight { actionKey = "patrol", weight = 0.4f });
                 break;
 
             case MissionBehaviourProfile.ObjectiveDestroy:
-                // 破坏/启动目标物体：向 targetZoneId 推进，到位后执行交互
-                // interact 权重最高，但 ObjectiveInteractExecutor 内部会检查"已在区域内"，
+                // 破坏目标物体：向 targetZoneId 推进，到位后执行交互（TriggerComplete）
+                // interact 权重最高，ObjectiveInteractExecutor 内部检查"已在区域内"，
                 // 不在区域时立即 yield break → BT 回落到 follow 权重推进移动
                 if (hasTargetZone)
                 {
                     list.Add(new ActionWeight { actionKey = "interact", weight = 0.9f });
                     list.Add(new ActionWeight { actionKey = "follow",   weight = 0.85f });
+                }
+                break;
+
+            case MissionBehaviourProfile.ObjectiveActivate:
+                // 开启目标物体（Inactive→Active）
+                // interact 权重无论有无 zone 都生成：无 zone 时 ObjectiveInteractExecutor
+                // 会写入 targetGridPosition，由 MoveToPositionExecutor 导航到 item 旁边
+                list.Add(new ActionWeight { actionKey = "interact", weight = 0.9f });
+                if (hasTargetZone)
+                    list.Add(new ActionWeight { actionKey = "follow", weight = 0.85f });
+                break;
+
+            case MissionBehaviourProfile.ObjectiveGuardWithPatrol:
+                // 守护并巡逻：在 targetZoneId 内巡逻，同时监视物体
+                // repair 权重最高：ObjectiveInteractExecutor 内部检查 item.State==Interrupted，
+                // 不满足时立即 yield break → 回落到 patrol 正常巡逻
+                if (hasTargetZone)
+                {
+                    list.Add(new ActionWeight { actionKey = "interact", weight = 0.95f }); // repair
+                    list.Add(new ActionWeight { actionKey = "patrol",   weight = 0.7f });
+                }
+                else
+                {
+                    list.Add(new ActionWeight { actionKey = "patrol", weight = 0.5f });
                 }
                 break;
         }
@@ -516,6 +576,14 @@ public class MissionRuntimeState
     /// 供 ConditionCheck.TurnsInZone 条件读取。
     /// </summary>
     public Dictionary<string, int> turnsInZone = new Dictionary<string, int>();
+
+    /// <summary>
+    /// 物体持续运转回合计数（key = objectId，value = 累计 Active 回合数）
+    /// 每敌人回合末由 MissionManager.UpdateObjectActiveTurnCounters() 更新：
+    /// WorldItem.CurrentState == Active 则 +1，Interrupted 时暂停（不清零），修复后继续累积。
+    /// 供 ConditionCheck.ObjectActiveTurns 条件读取。
+    /// </summary>
+    public Dictionary<string, int> objectActiveTurns = new Dictionary<string, int>();
 
     /// <summary>
     /// 任务激活后 assignedEnemies 累计消耗的 AP 总量

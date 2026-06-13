@@ -65,12 +65,19 @@ public class MissionData : ScriptableObject
              "留空表示任务无固定目标区域（如巡逻任务自行选择巡逻点）")]
     public string targetZoneId;
 
-    [Tooltip("ObjectiveGuard / ObjectiveDestroy 任务必填\n" +
+    [Tooltip("ObjectiveGuard / ObjectiveDestroy / ObjectiveActivate 任务必填\n" +
              "对应 WorldItem.objectId（Inspector 里的 Object Id 字段）\n" +
              "例如 generator_b1 / relay_switch_02\n" +
              "写入 Enemy Blackboard 的 targetObjectId，供 ObjectiveInteractExecutor 使用\n" +
              "普通任务留空")]
     public string targetObjectId = "";
+
+    [Tooltip("ObjectiveInteractExecutor 的交互行为\n" +
+             "Destroy  — 破坏/完成物体（TriggerComplete）\n" +
+             "Activate — 任务开始时开启物体（TriggerActivate，Inactive→Active）\n" +
+             "Repair   — 物体被打断后修复（TriggerActivate，Interrupted→Active）\n" +
+             "仅对 ObjectiveDestroy / ObjectiveActivate / ObjectiveGuardWithPatrol 生效")]
+    public ObjectiveInteractMode interactMode = ObjectiveInteractMode.Destroy;
 
     // ══════════════════════════════════════════════════════
     // 进度贡献
