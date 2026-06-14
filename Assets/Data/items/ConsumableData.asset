@@ -28,8 +28,9 @@ MonoBehaviour:
   weight: 1
   value: 10
   maxStack: 10
+  isThrowable: 0
   throwableConfig:
-    throwableType: 0
+    flightMode: 0
     throwRange: 6
     flightSpeed: 10
     arcHeight: 2
@@ -40,11 +41,121 @@ MonoBehaviour:
     hitLayer:
       serializedVersion: 2
       m_Bits: 448
+    breakOnImpact: 1
+    canPickupAfterThrow: 0
     impactVFXPrefab: {fileID: 0}
-    leaveDebris: 0
     debrisPrefab: {fileID: 0}
     throwSound: 
     impactSound: 
+  _isConsumable: 1
+  _isWeapon: 0
+  _isSceneItem: 0
   healAmount: 0
   staminaAmount: 0
   sanityAmount: 0
+  meleeDamage: 0
+  meleeRange: 0
+  meleeLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  WeaponType: Gun
+  Damage: 20
+  AttackRange: 5
+  NoiceLevel: 2
+  IshasBullet: 1
+  MaxBullet: 7
+  Accuracy: 70
+  MaxSpreadAngle: 20
+  CriticalChance: 10
+  CriticalMultiplier: 2
+  BulletSpeed: 30
+  BulletMaxDistance: 50
+  BulletPrefab: {fileID: 0}
+  HitVFXPrefab: {fileID: 0}
+  MuzzleVFXPrefab: {fileID: 0}
+  gridWidth: 1
+  gridDepth: 1
+  gridHeight: 2
+  blocksMovement: 1
+  blocksVision: 0
+  blocksBullets: 1
+  blocksSound: 0
+  interactableBy: 0
+  interactionRange: 1
+  isToggleable: 0
+  toggleConfig:
+    startOpen: 0
+    apCostToToggle: 1
+    openNoiseLevel: 1
+    closeNoiseLevel: 0
+    openStateBlocksMovement: 0
+    openStateBlocksVision: 0
+    openStateBlocksBullets: 0
+    openAnimTrigger: Open
+    closeAnimTrigger: Close
+    openSound: 
+    closeSound: 
+    slamDamage: 0
+    hingeSide: 0
+    openAngle: 0
+    swingDuration: 0.28
+  isLockable: 0
+  lockConfig:
+    startLocked: 0
+    requiredKeyItemId: 0
+    canPickLock: 0
+    pickLockApCost: 3
+    pickLockNoiseLevel: 1
+  isMovable: 0
+  pushConfig:
+    apCostPerPush: 1
+    maxPushDistance: 1
+    pushNoiseLevel: 2
+    grantsCoverAfterPush: 0
+    pushSound: 
+  isToppleable: 0
+  toppleConfig:
+    apCostToTopple: 2
+    toppleNoiseLevel: 3
+    allowedDirections: 15
+    toppledBlocksMovement: 1
+    toppledBlocksVision: 0
+    toppledBlocksBullets: 0
+    toppledProvidesCover: 0
+    toppledCoverLevel: 1
+    toppleSound: 
+    knockbackDamage: 10
+    knockbackDistance: 1
+  providesCover: 0
+  coverConfig:
+    coverLevel: 1
+    coverDirectionDeg: -1
+    coverDurability: 0
+  isDestroyable: 0
+  destroyConfig:
+    maxHp: 20
+    debrisPrefab: {fileID: 0}
+    debrisBlockMode: 0
+    debrisDuration: 3
+    destroyVFXPrefab: {fileID: 0}
+    destroySound: 
+  isContainer: 0
+  containerConfig:
+    fixedLootIds: 
+    lootTableId: 0
+    singleUse: 1
+  isExplosive: 0
+  explosiveConfig:
+    explosionDamage: 50
+    explosionRadius: 2
+    explodeOnDestroy: 1
+    canManuallyTrigger: 0
+    chainExplode: 1
+    explosionVFXPrefab: {fileID: 0}
+    explosionSound: 
+    leaveDebris: 1
+  animatorController: {fileID: 0}
+  stateChangeVFXPrefab: {fileID: 0}
+  sceneObjectId: 
+  writesStoryFlag: 0
+  storyFlagKey: 

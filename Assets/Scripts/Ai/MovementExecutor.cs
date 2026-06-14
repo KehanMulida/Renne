@@ -4,15 +4,19 @@ using UnityEngine;
 
 public class MovementExecutor : IActionExecutor
 {
-    private Transform owner;
-    private EnemyConfig config;
-    private UnitMovement unitMovement;
+    private Transform      owner;
+    private EnemyConfig    config;
+    private UnitMovement   unitMovement;
+    private TurnBasedUnit  turnUnit;
+    private EnemyEquipment enemyEquipment;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner = owner;
-        this.config = config;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner      = owner;
+        this.config     = config;
+        unitMovement    = owner.GetComponent<UnitMovement>();
+        turnUnit        = owner.GetComponent<TurnBasedUnit>();
+        enemyEquipment  = owner.GetComponent<EnemyEquipment>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -54,7 +58,6 @@ public class MovementExecutor : IActionExecutor
             yield break;
         }
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int availableSteps = turnUnit != null ? turnUnit.RemainingActionPoints : fullPath.Count;
 
         int stepsToTake = GetOptimalSteps(fullPath, availableSteps, context);
@@ -96,13 +99,9 @@ public class MovementExecutor : IActionExecutor
             !(bool)context.Blackboard["hasVisualContact"])
             return maxSteps;
 
-        EnemyEquipment equip = owner.GetComponent<EnemyEquipment>();
-        EnemyConfig config = owner.GetComponent<EnemyAIController>()?.config;
-        if (config == null) return maxSteps;
-
-        // 武器射程转换为世界单位
-        float weaponRangeGrids = equip != null
-            ? equip.GetAttackRange(config)
+        // 武器射程转换为世界单位（使用 Initialize 时缓存的组件引用）
+        float weaponRangeGrids = enemyEquipment != null
+            ? enemyEquipment.GetAttackRange(config)
             : 1f;
         float weaponRangeWorld = weaponRangeGrids * GridManager.Instance.CellSize;
 

@@ -13,13 +13,15 @@ using UnityEngine;
 /// </summary>
 public class MoveToPositionExecutor : IActionExecutor
 {
-    private Transform    owner;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner        = owner;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner    = owner;
+        unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -76,7 +78,6 @@ public class MoveToPositionExecutor : IActionExecutor
             yield break;
         }
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int steps = Mathf.Min(
             turnUnit != null ? turnUnit.RemainingActionPoints : path.Count,
             path.Count);
@@ -120,7 +121,6 @@ public class MoveToPositionExecutor : IActionExecutor
         List<Vector2Int> path = PathfindingService.FindPath(currentPos, nearest.gridPosition, currentFloor);
         if (path == null || path.Count == 0) yield break;
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int steps = Mathf.Min(
             turnUnit != null ? turnUnit.RemainingActionPoints : path.Count,
             path.Count);

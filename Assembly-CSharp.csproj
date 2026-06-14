@@ -77,6 +77,7 @@
     <Compile Include="Assets\Scripts\Ai\ObjectiveInteractExecutor.cs" />
     <Compile Include="Assets\Scripts\Player\Inventory.cs" />
     <Compile Include="Assets\Scripts\Ai\EnemyConfig.cs" />
+    <Compile Include="Assets\Scripts\Ai\UseItemExecutor.cs" />
     <Compile Include="Assets\Scripts\Sound\SoundListener.cs" />
     <Compile Include="Assets\Scripts\Items\WorldItemRegistry.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Demo\Scripts\csEyeController.cs" />
@@ -84,6 +85,7 @@
     <Compile Include="Assets\Scripts\Ai\EnemyEquipment.cs" />
     <Compile Include="Assets\Scripts\Ai\IActionExecutor.cs" />
     <Compile Include="Assets\Scripts\Diagnose\SystemDiagnostic.cs" />
+    <Compile Include="Assets\Scripts\Ai\ThrowItemExecutor.cs" />
     <Compile Include="Assets\Scripts\Ai\PatrolInZoneExecutor.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerInputController.cs" />
     <Compile Include="Assets\Scripts\Ai\CombatExecutor.cs" />
@@ -92,6 +94,7 @@
     <Compile Include="Assets\Scripts\Ai\SimpleEnemyAI.cs" />
     <Compile Include="Assets\Scripts\Ai\BehaviourTree\BTParser.cs" />
     <Compile Include="Assets\Scripts\Ai\BehaviourTree\BTSelector.cs" />
+    <Compile Include="Assets\Scripts\Ai\EnemyHPDisplay.cs" />
     <Compile Include="Assets\Scripts\units\TurnBasedUnit.cs" />
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\ConditionEvaluator.cs" />
     <Compile Include="Assets\Scripts\Ai\MoveToZoneExecutor.cs" />
@@ -121,11 +124,13 @@
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\MissionPool.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorVisibilityController.cs" />
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\MissionData.cs" />
+    <Compile Include="Assets\Scripts\Ai\EnemyInventory.cs" />
     <Compile Include="Assets\Scripts\Ai\FollowLeaderExecutor.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Examples\csRevealerSpawner.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Shadowcaster.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerConfig.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorObjectMarker.cs" />
+    <Compile Include="Assets\Scripts\Ai\EnemyStatEffect.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\csFogWar.cs" />
     <Compile Include="Assets\Scripts\units\ZoneManager.cs" />
     <Compile Include="Assets\Scripts\Ai\MoveToPositionExecutor.cs" />

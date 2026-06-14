@@ -22,9 +22,10 @@ using UnityEngine;
 /// </summary>
 public class FollowLeaderExecutor : IActionExecutor
 {
-    private Transform    owner;
-    private EnemyConfig  config;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private EnemyConfig   config;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     // 缓存 Leader 引用
     private EnemyAIController _cachedLeader;
@@ -44,6 +45,7 @@ public class FollowLeaderExecutor : IActionExecutor
         this.owner    = owner;
         this.config   = config;
         unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -114,7 +116,6 @@ public class FollowLeaderExecutor : IActionExecutor
             yield break;
         }
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
 
         // ── 6. AP 循环：单次 Execute 消耗完本回合所有剩余 AP ─────────────────
         // 核心设计：执行器不提前返回，而是在内部持续循环直到 AP 耗尽。
@@ -384,7 +385,6 @@ public class FollowLeaderExecutor : IActionExecutor
             currentPos, nearest.gridPosition, currentFloor);
         if (path == null || path.Count == 0) yield break;
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int steps    = Mathf.Min(
             turnUnit != null ? turnUnit.RemainingActionPoints : path.Count,
             path.Count);

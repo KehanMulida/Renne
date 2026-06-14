@@ -21,13 +21,15 @@ using UnityEngine;
 /// </summary>
 public class ObjectiveInteractExecutor : IActionExecutor
 {
-    private Transform    owner;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner        = owner;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner    = owner;
+        unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -127,7 +129,7 @@ public class ObjectiveInteractExecutor : IActionExecutor
                     if (worldItem.CurrentState == WorldItemState.Active)
                     {
                         Debug.Log($"[ObjectiveInteractExecutor] Activate：[{targetObjectId}] 已为 Active，确认结束");
-                        owner.GetComponent<TurnBasedUnit>()?.ConsumeAP(1);
+                        turnUnit?.ConsumeAP(1);
                         yield break;
                     }
                     if (worldItem.CurrentState != WorldItemState.Inactive)
@@ -148,7 +150,7 @@ public class ObjectiveInteractExecutor : IActionExecutor
                     if (sceneItem.IsOpen)
                     {
                         Debug.Log($"[ObjectiveInteractExecutor] Activate：[{targetObjectId}] 已为 Open，确认结束");
-                        owner.GetComponent<TurnBasedUnit>()?.ConsumeAP(1);
+                        turnUnit?.ConsumeAP(1);
                         yield break;
                     }
                     break;
@@ -194,9 +196,8 @@ public class ObjectiveInteractExecutor : IActionExecutor
             sceneItem.TryInteract(owner.gameObject);
         }
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
-        if (worldItem != null && turnUnit != null)
-            turnUnit.ConsumeAP(1); // SceneItemInstance.TryInteract 内部已消耗 AP，不重复
+        if (worldItem != null)
+            turnUnit?.ConsumeAP(1); // SceneItemInstance.TryInteract 内部已消耗 AP，不重复
 
         Debug.Log($"[{owner.name}] ObjectiveInteract 完成");
     }
@@ -219,7 +220,6 @@ public class ObjectiveInteractExecutor : IActionExecutor
             yield break;
         }
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int steps = Mathf.Min(
             turnUnit != null ? turnUnit.RemainingActionPoints : path.Count,
             path.Count);

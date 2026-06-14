@@ -286,31 +286,28 @@ public class Inventory : MonoBehaviour
     {
         PlayerController playerCtrl = GetComponent<PlayerController>();
 
-        if (itemData is ConsumableData consumable)
+        if (itemData.Type == ItemType.Consumable)
         {
-            // 玩家自身效果
             if (playerCtrl != null)
             {
-                if (consumable.healAmount > 0)
-                    playerCtrl.Heal(consumable.healAmount);
+                if (itemData.healAmount > 0)
+                    playerCtrl.Heal(itemData.healAmount);
 
-                if (consumable.staminaAmount > 0)
-                    playerCtrl.RestoreStamina(consumable.staminaAmount);
+                if (itemData.staminaAmount > 0)
+                    playerCtrl.RestoreStamina(itemData.staminaAmount);
 
-                if (consumable.sanityAmount > 0)
-                    playerCtrl.RestoreSanity(consumable.sanityAmount);
+                if (itemData.sanityAmount > 0)
+                    playerCtrl.RestoreSanity(itemData.sanityAmount);
             }
 
-            // 对范围内敌人造成伤害
-            if (consumable.meleeDamage > 0)
+            if (itemData.meleeDamage > 0)
             {
-                float worldRadius = consumable.meleeRange *
+                float worldRadius = itemData.meleeRange *
                     (GridManager.Instance != null ? GridManager.Instance.CellSize : 1f);
 
                 Collider[] hits = Physics.OverlapSphere(
-                    transform.position, worldRadius, consumable.meleeLayer);
+                    transform.position, worldRadius, itemData.meleeLayer);
 
-                // 用 IDamageable 去重，避免同一敌人有多个 Collider 被重复计算
                 HashSet<IDamageable> alreadyHit = new HashSet<IDamageable>();
                 foreach (var hit in hits)
                 {
@@ -321,8 +318,8 @@ public class Inventory : MonoBehaviour
 
                     if (damageable.IsAlive)
                     {
-                        damageable.TakeDamage(consumable.meleeDamage, gameObject);
-                        DebugLog($"{itemData.Name} dealt {consumable.meleeDamage} damage to {hit.transform.root.name}");
+                        damageable.TakeDamage(itemData.meleeDamage, gameObject);
+                        DebugLog($"{itemData.Name} dealt {itemData.meleeDamage} damage to {hit.transform.root.name}");
                     }
                 }
             }

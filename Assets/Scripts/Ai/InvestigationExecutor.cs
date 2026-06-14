@@ -4,15 +4,17 @@ using UnityEngine;
 
 public class InvestigationExecutor : IActionExecutor
 {
-    private Transform owner;
-    private EnemyConfig config;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private EnemyConfig   config;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner = owner;
-        this.config = config;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner    = owner;
+        this.config   = config;
+        unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -62,7 +64,6 @@ public class InvestigationExecutor : IActionExecutor
         }
 
         // ── AP 步数限制（与 MovementExecutor 对齐，禁止一次跨越全图）──────────────
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int availableSteps = turnUnit != null ? turnUnit.RemainingActionPoints : 1;
 
         List<Vector2Int> path = PathfindingService.FindPath(

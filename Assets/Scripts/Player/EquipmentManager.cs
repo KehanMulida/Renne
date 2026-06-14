@@ -253,7 +253,8 @@ public class EquipmentManager : MonoBehaviour
     public void ExecuteMelee(Vector2Int targetGrid)
     {
         if (CurrentSlot == null || CurrentSlot.IsEmpty) return;
-        if (!(CurrentSlot.itemData is ConsumableData cd) || cd.meleeDamage <= 0) return;
+        if (CurrentSlot.itemData.Type != ItemType.Consumable || CurrentSlot.itemData.meleeDamage <= 0) return;
+        var cd = CurrentSlot.itemData;
 
         // 把目标格子的世界坐标作为检测中心
         Vector3 targetWorldPos = FloorManager.Instance != null

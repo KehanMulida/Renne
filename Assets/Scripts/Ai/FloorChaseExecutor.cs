@@ -9,15 +9,17 @@ using UnityEngine;
 /// </summary>
 public class FloorChaseExecutor : IActionExecutor
 {
-    private Transform owner;
-    private EnemyConfig config;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private EnemyConfig   config;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner       = owner;
-        this.config      = config;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner    = owner;
+        this.config   = config;
+        unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -96,7 +98,6 @@ public class FloorChaseExecutor : IActionExecutor
         }
 
         // 检查当前回合 AP
-        TurnBasedUnit turnUnit = owner.GetComponent<TurnBasedUnit>();
         int availableSteps = turnUnit != null ? turnUnit.RemainingActionPoints : path.Count;
         int stepsToTake = Mathf.Min(availableSteps, path.Count);
 

@@ -20,6 +20,25 @@
 
         {
           "type": "Sequence",
+          "name": "Combat_UseHealItem",
+          "children": [
+            { "type": "Condition", "key": "item_should_heal", "value": "true" },
+            { "type": "Action", "executor": "useItem", "keys": ["item_selected"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
+          "name": "Combat_ThrowItem",
+          "children": [
+            { "type": "Condition", "key": "item_should_throw", "value": "true" },
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "Action", "executor": "throwItem", "keys": ["item_throw_target", "lastSeenPosition", "lastSeenFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
           "name": "Chase_Aggressive",
           "children": [
             { "type": "Condition", "key": "hasVisualContact", "value": "true" },
@@ -114,7 +133,6 @@
         {
           "type": "Sequence",
           "name": "Mission_MoveToPosition",
-          "comment": "通用定点移动：任何系统写入 targetGridPosition 即可驱动 AI 移动到指定格子，到达后自动清除 key",
           "children": [
             { "type": "Condition", "key": "targetGridPosition", "exists": true },
             { "type": "Action", "executor": "moveToPosition", "keys": ["targetGridPosition", "targetPositionFloor"] }
@@ -124,7 +142,6 @@
         {
           "type": "Sequence",
           "name": "Mission_ObjectiveDestroy_Interact",
-          "comment": "物体交互：已在交互范围内时执行；不在范围时写入 targetGridPosition 交由 MoveToPosition 靠近",
           "children": [
             { "type": "Condition", "key": "targetObjectId", "exists": true },
             { "type": "WeightCondition", "key": "weight_interact", "threshold": 0.5 },

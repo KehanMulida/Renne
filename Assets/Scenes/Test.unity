@@ -5127,6 +5127,7 @@ GameObject:
   - component: {fileID: 1478537022}
   - component: {fileID: 1478537021}
   - component: {fileID: 1478537031}
+  - component: {fileID: 1478537033}
   m_Layer: 8
   m_Name: Enemy (2)
   m_TagString: Untagged
@@ -5365,6 +5366,24 @@ MonoBehaviour:
   autoDetectFloor: 1
   alwaysVisible: 0
   isCharacter: 1
+--- !u!114 &1478537033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1478537020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e668911154a347b43bb738e95677aaf5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startingItems:
+  - item: {fileID: 0}
+    quantity: 0
+  healThreshold: 0.5
+  allowThrowInCombat: 1
+  throwMinHpRatio: 0.4
 --- !u!1 &1488444695
 GameObject:
   m_ObjectHideFlags: 0

@@ -9,15 +9,17 @@ using UnityEngine;
 /// </summary>
 public class MoveToZoneExecutor : IActionExecutor
 {
-    private Transform owner;
-    private EnemyConfig config;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private EnemyConfig   config;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner       = owner;
-        this.config      = config;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner    = owner;
+        this.config   = config;
+        unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -71,7 +73,6 @@ public class MoveToZoneExecutor : IActionExecutor
         }
 
         // 根据 AP 决定走几步
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int availableSteps = turnUnit != null ? turnUnit.RemainingActionPoints : path.Count;
         int stepsToTake    = Mathf.Min(availableSteps, path.Count);
         Vector2Int finalStep = path[stepsToTake - 1];
@@ -118,7 +119,6 @@ public class MoveToZoneExecutor : IActionExecutor
         List<Vector2Int> path = PathfindingService.FindPath(currentPos, target, floor);
         if (path == null || path.Count == 0) yield break;
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int steps    = Mathf.Min(turnUnit != null ? turnUnit.RemainingActionPoints : path.Count, path.Count);
         if (steps <= 0) yield break;
 
@@ -162,7 +162,6 @@ public class MoveToZoneExecutor : IActionExecutor
         List<Vector2Int> path = PathfindingService.FindPath(currentPos, nearest.gridPosition, currentFloor);
         if (path == null || path.Count == 0) yield break;
 
-        var turnUnit  = owner.GetComponent<TurnBasedUnit>();
         int steps     = Mathf.Min(turnUnit != null ? turnUnit.RemainingActionPoints : path.Count, path.Count);
         bool canReach = steps >= path.Count;
 
@@ -192,15 +191,17 @@ public class MoveToZoneExecutor : IActionExecutor
 /// </summary>
 public class HoldZoneExecutor : IActionExecutor
 {
-    private Transform owner;
-    private EnemyConfig config;
-    private UnitMovement unitMovement;
+    private Transform     owner;
+    private EnemyConfig   config;
+    private UnitMovement  unitMovement;
+    private TurnBasedUnit turnUnit;
 
     public void Initialize(Transform owner, EnemyConfig config)
     {
-        this.owner        = owner;
-        this.config       = config;
-        this.unitMovement = owner.GetComponent<UnitMovement>();
+        this.owner    = owner;
+        this.config   = config;
+        unitMovement  = owner.GetComponent<UnitMovement>();
+        turnUnit      = owner.GetComponent<TurnBasedUnit>();
     }
 
     public bool CanExecute() => unitMovement != null && !unitMovement.IsMoving;
@@ -240,7 +241,6 @@ public class HoldZoneExecutor : IActionExecutor
         List<Vector2Int> path = PathfindingService.FindPath(currentGrid, targetCell, currentFloor);
         if (path == null || path.Count == 0) yield break;
 
-        var turnUnit = owner.GetComponent<TurnBasedUnit>();
         int steps = Mathf.Min(
             turnUnit != null ? turnUnit.RemainingActionPoints : path.Count,
             path.Count);

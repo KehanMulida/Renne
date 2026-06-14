@@ -198,7 +198,7 @@ public class PlayerInputController : MonoBehaviour
             bool isQteUse = isReactionWindowOpen;
             if (!canAct && !isQteUse) return;
 
-            if (hasItem && slot.itemData is ConsumableData)
+            if (hasItem && slot.itemData.Type == ItemType.Consumable)
             {
                 isMeleeMode = false;
                 bool used = equipmentManager.UseItem();
@@ -216,7 +216,7 @@ public class PlayerInputController : MonoBehaviour
         // F 键：切换近战模式（仅对有近战伤害的消耗品生效）
         if (Input.GetKeyDown(meleeModeKey))
         {
-            bool canMelee = hasItem && slot.itemData is ConsumableData cd && cd.meleeDamage > 0;
+            bool canMelee = hasItem && slot.itemData.Type == ItemType.Consumable && slot.itemData.meleeDamage > 0;
             if (canMelee)
             {
                 isMeleeMode = !isMeleeMode;
@@ -261,7 +261,8 @@ public class PlayerInputController : MonoBehaviour
 
         HotbarSlot slot = equipmentManager?.CurrentSlot;
         if (slot == null || slot.IsEmpty) return false;
-        if (!(slot.itemData is ConsumableData cd) || cd.meleeDamage <= 0) return false;
+        if (slot.itemData.Type != ItemType.Consumable || slot.itemData.meleeDamage <= 0) return false;
+        var cd = slot.itemData;
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, groundLayer);
@@ -298,7 +299,8 @@ public class PlayerInputController : MonoBehaviour
     {
         HotbarSlot slot = equipmentManager?.CurrentSlot;
         if (slot == null || slot.IsEmpty) return null;
-        if (!(slot.itemData is ConsumableData cd) || cd.meleeDamage <= 0) return null;
+        if (slot.itemData.Type != ItemType.Consumable || slot.itemData.meleeDamage <= 0) return null;
+        var cd = slot.itemData;
 
         int range = Mathf.Max(cd.meleeRange, 1);
         var result = new HashSet<Vector2Int>();

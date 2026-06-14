@@ -41,6 +41,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable
 
     // 缓存组件引用，避免每次 EvaluateState 都调用 GetComponent
     private EnemyEquipment enemyEquipment;
+    private EnemyInventory enemyInventory;
     // MAX_SEARCH_CONFIDENCE 移到 config.searchConfidenceMax，不再硬编码
 
     private int currentHp;
@@ -82,6 +83,37 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             SetDeadState();
     }
 
+    /// <summary>
+    /// 统一数值事件入口。扩展新 stat 只需在此加一个 case。
+    /// </summary>
+    private void HandleStatEffect(EnemyStatEffect effect)
+    {
+        switch (effect.statKey)
+        {
+            case EnemyStatEffect.HP:
+                Heal(effect.value);
+                break;
+            case EnemyStatEffect.Stamina:
+                // stamina 系统暂未实现，占位
+                Debug.Log($"[{gameObject.name}] Stamina +{effect.value}（系统待实现）");
+                break;
+            case EnemyStatEffect.Sanity:
+                // sanity 系统暂未实现，占位
+                Debug.Log($"[{gameObject.name}] Sanity +{effect.value}（系统待实现）");
+                break;
+            default:
+                Debug.LogWarning($"[{gameObject.name}] 未处理的 stat key: {effect.statKey}");
+                break;
+        }
+    }
+
+    public void Heal(int amount)
+    {
+        if (!IsAlive) return;
+        currentHp = Mathf.Min(currentHp + amount, config.maxHp);
+        Debug.Log($"[Enemy:{gameObject.name}] Heal: +{amount} | HP: {currentHp}/{config.maxHp}");
+    }
+
     private void SetDeadState()
     {
         currentHp = 0;
@@ -112,11 +144,14 @@ public class EnemyAIController : MonoBehaviour, IDamageable
 
     private void Awake()
     {
-        blackboard    = new Dictionary<string, object>();
-        turnBasedUnit = GetComponent<TurnBasedUnit>();
-        unitMovement  = GetComponent<UnitMovement>();
+        blackboard     = new Dictionary<string, object>();
+        turnBasedUnit  = GetComponent<TurnBasedUnit>();
+        unitMovement   = GetComponent<UnitMovement>();
         enemyEquipment = GetComponent<EnemyEquipment>(); // 可为 null（无武器敌人）
-        currentHp     = config.maxHp;
+        enemyInventory = GetComponent<EnemyInventory>(); // 可为 null（无物品栏敌人）
+        if (enemyInventory != null)
+            enemyInventory.OnStatEffectRequested += HandleStatEffect;
+        currentHp      = config.maxHp;
 
         var floorMarker = GetComponent<FloorObjectMarker>();
         if (floorMarker != null)
@@ -162,6 +197,9 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             turnBasedUnit.OnMyTurnStart -= OnMyTurnStart;
             turnBasedUnit.OnMyTurnEnd   -= OnMyTurnEnd;
         }
+
+        if (enemyInventory != null)
+            enemyInventory.OnStatEffectRequested -= HandleStatEffect;
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
@@ -249,6 +287,9 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             else if (nearbyAllies > 0)                    combatTactic = "CallSupport";
             else                                           combatTactic = "Retreat";
             blackboard["combat_tactic"] = combatTactic;
+
+            // ── 物品栏决策（如有）──
+            enemyInventory?.EvaluateAndWriteBlackboard(blackboard, hpRatio);
 
             StartCoroutine(StartTurnDelayed());
         }
@@ -656,6 +697,8 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             ["followLeader"]      = new FollowLeaderExecutor(),
             ["objectiveInteract"] = new ObjectiveInteractExecutor(),
             ["moveToPosition"]    = new MoveToPositionExecutor(),
+            ["useItem"]           = new UseItemExecutor(),
+            ["throwItem"]         = new ThrowItemExecutor(),
         };
 
         foreach (var executor in executors.Values)
