@@ -60,6 +60,7 @@ public class PlayerInputController : MonoBehaviour
     private List<WorldItem> nearbyItems = new List<WorldItem>();
     private Inventory playerInventory;
     private EquipmentManager equipmentManager;
+    private LootUI lootUI;
 
     // ============ 初始化 ============
 
@@ -115,6 +116,11 @@ public class PlayerInputController : MonoBehaviour
             equipmentManager.SetInventory(playerInventory);
         else
             Debug.LogWarning("[PlayerInputController] EquipmentManager not found on player");
+
+        // LootUI：优先从玩家身上获取，没有则自动添加
+        lootUI = playerUnit.GetComponent<LootUI>();
+        if (lootUI == null)
+            lootUI = playerUnit.gameObject.AddComponent<LootUI>();
 
         // 监听反应窗口事件
         if (turnBasedUnit != null)
@@ -367,14 +373,32 @@ public class PlayerInputController : MonoBehaviour
     }
 
     /// <summary>
-    /// F 键：与最近的场景物品交互（仅在玩家回合内调用）
+    /// R 键：优先打开附近可搜刮的敌人尸体，其次与场景物品交互
     /// </summary>
     private void HandleInteractInput()
     {
         if (!Input.GetKeyDown(interactKey)) return;
+
+        // 如果 LootUI 已经打开，R 键关闭它
+        if (lootUI != null && lootUI.IsOpen)
+        {
+            lootUI.Close();
+            return;
+        }
+
+        // 优先检测附近可搜刮的敌人尸体
+        EnemyInventory corpse = FindNearestSearchableCorpse();
+        if (corpse != null)
+        {
+            lootUI?.Open(corpse, playerInventory);
+            Debug.Log($"[Input] 开始搜刮：{corpse.gameObject.name}");
+            return;
+        }
+
+        // 其次与场景物品交互
         if (closestSceneItem == null)
         {
-            Debug.Log("[Input] 附近没有可交互的场景物品（F 键）");
+            Debug.Log("[Input] 附近没有可交互物体（R 键）");
             return;
         }
 
@@ -383,6 +407,25 @@ public class PlayerInputController : MonoBehaviour
             Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互成功");
         else
             Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互失败（可能是 AP 不足或被锁住）");
+    }
+
+    /// <summary>在 lootRange 内寻找最近的可搜刮尸体</summary>
+    private EnemyInventory FindNearestSearchableCorpse()
+    {
+        EnemyInventory best     = null;
+        float          bestDist = float.MaxValue;
+
+        foreach (var inv in Object.FindObjectsOfType<EnemyInventory>())
+        {
+            if (!inv.IsSearchable) continue;
+            float dist = Vector3.Distance(playerUnit.transform.position, inv.transform.position);
+            if (dist <= inv.lootRange && dist < bestDist)
+            {
+                bestDist = dist;
+                best     = inv;
+            }
+        }
+        return best;
     }
 
     private void CheckNearbyItems()

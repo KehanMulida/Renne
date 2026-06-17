@@ -118,6 +118,21 @@
 
     {
       "type": "Selector",
+      "name": "PickupLayer",
+      "children": [
+        {
+          "type": "Sequence",
+          "name": "Idle_PickupItem",
+          "children": [
+            { "type": "Condition", "key": "item_can_pickup", "exists": true },
+            { "type": "Action", "executor": "pickupItem", "keys": ["item_pickup_target"] }
+          ]
+        }
+      ]
+    },
+
+    {
+      "type": "Selector",
       "name": "MissionLayer",
       "children": [
 

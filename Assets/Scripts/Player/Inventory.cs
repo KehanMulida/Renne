@@ -54,6 +54,8 @@ public class Inventory : MonoBehaviour
     [Header("调试")]
     [SerializeField] private bool enableDebugLog = true;
 
+    public void SetDebugEnabled(bool v) { enableDebugLog = v; }
+
     // 运行时数据
     private List<InventorySlot> slots = new List<InventorySlot>();
 

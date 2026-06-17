@@ -61,7 +61,7 @@ public class SoundPerception : IPerceptionModule
             Quaternion targetRotation = Quaternion.LookRotation(direction);
             owner.rotation = targetRotation; // 立即转向
             
-            Debug.Log($"[SoundPerception] Turned towards sound at {soundPosition}");
+            //Debug.Log($"[SoundPerception] Turned towards sound at {soundPosition}");
         }
     }
 

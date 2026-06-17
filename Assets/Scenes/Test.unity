@@ -4076,6 +4076,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6147953553251091065, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1445221574}
+    - targetCorrespondingSourceObject: {fileID: 6147953553251091065, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1445221581}
   m_SourcePrefab: {fileID: 100100000, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}
 --- !u!1 &1264393100
 GameObject:
@@ -5107,6 +5110,23 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 448
   enableDebugLog: 1
+--- !u!114 &1445221581
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445221562}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c52455584907534789e225ec5aa8dec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  assets: {fileID: 0}
+  worldOffset: {x: 0, y: 1.8, z: 0}
+  panelWidth: 190
+  rowHeight: 24
+  maxRows: 8
 --- !u!1 &1478537020
 GameObject:
   m_ObjectHideFlags: 0
@@ -5379,11 +5399,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startingItems:
-  - item: {fileID: 0}
-    quantity: 0
+  - item: {fileID: 11400000, guid: 9c946993f48f7de45a6c2e0ba8039674, type: 2}
+    quantity: 2
+  - item: {fileID: 11400000, guid: 01a41dc1907fbdb4d8845be7d25b0f40, type: 2}
+    quantity: 4
   healThreshold: 0.5
   allowThrowInCombat: 1
   throwMinHpRatio: 0.4
+  lootRange: 1.8
+  pickupChance: 0.4
+  pickupCooldownTurns: 3
+  pickupDetectionRange: 3.5
 --- !u!1 &1488444695
 GameObject:
   m_ObjectHideFlags: 0
@@ -5633,15 +5659,25 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1488444695}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b288525d670c55a4aafbea877ebbe453, type: 3}
+  m_Script: {fileID: 11500000, guid: e668911154a347b43bb738e95677aaf5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  floor: 1
-  autoDetectFloor: 1
-  alwaysVisible: 0
-  isCharacter: 1
+  startingItems:
+  - item: {fileID: 11400000, guid: b7abbdda0bffe77488b3c1382a48b9a8, type: 2}
+    quantity: 2
+  - item: {fileID: 11400000, guid: 9c946993f48f7de45a6c2e0ba8039674, type: 2}
+    quantity: 1
+  - item: {fileID: 11400000, guid: 01a41dc1907fbdb4d8845be7d25b0f40, type: 2}
+    quantity: 2
+  healThreshold: 0.5
+  allowThrowInCombat: 1
+  throwMinHpRatio: 0.4
+  lootRange: 1.8
+  pickupChance: 0.4
+  pickupCooldownTurns: 3
+  pickupDetectionRange: 3.5
 --- !u!1 &1490020619
 GameObject:
   m_ObjectHideFlags: 0

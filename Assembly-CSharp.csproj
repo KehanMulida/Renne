@@ -75,9 +75,11 @@
     <Compile Include="Assets\Scripts\Ai\EnemyAIController.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
     <Compile Include="Assets\Scripts\Ai\ObjectiveInteractExecutor.cs" />
+    <Compile Include="Assets\Scripts\UI\LootUIAssets.cs" />
     <Compile Include="Assets\Scripts\Player\Inventory.cs" />
     <Compile Include="Assets\Scripts\Ai\EnemyConfig.cs" />
     <Compile Include="Assets\Scripts\Ai\UseItemExecutor.cs" />
+    <Compile Include="Assets\Scripts\Ai\PickupItemExecutor.cs" />
     <Compile Include="Assets\Scripts\Sound\SoundListener.cs" />
     <Compile Include="Assets\Scripts\Items\WorldItemRegistry.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Demo\Scripts\csEyeController.cs" />
@@ -133,6 +135,7 @@
     <Compile Include="Assets\Scripts\Ai\EnemyStatEffect.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\csFogWar.cs" />
     <Compile Include="Assets\Scripts\units\ZoneManager.cs" />
+    <Compile Include="Assets\Scripts\UI\LootUI.cs" />
     <Compile Include="Assets\Scripts\Ai\MoveToPositionExecutor.cs" />
     <Compile Include="Assets\Scripts\Ai\InvestigationExecutor.cs" />
     <Compile Include="Assets\Scripts\Camera\CameraOcclusionHandler.cs" />

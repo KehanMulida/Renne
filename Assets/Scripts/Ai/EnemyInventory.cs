@@ -36,25 +36,45 @@ public class EnemyInventory : MonoBehaviour
     [Tooltip("HP 低于此值时不投掷，优先自保")]
     [SerializeField] [Range(0f, 1f)] public float throwMinHpRatio = 0.4f;
 
+    [Header("搜刮（玩家）")]
+    [Tooltip("玩家与尸体的最大搜刮距离（世界单位）")]
+    [SerializeField] public float lootRange = 1.8f;
+
+    [Header("拾取行为（AI 非战斗）")]
+    [Tooltip("每次评估时触发拾取的概率（0=禁用）")]
+    [SerializeField] [Range(0f, 1f)] private float pickupChance = 0.4f;
+    [Tooltip("拾取成功后需等待的回合数（防止每回合都拾取）")]
+    [SerializeField] private int pickupCooldownTurns = 3;
+    [Tooltip("检测周围 WorldItem 的世界坐标距离")]
+    [SerializeField] private float pickupDetectionRange = 3.5f;
+
     // ── 事件 ───────────────────────────────────────────────────────
 
-    /// <summary>
-    /// 数值变化事件：EnemyAIController 在 Awake 里订阅，执行器无需持有控制器引用。
-    /// 参数：EnemyStatEffect（包含 statKey 和 value），可携带任意 stat 类型。
-    /// </summary>
     public event System.Action<EnemyStatEffect> OnStatEffectRequested;
 
     // ── 内部 ───────────────────────────────────────────────────────
 
-    private Inventory inventory;
+    private Inventory          inventory;
+    private EnemyAIController  enemyAI;
+    private int                _pickupCooldown;
+
+    /// <summary>敌人已死亡且背包非空时可被搜刮</summary>
+    public bool IsSearchable => enemyAI != null && !enemyAI.IsAlive && inventory.SlotCount > 0;
+
+    /// <summary>供 PickupItemExecutor 检查超界用</summary>
+    public float PickupDetectionRange => pickupDetectionRange;
 
     // ── Unity ──────────────────────────────────────────────────────
 
     private void Awake()
     {
+        enemyAI   = GetComponent<EnemyAIController>();
         inventory = GetComponent<Inventory>();
         if (inventory == null)
             inventory = gameObject.AddComponent<Inventory>();
+
+        // 禁用 Inventory 自带的 debug GUI，避免显示在玩家物品栏旁边
+        inventory.SetDebugEnabled(false);
     }
 
     private void Start()
@@ -95,6 +115,51 @@ public class EnemyInventory : MonoBehaviour
         }
 
         // 投掷不在此处自动触发，由外部事件调用 RequestThrow() 写入标记
+    }
+
+    // ── 非战斗拾取评估：每回合由 EnemyAIController.OnMyTurnStart 单独调用 ─
+
+    /// <summary>
+    /// 评估是否应在本回合拾取附近的 WorldItem，结果写入 Blackboard。
+    /// 与 EvaluateAndWriteBlackboard 分开调用，保证只在非战斗回合执行。
+    /// </summary>
+    public void EvaluatePickup(Dictionary<string, object> bb)
+    {
+        bb.Remove("item_can_pickup");
+        bb.Remove("item_pickup_target");
+
+        if (_pickupCooldown > 0) return;
+        if (pickupChance <= 0f) return;
+        if (UnityEngine.Random.value > pickupChance) return;
+
+        WorldItem target = FindNearbyWorldItem();
+        if (target == null) return;
+
+        bb["item_can_pickup"]    = true;
+        bb["item_pickup_target"] = target;
+    }
+
+    /// <summary>每回合开始时由 EnemyAIController 调用，递减冷却计数</summary>
+    public void TickPickupCooldown()
+    {
+        if (_pickupCooldown > 0) _pickupCooldown--;
+    }
+
+    /// <summary>拾取成功后由 PickupItemExecutor 调用</summary>
+    public void ResetPickupCooldown() => _pickupCooldown = pickupCooldownTurns;
+
+    /// <summary>在 pickupDetectionRange 内随机选取一个可拾取 WorldItem</summary>
+    private WorldItem FindNearbyWorldItem()
+    {
+        var candidates = new System.Collections.Generic.List<WorldItem>();
+        foreach (var w in Object.FindObjectsOfType<WorldItem>())
+        {
+            if (w == null || w.IsPickedUp) continue;
+            if (w.ItemData == null || w.ItemData.Type == ItemType.SceneItem) continue;
+            if (Vector3.Distance(transform.position, w.transform.position) <= pickupDetectionRange)
+                candidates.Add(w);
+        }
+        return candidates.Count == 0 ? null : candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
     /// <summary>
@@ -200,6 +265,14 @@ public class EnemyInventory : MonoBehaviour
 
     /// <summary>仅移除道具（投掷类由 ThrowableProjectile 处理效果）</summary>
     public void ConsumeItem(ItemData item) => inventory.RemoveItem(item, 1);
+
+    // ── 搜刮 API（供 LootUI 调用）────────────────────────────────────────
+
+    /// <summary>将指定物品（全部数量）转移给调用方；返回实际移除数量</summary>
+    public int TakeItem(ItemData item, int qty) => inventory.RemoveItem(item, qty);
+
+    /// <summary>清空背包（全部拿走时调用）</summary>
+    public void TakeAll() => inventory.Clear();
 
     // ── 内部类 ─────────────────────────────────────────────────────
 

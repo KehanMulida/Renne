@@ -396,6 +396,7 @@
 -analyzer:"C:/Program Files/Unity 2022.3.50f1/Editor/Data/Tools/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll"
 -analyzer:"C:/Program Files/Unity 2022.3.50f1/Editor/Data/Tools/Unity.SourceGenerators/Unity.SourceGenerators.dll"
 "Assets/Scripts/AOSFogWar/Editor/editorFogWar.cs"
+"Assets/Scripts/Editor/LootUIAssetsWindow.cs"
 -langversion:9.0
 /deterministic
 /optimize-

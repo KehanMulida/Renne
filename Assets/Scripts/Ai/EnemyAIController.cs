@@ -291,6 +291,21 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             // ── 物品栏决策（如有）──
             enemyInventory?.EvaluateAndWriteBlackboard(blackboard, hpRatio);
 
+            // ── 非战斗拾取评估（冷却 tick + 概率检测）──
+            // 只在非战斗状态（无视野接触）时写入 item_can_pickup
+            bool inCombat = blackboard.TryGetValue("hasVisualContact", out var v) && v is bool b && b;
+            if (!inCombat)
+            {
+                enemyInventory?.TickPickupCooldown();
+                enemyInventory?.EvaluatePickup(blackboard);
+            }
+            else
+            {
+                // 战斗中清除拾取标记，避免残留
+                blackboard.Remove("item_can_pickup");
+                blackboard.Remove("item_pickup_target");
+            }
+
             StartCoroutine(StartTurnDelayed());
         }
     }
@@ -699,6 +714,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable
             ["moveToPosition"]    = new MoveToPositionExecutor(),
             ["useItem"]           = new UseItemExecutor(),
             ["throwItem"]         = new ThrowItemExecutor(),
+            ["pickupItem"]        = new PickupItemExecutor(),
         };
 
         foreach (var executor in executors.Values)

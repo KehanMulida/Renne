@@ -61,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\AOSFogWar\Editor\editorFogWar.cs" />
+    <Compile Include="Assets\Scripts\Editor\LootUIAssetsWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
