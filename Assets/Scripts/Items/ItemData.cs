@@ -174,6 +174,28 @@ public class ExplosiveConfig
     public bool leaveDebris = true;
 }
 
+// ── 乘坐位移配置 ────────────────────────────────────────────────────────────
+
+[System.Serializable]
+public class RideConfig
+{
+    [Header("滑行参数")]
+    [Range(1, 15)] public int   maxSlideCells  = 4;   // 一次最多滑行格数
+    [Range(0, 3)]  public int   apCostToBoard  = 0;   // 上车消耗 AP
+    [Range(0, 3)]  public int   apCostPerCell  = 1;   // 每格消耗 AP
+    [Range(1f, 20f)] public float slideSpeed   = 6f;  // 动画速度（格/秒）
+    public bool allowDiagonal = false;                 // 允许斜向滑行（8方向）
+    [Range(0, 5)] public int slideNoiseLevel = 2;      // 滑行产生的噪音等级
+
+    [Header("骑手偏移（相对于载具中心）")]
+    public Vector3 riderOffset = new Vector3(0f, 0.2f, 0f);
+
+    [Header("动画 Trigger（留空跳过）")]
+    public string boardAnimTrigger    = "";
+    public string slideAnimTrigger    = "";
+    public string dismountAnimTrigger = "";
+}
+
 // ── ItemData（统一物品基类）─────────────────────────────────────────────────
 
 /// <summary>
@@ -291,6 +313,9 @@ public class ItemData : ScriptableObject
     [ConditionalHide("_isSceneItem")]                    public bool             isExplosive     = false;
     [ConditionalHide("_isSceneItem", "isExplosive")]     public ExplosiveConfig  explosiveConfig = new ExplosiveConfig();
 
+    [ConditionalHide("_isSceneItem")]                    public bool       isRideable  = false;
+    [ConditionalHide("_isSceneItem", "isRideable")]      public RideConfig rideConfig  = new RideConfig();
+
     [ConditionalHide("_isSceneItem")] public RuntimeAnimatorController animatorController;
     [ConditionalHide("_isSceneItem")] public GameObject stateChangeVFXPrefab;
 
@@ -306,7 +331,7 @@ public class ItemData : ScriptableObject
     // SceneItem convenience properties
     public bool HasAnyInteraction => interactableBy != SceneInteractableBy.None
                                       && (isToggleable || isMovable || isToppleable
-                                          || isDestroyable || isContainer || isExplosive);
+                                          || isDestroyable || isContainer || isExplosive || isRideable);
     public bool PlayerCanInteract => HasAnyInteraction && interactableBy != SceneInteractableBy.EnemyOnly;
     public bool EnemyCanInteract  => HasAnyInteraction && interactableBy != SceneInteractableBy.PlayerOnly;
 
@@ -318,6 +343,7 @@ public class ItemData : ScriptableObject
     public DestroyConfig   DestroyCfg   => isDestroyable ? destroyConfig   : null;
     public ContainerConfig ContainerCfg => isContainer   ? containerConfig : null;
     public ExplosiveConfig ExplosiveCfg => isExplosive   ? explosiveConfig : null;
+    public RideConfig      RideCfg      => isRideable    ? rideConfig      : null;
 
     // ── 武器方法 ──────────────────────────────────────────────────────────
 
@@ -368,19 +394,20 @@ public class ItemData : ScriptableObject
                 break;
 
             case ItemType.SceneItem:
-                info += $"\n网格: {gridWidth}×{gridDepth}";
+                info += $"\n网格: {gridWidth}x{gridDepth}";
                 if (blocksMovement) info += " ■移动";
                 if (blocksVision)   info += " ■视线";
                 if (blocksBullets)  info += " ■子弹";
                 if (blocksSound)    info += " ■声音";
                 if (isToggleable)  info += $"\n[开关] AP={toggleConfig.apCostToToggle}";
-                if (isLockable)    info += $"  🔒";
+                if (isLockable)    info += isToggleable ? " [上锁]" : "\n[上锁]";
                 if (isMovable)     info += $"\n[推动] AP×{pushConfig.apCostPerPush}";
                 if (isToppleable)  info += $"\n[推倒] AP={toppleConfig.apCostToTopple}";
                 if (providesCover) info += $"\n[掩体] 等级{coverConfig.coverLevel}";
                 if (isDestroyable) info += $"\n[耐久] HP={destroyConfig.maxHp}";
                 if (isContainer)   info += $"\n[容器] {containerConfig.fixedLootIds.Length} 件";
                 if (isExplosive)   info += $"\n[爆炸] 伤害={explosiveConfig.explosionDamage}";
+                if (isRideable)    info += $"\n[乘坐] 花费{UseCost}AP 最多{rideConfig.maxSlideCells}格";
                 break;
         }
 

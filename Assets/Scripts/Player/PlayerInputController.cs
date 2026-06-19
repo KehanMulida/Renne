@@ -61,6 +61,8 @@ public class PlayerInputController : MonoBehaviour
     private Inventory playerInventory;
     private EquipmentManager equipmentManager;
     private LootUI lootUI;
+    private SceneItemInstance  _mountedVehicle;
+    private List<Vector2Int>   _ridePreviewCells;
 
     // ============ 初始化 ============
 
@@ -143,6 +145,13 @@ public class PlayerInputController : MonoBehaviour
             equipmentManager.UpdateAiming(isMeleeMode);
 
         HandleHotbarInput();
+
+        // 乘坐载具：优先处理（覆盖所有其他输入）
+        if (_mountedVehicle != null)
+        {
+            HandleRideInput();
+            return;
+        }
 
         // QTE 反应窗口：敌人攻击前的躲避时机
         // 玩家可以移动（右键）或交互（R键）来闪避
@@ -404,7 +413,15 @@ public class PlayerInputController : MonoBehaviour
 
         bool success = closestSceneItem.TryInteract(playerUnit.gameObject);
         if (success)
+        {
             Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互成功");
+            // 上车成功 → 进入乘坐输入模式，隐藏普通移动范围
+            if (closestSceneItem.IsOccupied && closestSceneItem.IsRideable)
+            {
+                _mountedVehicle       = closestSceneItem;
+                currentMovementRange  = null;
+            }
+        }
         else
             Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互失败（可能是 AP 不足或被锁住）");
     }
@@ -426,6 +443,100 @@ public class PlayerInputController : MonoBehaviour
             }
         }
         return best;
+    }
+
+    // ============ 乘坐输入 ============
+
+    private void HandleRideInput()
+    {
+        // 动画结束或载具异常 → 自动清除
+        if (_mountedVehicle == null || !_mountedVehicle.IsOccupied)
+        {
+            _mountedVehicle    = null;
+            _ridePreviewCells  = null;
+            return;
+        }
+
+        // 动画进行中：清除预览，等待
+        if (_mountedVehicle.IsAnimating)
+        {
+            _ridePreviewCells = null;
+            return;
+        }
+
+        // ESC / R：下车
+        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(interactKey))
+        {
+            _mountedVehicle.CancelRide();
+            _mountedVehicle   = null;
+            _ridePreviewCells = null;
+            return;
+        }
+
+        // 每帧根据鼠标位置更新预览
+        Vector2Int dir = ComputeRideDirection();
+        bool canAfford = turnBasedUnit.HasEnoughMovementPoints(_mountedVehicle.Data.UseCost);
+
+        if (dir != Vector2Int.zero && canAfford)
+            _ridePreviewCells = _mountedVehicle.ComputeSlidePreview(
+                dir, _mountedVehicle.Data.rideConfig.maxSlideCells);
+        else
+            _ridePreviewCells = null;
+
+        // 右键确认发射（AP 不足时不允许发射）
+        if (Input.GetMouseButtonDown(1) && dir != Vector2Int.zero)
+        {
+            if (!canAfford)
+            {
+                Debug.Log("[Input] AP 不足，无法乘坐发射");
+                return;
+            }
+            _ridePreviewCells = null;
+            _mountedVehicle.LaunchRide(dir);
+            // 保留 _mountedVehicle 直到 IsOccupied 变 false（动画结束自动下车）
+        }
+    }
+
+    /// <summary>
+    /// 鼠标射线打到地面后，计算鼠标格子相对载具锚点的方向（4 或 8 向）
+    /// </summary>
+    private Vector2Int ComputeRideDirection()
+    {
+        if (_mountedVehicle == null || GridManager.Instance == null) return Vector2Int.zero;
+
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, groundLayer);
+        if (hits.Length == 0) return Vector2Int.zero;
+
+        float targetY = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloorWorldY(playerUnit.CurrentFloor) : 0f;
+
+        RaycastHit best = hits[0];
+        float minDiff = float.MaxValue;
+        foreach (var h in hits)
+        {
+            float d = Mathf.Abs(h.point.y - targetY);
+            if (d < minDiff) { minDiff = d; best = h; }
+        }
+
+        Vector2Int mouseCell = GridManager.Instance.WorldToGrid(best.point);
+        Vector2Int cartCell  = _mountedVehicle.AnchorCell;
+        Vector2Int delta     = mouseCell - cartCell;
+        if (delta == Vector2Int.zero) return Vector2Int.zero;
+
+        bool allowDiag = _mountedVehicle.Data.rideConfig.allowDiagonal;
+        if (!allowDiag)
+        {
+            return Mathf.Abs(delta.x) >= Mathf.Abs(delta.y)
+                ? new Vector2Int(delta.x > 0 ? 1 : -1, 0)
+                : new Vector2Int(0, delta.y > 0 ? 1 : -1);
+        }
+        else
+        {
+            return new Vector2Int(
+                delta.x == 0 ? 0 : (delta.x > 0 ? 1 : -1),
+                delta.y == 0 ? 0 : (delta.y > 0 ? 1 : -1));
+        }
     }
 
     private void CheckNearbyItems()
@@ -724,6 +835,27 @@ public class PlayerInputController : MonoBehaviour
 
         int playerFloor = playerUnit.CurrentFloor;
 
+        // 乘坐位移预览（绿色，与移动范围同风格；乘坐期间隐藏普通移动范围）
+        if (_mountedVehicle != null)
+        {
+            if (_ridePreviewCells != null && _ridePreviewCells.Count > 0)
+            {
+                float cs = GridManager.Instance.CellSize;
+                for (int i = 0; i < _ridePreviewCells.Count; i++)
+                {
+                    Vector3 worldPos = FloorManager.Instance != null
+                        ? FloorManager.Instance.GridToWorld(_ridePreviewCells[i], playerFloor)
+                        : GridManager.Instance.GridToWorld(_ridePreviewCells[i]);
+                    // 最后一格略深，其余与移动范围一致
+                    Gizmos.color = (i == _ridePreviewCells.Count - 1)
+                        ? new Color(0, 1, 0, 0.55f)
+                        : new Color(0, 1, 0, 0.25f);
+                    Gizmos.DrawCube(worldPos + Vector3.up * 0.01f, Vector3.one * cs * 0.9f);
+                }
+            }
+        }
+        else
+        {
         // 移动范围（绿色）
         if (currentMovementRange != null && !isMeleeMode)
         {
@@ -737,6 +869,7 @@ public class PlayerInputController : MonoBehaviour
                     Vector3.one * GridManager.Instance.CellSize * 0.9f);
             }
         }
+        } // end else (not riding)
 
         // 近战范围（红色）
         if (isMeleeMode)
@@ -777,6 +910,41 @@ public class PlayerInputController : MonoBehaviour
 
     void OnGUI()
     {
+        // 乘坐提示（覆盖正常 HUD）
+        if (_mountedVehicle != null)
+        {
+            // ── 最后一格上方显示"N格"文字 ────────────────────────────────
+            if (_ridePreviewCells != null && _ridePreviewCells.Count > 0
+                && GridManager.Instance != null && mainCamera != null)
+            {
+                var lastCell  = _ridePreviewCells[_ridePreviewCells.Count - 1];
+                Vector3 wpos  = GridManager.Instance.GridToWorld(lastCell);
+                Vector3 spos  = mainCamera.WorldToScreenPoint(wpos);
+                if (spos.z > 0)
+                {
+                    float sx = spos.x, sy = Screen.height - spos.y - 24f;
+                    var numStyle = new GUIStyle(GUI.skin.label)
+                    {
+                        fontSize  = 13, fontStyle = FontStyle.Bold,
+                        alignment = TextAnchor.MiddleCenter,
+                    };
+                    numStyle.normal.textColor = Color.green;
+                    GUI.Label(new Rect(sx - 22, sy, 44, 20),
+                              $"{_ridePreviewCells.Count}格", numStyle);
+                }
+            }
+
+            // ── HUD 提示条 ───────────────────────────────────────────────
+            string rideMsg = _mountedVehicle.IsAnimating
+                ? $"[ {_mountedVehicle.name} ] 滑行中..."
+                : $"[ {_mountedVehicle.name} ] 右键选方向发射  |  {interactKey}/ESC 下车";
+
+            var rideStyle = new GUIStyle(GUI.skin.box) { fontSize = 13, alignment = TextAnchor.MiddleCenter };
+            rideStyle.normal.textColor = new Color(1f, 0.9f, 0.3f);
+            GUI.Box(new Rect(Screen.width / 2 - 210, Screen.height - 50, 420, 30), rideMsg, rideStyle);
+            return;
+        }
+
         if (!isInputEnabled) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box)

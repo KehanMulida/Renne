@@ -27,9 +27,13 @@ public class SceneItemInstance : MonoBehaviour
     private bool _isDestroyed   = false; // 已被破坏
     private bool _isToppled     = false; // 已被推倒（一次性）
     private bool _hasBeenLooted = false; // 容器已开启
-    private bool _isAnimating   = false; // 推动/推倒动画进行中（屏蔽新交互）
+    private bool       _isAnimating   = false; // 推动/推倒动画进行中（屏蔽新交互）
+    private bool       _isOccupied   = false;  // 有骑手正在乘坐
+    private GameObject _currentRider = null;
 
     public bool IsAnimating => _isAnimating;
+    public bool IsOccupied  => _isOccupied;
+    public bool IsRideable  => data != null && data.isRideable && !_isDestroyed;
 
     // ── 网格追踪 ─────────────────────────────────────────────────────
 
@@ -305,7 +309,7 @@ public class SceneItemInstance : MonoBehaviour
 
     // ── 行动路由（两阶段：先确认类型+AP，再执行）──────────────────────
 
-    private enum InteractionKind { None, Unlock, Toggle, Push, Topple, Explosive, Container }
+    private enum InteractionKind { None, Unlock, Toggle, Push, Topple, Explosive, Container, Ride }
     private InteractionKind _resolvedKind = InteractionKind.None;
 
     /// <summary>确定本次 TryInteract 执行哪种行动和消耗多少 AP</summary>
@@ -323,6 +327,13 @@ public class SceneItemInstance : MonoBehaviour
             }
             _resolvedKind = InteractionKind.Unlock;
             apCost = data.lockConfig.canPickLock ? data.lockConfig.pickLockApCost : 1;
+            return true;
+        }
+
+        if (data.isRideable && !_isOccupied)
+        {
+            _resolvedKind = InteractionKind.Ride;
+            apCost = data.rideConfig.apCostToBoard;
             return true;
         }
 
@@ -374,6 +385,7 @@ public class SceneItemInstance : MonoBehaviour
             case InteractionKind.Topple:    return ExecuteTopple(interactor);
             case InteractionKind.Explosive: return TriggerExplosion(interactor);
             case InteractionKind.Container: return ExecuteOpenContainer();
+            case InteractionKind.Ride:      return ExecuteStartRide(interactor);
             default:                        return false;
         }
     }
@@ -807,6 +819,191 @@ public class SceneItemInstance : MonoBehaviour
         return true;
     }
 
+    // ── 乘坐位移 ─────────────────────────────────────────────────────
+
+    /// <summary>上车：将骑手定位到载具上，进入等待方向输入的状态</summary>
+    private bool ExecuteStartRide(GameObject rider)
+    {
+        if (_isOccupied || rider == null) return false;
+
+        _isOccupied   = true;
+        _currentRider = rider;
+
+        // 关键：把骑手的格子占据从原格移到载具格，防止原格阻断滑行方向检测
+        var riderMovement = rider.GetComponent<UnitMovement>();
+        if (riderMovement != null)
+            riderMovement.SetGridPosition(_anchorCell);
+
+        // 视觉定位到载具上（覆盖 SetGridPosition 设置的 transform.position）
+        rider.transform.position = transform.position + data.rideConfig.riderOffset;
+
+        TriggerAnimator(data.rideConfig.boardAnimTrigger);
+        Debug.Log($"[SceneItem:{name}] {rider.name} 上车，按右键选方向");
+        return true;
+    }
+
+    /// <summary>由 PlayerInputController 在骑手选好方向后调用，启动滑行协程</summary>
+    public void LaunchRide(Vector2Int dir)
+    {
+        if (!_isOccupied || _currentRider == null || _isAnimating) return;
+        StartCoroutine(AnimateRideSlide(_currentRider, dir));
+    }
+
+    /// <summary>
+    /// 预计算沿 dir 方向能走的格子列表（不执行，仅供 UI 预览）。
+    /// maxCells 由调用方根据 AP 上限传入。
+    /// 遇到不可走格或敌人占据格时停止。
+    /// </summary>
+    public List<Vector2Int> ComputeSlidePreview(Vector2Int dir, int maxCells)
+    {
+        var result = new List<Vector2Int>();
+        if (GridManager.Instance == null || maxCells <= 0) return result;
+
+        Vector2Int cur = _anchorCell;
+        for (int i = 0; i < maxCells; i++)
+        {
+            Vector2Int next = cur + dir;
+            if (!GridManager.Instance.IsWalkable(next, _floor, ignoreOccupied: false))
+                break;
+            result.Add(next);
+            cur = next;
+        }
+        return result;
+    }
+
+    /// <summary>骑手主动下车（ESC / 死亡等意外情况），移到载具旁边最近的可走格</summary>
+    public void CancelRide()
+    {
+        if (!_isOccupied || _currentRider == null) return;
+
+        DismountRider(_currentRider);
+        _isOccupied   = false;
+        _currentRider = null;
+    }
+
+    /// <summary>将骑手移到载具旁边第一个可走格（四方向扫描）</summary>
+    private void DismountRider(GameObject rider)
+    {
+        var riderMovement = rider.GetComponent<UnitMovement>();
+        if (riderMovement == null || GridManager.Instance == null) return;
+
+        Vector2Int dismountCell = FindDismountCell();
+        riderMovement.SetGridPosition(dismountCell);
+        Debug.Log($"[SceneItem:{name}] {rider.name} 下车到格子 {dismountCell}");
+    }
+
+    /// <summary>在载具四周找第一个可走（且未被占据）的格子；找不到时返回当前锚点（兜底）</summary>
+    private Vector2Int FindDismountCell()
+    {
+        if (GridManager.Instance == null) return _anchorCell;
+
+        Vector2Int[] dirs = {
+            new Vector2Int( 1,  0),
+            new Vector2Int(-1,  0),
+            new Vector2Int( 0,  1),
+            new Vector2Int( 0, -1),
+        };
+
+        foreach (var dir in dirs)
+        {
+            Vector2Int candidate = _anchorCell + dir;
+            if (GridManager.Instance.IsWalkable(candidate, _floor, ignoreOccupied: false))
+                return candidate;
+        }
+
+        return _anchorCell; // 极端情况四面都堵死，原地下车
+    }
+
+    /// <summary>沿 dir 方向逐格滑行，每格检查是否可走 + AP 是否充足</summary>
+    private System.Collections.IEnumerator AnimateRideSlide(GameObject rider, Vector2Int dir)
+    {
+        _isAnimating = true;
+
+        var cfg           = data.rideConfig;
+        var riderMovement = rider.GetComponent<UnitMovement>();
+        var riderUnit     = rider.GetComponent<TurnBasedUnit>();
+        float cellDur     = cfg.slideSpeed > 0f ? 1f / cfg.slideSpeed : 0.18f;
+
+        // 一次性扣除 AP（滑行本身不再逐格计费）
+        riderUnit?.ConsumeAP(data.UseCost);
+
+        // 广播噪音（购物车推出去会有声响）
+        BroadcastNoise(cfg.slideNoiseLevel);
+
+        TriggerAnimator(cfg.slideAnimTrigger);
+
+        int moved = 0;
+        while (moved < cfg.maxSlideCells)
+        {
+            Vector2Int nextAnchor = _anchorCell + dir;
+
+            // 释放当前格，为碰撞检测让路
+            SetCellsWalkable(true);
+            var newCells = ComputeCellsForAnchor(nextAnchor);
+
+            // 检查目标格是否可走（障碍物 / 地图边界 / 其他单位）
+            bool blocked = false;
+            foreach (var c in newCells)
+            {
+                if (!GridManager.Instance.IsWalkable(c, _floor, ignoreOccupied: false))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+
+            if (blocked)
+            {
+                RefreshGridBlocking(); // 恢复当前格阻挡
+                break;
+            }
+
+            // ── 动画：平滑滑动一格 ──────────────────────────────────────
+            Vector3 cartStart  = transform.position;
+            Vector3 cartEnd    = GridManager.Instance.GridToWorld(nextAnchor);
+            cartEnd.y          = cartStart.y; // 保持高度
+
+            Vector3 riderStart = rider.transform.position;
+            Vector3 riderEnd   = cartEnd + cfg.riderOffset;
+
+            float elapsed = 0f;
+            while (elapsed < cellDur)
+            {
+                elapsed += Time.deltaTime;
+                float t     = Mathf.Clamp01(elapsed / cellDur);
+                float eased = 1f - (1f - t) * (1f - t); // ease-out
+                transform.position     = Vector3.Lerp(cartStart, cartEnd, eased);
+                rider.transform.position = Vector3.Lerp(riderStart, riderEnd, eased);
+                yield return null;
+            }
+
+            transform.position = cartEnd;
+
+            // ── 更新格子数据 ────────────────────────────────────────────
+            _anchorCell    = nextAnchor;
+            _occupiedCells = newCells;
+            RefreshGridBlocking();
+
+            // 更新骑手格子位置（处理占据标记），再覆盖 transform 到载具上
+            if (riderMovement != null)
+            {
+                riderMovement.SetGridPosition(nextAnchor);
+                rider.transform.position = cartEnd + cfg.riderOffset;
+            }
+
+            moved++;
+        }
+
+        // ── 自动下车：移到载具旁边格子 ─────────────────────────────────
+        TriggerAnimator(cfg.dismountAnimTrigger);
+        DismountRider(rider);
+        _isOccupied   = false;
+        _currentRider = null;
+        _isAnimating  = false;
+
+        Debug.Log($"[SceneItem:{name}] 滑行结束，共 {moved} 格");
+    }
+
     // ══════════════════════════════════════════════════════════════════
     // 受伤 / 破坏 / 爆炸（由武器/爆炸溅射调用）
     // ══════════════════════════════════════════════════════════════════
@@ -932,8 +1129,17 @@ public class SceneItemInstance : MonoBehaviour
     private void BroadcastNoise(int level)
     {
         if (level <= 0) return;
-        // TODO: 接入 EnemyPerception 噪音系统
-        Debug.Log($"[SceneItem:{name}] 噪音等级 {level}");
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.BroadcastSound(new SoundEvent(
+                transform.position,
+                level * 2f,       // 半径：与 DrillOperator 保持一致
+                gameObject,
+                SoundType.Environmental,
+                level / 5f        // 强度：0~1
+            ));
+        }
+        Debug.Log($"[SceneItem:{name}] 噪音等级 {level}，半径 {level * 2f}m");
     }
 
     // ── 击退辅助 ─────────────────────────────────────────────────────
