@@ -309,8 +309,15 @@ public class SceneItemInstance : MonoBehaviour
 
     // ── 行动路由（两阶段：先确认类型+AP，再执行）──────────────────────
 
-    private enum InteractionKind { None, Unlock, Toggle, Push, Topple, Explosive, Container, Ride }
+    public enum InteractionKind { None, Unlock, Toggle, Push, Topple, Explosive, Container, Ride }
     private InteractionKind _resolvedKind = InteractionKind.None;
+
+    public struct SceneInteractionOption
+    {
+        public InteractionKind kind;
+        public string          label;
+        public int             apCost;
+    }
 
     /// <summary>确定本次 TryInteract 执行哪种行动和消耗多少 AP</summary>
     private bool ResolveInteraction(GameObject interactor, out int apCost)
@@ -388,6 +395,73 @@ public class SceneItemInstance : MonoBehaviour
             case InteractionKind.Ride:      return ExecuteStartRide(interactor);
             default:                        return false;
         }
+    }
+
+    // ── 多行动枚举 + 按指定类型执行 ───────────────────────────────────
+
+    /// <summary>返回当前状态下所有可用的交互选项（用于选择菜单）</summary>
+    public List<SceneInteractionOption> GetAvailableInteractions()
+    {
+        var list = new List<SceneInteractionOption>();
+        if (data == null || _isDestroyed || _isAnimating) return list;
+
+        if (data.isLockable && _isLocked)
+        {
+            if (data.lockConfig.canPickLock || data.lockConfig.requiredKeyItemId > 0)
+                list.Add(new SceneInteractionOption { kind = InteractionKind.Unlock, label = "解锁",
+                    apCost = data.lockConfig.canPickLock ? data.lockConfig.pickLockApCost : 1 });
+            return list;
+        }
+        if (data.isRideable && !_isOccupied)
+            list.Add(new SceneInteractionOption { kind = InteractionKind.Ride,      label = "乘坐", apCost = data.rideConfig.apCostToBoard });
+        if (data.isToggleable)
+            list.Add(new SceneInteractionOption { kind = InteractionKind.Toggle,    label = _isOpen ? "关闭" : "开启", apCost = data.toggleConfig.apCostToToggle });
+        if (data.isMovable)
+            list.Add(new SceneInteractionOption { kind = InteractionKind.Push,      label = "推动", apCost = data.pushConfig.apCostPerPush });
+        if (data.isToppleable && !_isToppled)
+            list.Add(new SceneInteractionOption { kind = InteractionKind.Topple,    label = "推倒", apCost = data.toppleConfig.apCostToTopple });
+        if (data.isExplosive && data.explosiveConfig.canManuallyTrigger)
+            list.Add(new SceneInteractionOption { kind = InteractionKind.Explosive, label = "引爆", apCost = 1 });
+        if (data.isContainer && !_hasBeenLooted)
+            list.Add(new SceneInteractionOption { kind = InteractionKind.Container, label = "搜刮", apCost = 1 });
+        return list;
+    }
+
+    private int GetApCostForKind(InteractionKind kind)
+    {
+        switch (kind)
+        {
+            case InteractionKind.Unlock:    return data.isLockable && data.lockConfig.canPickLock ? data.lockConfig.pickLockApCost : 1;
+            case InteractionKind.Toggle:    return data.toggleConfig.apCostToToggle;
+            case InteractionKind.Push:      return data.pushConfig.apCostPerPush;
+            case InteractionKind.Topple:    return data.toppleConfig.apCostToTopple;
+            case InteractionKind.Explosive: return 1;
+            case InteractionKind.Container: return 1;
+            case InteractionKind.Ride:      return data.isRideable ? data.rideConfig.apCostToBoard : 0;
+            default: return 0;
+        }
+    }
+
+    /// <summary>跳过 ResolveInteraction，直接按指定 kind 执行（供选择菜单调用）</summary>
+    public bool TryInteractAs(InteractionKind kind, GameObject interactor)
+    {
+        if (data == null || _isDestroyed || _isAnimating) return false;
+        _resolvedKind = kind;
+        int apCost = GetApCostForKind(kind);
+        var turnUnit = interactor.GetComponent<TurnBasedUnit>();
+        if (turnUnit != null && apCost > 0 && !turnUnit.HasEnoughMovementPoints(apCost))
+        {
+            Debug.Log($"[SceneItem:{name}] AP 不足（需要 {apCost}）");
+            return false;
+        }
+        bool success = ExecuteResolvedInteraction(interactor);
+        if (!success) return false;
+        if (turnUnit != null && apCost > 0) turnUnit.ConsumeAP(apCost);
+        OnInteracted?.Invoke(this);
+        if (!string.IsNullOrEmpty(data.sceneObjectId)) SyncMissionRegistry(interactor);
+        if (data.writesStoryFlag && !string.IsNullOrEmpty(data.storyFlagKey))
+            StoryManager.Instance?.SetFlag(data.storyFlagKey);
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════════

@@ -23,6 +23,14 @@ public enum FlightMode
     Straight,
 }
 
+/// <summary>物品可注册的主动使用功能（用于径向菜单条目生成）</summary>
+public enum ItemFunction
+{
+    Melee,   // 近战：以物品为武器攻击相邻格
+    Throw,   // 投掷：弧线/直线抛出
+    Consume, // 使用/食用：即时消耗触发效果
+}
+
 // ── 投掷配置 ────────────────────────────────────────────────────────────────
 
 [System.Serializable]
@@ -253,6 +261,8 @@ public class ItemData : ScriptableObject
     [ConditionalHide("_isConsumable")] public int       healAmount    = 0;
     [ConditionalHide("_isConsumable")] public int       staminaAmount = 0;
     [ConditionalHide("_isConsumable")] public int       sanityAmount  = 0;
+    [ConditionalHide("_isConsumable")] public int       damageAmount  = 0; // 使用后扣除 HP
+    [ConditionalHide("_isConsumable")] public int       sanityDrain   = 0; // 使用后扣除精神值
     [ConditionalHide("_isConsumable")] public int       meleeDamage   = 0;
     [ConditionalHide("_isConsumable")] public int       meleeRange    = 0;
     [ConditionalHide("_isConsumable")] public LayerMask meleeLayer;
@@ -322,6 +332,23 @@ public class ItemData : ScriptableObject
     [ConditionalHide("_isSceneItem")] public string sceneObjectId   = "";
     [ConditionalHide("_isSceneItem")] public bool   writesStoryFlag = false;
     [ConditionalHide("_isSceneItem")] public string storyFlagKey    = "";
+
+    // ── 物品功能枚举与注册 ────────────────────────────────────────────────
+
+    /// <summary>
+    /// 返回此物品当前支持的所有主动功能（用于 R 键径向菜单）。
+    /// 顺序即菜单排列顺序。
+    /// </summary>
+    public System.Collections.Generic.List<ItemFunction> GetAvailableFunctions()
+    {
+        var list = new System.Collections.Generic.List<ItemFunction>();
+        if (Type != ItemType.Consumable) return list;
+        if (meleeDamage > 0) list.Add(ItemFunction.Melee);
+        if (isThrowable)     list.Add(ItemFunction.Throw);
+        // 消耗品始终可以直接使用（即使无数值效果）
+        list.Add(ItemFunction.Consume);
+        return list;
+    }
 
     // ── 便捷查询 ──────────────────────────────────────────────────────────
 

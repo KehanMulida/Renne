@@ -32,13 +32,15 @@ public class PlayerInputController : MonoBehaviour
     [SerializeField] private float pickupDetectionRange = 2f;
 
     [Header("场景物品交互输入")]
-    [SerializeField] private KeyCode interactKey = KeyCode.R;
+    [SerializeField] private KeyCode interactKey   = KeyCode.E;
+
+    [Header("径向功能菜单")]
+    [SerializeField] private KeyCode radialMenuKey = KeyCode.R;
 
     [Header("快捷栏输入")]
-    [Tooltip("切换近战模式（持有有近战伤害的消耗品时生效）")]
-    [SerializeField] private KeyCode meleeModeKey = KeyCode.F;
     [Tooltip("投掷 / 近战攻击（左键）")]
     [SerializeField] private KeyCode throwKey = KeyCode.Mouse0;
+    // F 键近战切换已由 R 键径向菜单替代，不再使用
 
     // 近战模式状态
     private bool isMeleeMode = false;
@@ -64,12 +66,39 @@ public class PlayerInputController : MonoBehaviour
     private SceneItemInstance  _mountedVehicle;
     private List<Vector2Int>   _ridePreviewCells;
 
+    // ── R 键功能选择菜单 ──────────────────────────────────────────────
+    private struct HoldMenuEntry
+    {
+        public string        label;
+        public int           apCost;
+        public System.Action onConfirm;
+    }
+
+    // ── 径向功能选择菜单（按住 R 拖动方向） ──────────────────────────
+    private bool               _radialActive     = false;
+    private float              _radialTimer      = 0f;
+    private const float        RadialThreshold   = 0.12f; // 按住超过此时间弹菜单
+    private List<HoldMenuEntry> _radialEntries;
+    private int                _radialSelected   = -1;    // -1 = 死区/未选中
+
+    // 当前选中的物品使用模式（由 R 键径向菜单设置，LMB 执行）
+    private enum ItemMode { None, Melee, Throw, Consume }
+    private ItemMode           _currentItemMode  = ItemMode.None;
+    private ItemData           _modeLockedItem   = null;
+
+    // GUI 纹理缓存
+    private Texture2D _btnDarkTex;
+    private Texture2D _btnGoldTex;
+
     // ============ 初始化 ============
 
     void Start()
     {
         if (mainCamera == null)
             mainCamera = Camera.main;
+
+        _btnDarkTex = MakeTex(1, 1, new Color(0.12f, 0.12f, 0.12f, 0.9f));
+        _btnGoldTex = MakeTex(1, 1, new Color(0.95f, 0.80f, 0.10f, 0.95f));
 
         if (playerUnit == null)
         {
@@ -136,42 +165,40 @@ public class PlayerInputController : MonoBehaviour
 
     void Update()
     {
-        // 无论是否轮到玩家，都持续检测附近物品（用于高亮显示）
         CheckNearbyItems();
         HandlePickupInput();
         CheckNearbySceneItems();
 
+        // 滚轮切换快捷栏（始终可用）
+        HandleHotbarScroll();
+
+        // 只有在投掷模式下才渲染抛物线瞄准；其他模式（包括近战/使用/None）均禁用
         if (equipmentManager != null)
-            equipmentManager.UpdateAiming(isMeleeMode);
+            equipmentManager.UpdateAiming(_currentItemMode != ItemMode.Throw);
 
-        HandleHotbarInput();
+        // 优先级 1：乘坐载具
+        if (_mountedVehicle != null) { HandleRideInput(); return; }
 
-        // 乘坐载具：优先处理（覆盖所有其他输入）
-        if (_mountedVehicle != null)
-        {
-            HandleRideInput();
-            return;
-        }
+        // 优先级 2：径向菜单激活中 → 只处理菜单输入（始终可用，不受回合限制）
+        if (_radialActive) { HandleRadialMenuInput(); return; }
 
-        // QTE 反应窗口：敌人攻击前的躲避时机
-        // 玩家可以移动（右键）或交互（R键）来闪避
+        // 优先级 3：R 键检测（始终可用，与滚轮同级）
+        HandleRadialMenuDetect();
+
+        // 优先级 4：QTE 反应窗口
         if (isReactionWindowOpen && !playerUnit.IsMoving)
         {
-            HandleMouseInput();    // 右键移动躲避
-            HandleInteractInput(); // R键与场景物品交互（推箱子遮挡、开门等）
+            HandleMouseInput();
             return;
         }
 
-        // 正常回合输入（需要轮到玩家）
-        if (!isInputEnabled || playerUnit.IsMoving)
-            return;
+        // 优先级 5：正常回合输入
+        if (!isInputEnabled || playerUnit.IsMoving) return;
 
         CheckFloorConnection();
         HandleMouseInput();
         HandleTurnInput();
-
-        // 场景物品交互（F 键，消耗 AP，仅在玩家回合）
-        HandleInteractInput();
+        HandleHotbarActions();   // LMB 执行当前模式动作
     }
 
     private void OnReactionWindowOpened()
@@ -186,83 +213,63 @@ public class PlayerInputController : MonoBehaviour
         Debug.Log("[Input] Reaction window closed");
     }
 
-    // ============ 快捷栏输入 ============
+    // ============ 快捷栏输入（分两段，滚轮始终可用） ============
 
-    private void HandleHotbarInput()
+    /// <summary>只处理滚轮切换，始终调用（包括菜单激活期间）</summary>
+    private void HandleHotbarScroll()
     {
         if (equipmentManager == null) return;
-
-        // 滚轮切换槽位（切换时退出近战模式）
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
             equipmentManager.ScrollSlot(scroll);
-            isMeleeMode = false;
+            isMeleeMode      = false;
+            _currentItemMode = ItemMode.None;
+            _modeLockedItem  = null;
+            CancelRadialMenu();
         }
+    }
 
+    /// <summary>LMB 执行当前由 R 键径向菜单选定的物品功能</summary>
+    private void HandleHotbarActions()
+    {
+        if (equipmentManager == null) return;
         bool canAct = turnBasedUnit == null || (turnBasedUnit.IsMyTurn && turnBasedUnit.CanAct);
-        HotbarSlot slot = equipmentManager.CurrentSlot;
-        bool hasItem = slot != null && !slot.IsEmpty;
 
-        // W 键：直接使用当前消耗品（回血、恢复体力等即时效果）
-        // W 键：使用道具
-        // QTE 窗口期间也允许使用（敌人行动中，玩家可以喝药/使用补给），使用后关闭 QTE
-        if (Input.GetKeyDown(KeyCode.W))
+        // ── W 键即时使用已注释：改由 R 键菜单选择后 LMB 执行 ──────────
+        // if (Input.GetKeyDown(KeyCode.W)) { ... }
+
+        if (!Input.GetKeyDown(throwKey)) return;
+        if (!canAct) return;
+
+        RefreshItemMode(); // 若切换了物品则清除模式
+
+        switch (_currentItemMode)
         {
-            // QTE 期间绕过 canAct（IsMyTurn=false），使用后关闭反应窗口
-            bool isQteUse = isReactionWindowOpen;
-            if (!canAct && !isQteUse) return;
-
-            if (hasItem && slot.itemData.Type == ItemType.Consumable)
-            {
-                isMeleeMode = false;
-                bool used = equipmentManager.UseItem();
-                if (used)
-                {
-                    Debug.Log($"[Input] Used item: {slot.itemData.Name}" +
-                              (isQteUse ? " (QTE)" : ""));
-                    // QTE 期间使用道具后关闭反应窗口（道具 or 移动 二选一）
-                    if (isQteUse)
-                        turnBasedUnit.CloseReactionWindow();
-                }
-            }
-        }
-
-        // F 键：切换近战模式（仅对有近战伤害的消耗品生效）
-        if (Input.GetKeyDown(meleeModeKey))
-        {
-            bool canMelee = hasItem && slot.itemData.Type == ItemType.Consumable && slot.itemData.meleeDamage > 0;
-            if (canMelee)
-            {
-                isMeleeMode = !isMeleeMode;
-                Debug.Log($"[Input] Melee mode: {isMeleeMode}");
-            }
-            else
-            {
-                isMeleeMode = false;
-            }
-        }
-
-        // 左键：近战模式下攻击，否则投掷
-        if (Input.GetKeyDown(throwKey))
-        {
-            if (!canAct) return;
-
-            if (isMeleeMode)
-            {
-                // 近战模式：检测鼠标指向的格子是否在攻击范围内
+            case ItemMode.Melee:
                 if (TryGetMeleeTarget(out Vector2Int targetGrid))
                 {
                     equipmentManager.ExecuteMelee(targetGrid);
-                    isMeleeMode = false; // 攻击后退出近战模式
+                    // 近战单次消耗：攻击后模式持续（可连击），物品耗尽时 RefreshItemMode 会清除
                 }
-            }
-            else if (hasItem && slot.itemData.IsThrowable)
-            {
-                // 投掷模式
+                break;
+
+            case ItemMode.Throw:
                 if (equipmentManager.TryGetAimPosition(out Vector3 aimPos))
+                {
                     equipmentManager.ThrowItem(aimPos);
-            }
+                    RefreshItemMode(); // 投掷后检查剩余数量
+                }
+                break;
+
+            case ItemMode.Consume:
+                equipmentManager.UseItem();
+                RefreshItemMode();
+                break;
+
+            case ItemMode.None:
+                // 尚未通过 R 键选择功能，LMB 不执行物品动作
+                break;
         }
     }
 
@@ -345,7 +352,7 @@ public class PlayerInputController : MonoBehaviour
             TryPickupNearbyItems();
     }
 
-    // ============ 场景物品交互（F 键）============
+    // ============ 场景物品检测 ============
 
     /// <summary>
     /// 持续扫描附近的 SceneItemInstance，记录最近的可交互物体
@@ -381,66 +388,234 @@ public class PlayerInputController : MonoBehaviour
         }
     }
 
+    // ============ 径向功能菜单 ============
+
     /// <summary>
-    /// R 键：优先打开附近可搜刮的敌人尸体，其次与场景物品交互
+    /// 每帧检测 R 键按下/持续，超过阈值后激活径向菜单。
+    /// 仅在菜单未激活时调用。
     /// </summary>
-    private void HandleInteractInput()
+    private void HandleRadialMenuDetect()
     {
-        if (!Input.GetKeyDown(interactKey)) return;
-
-        // 如果 LootUI 已经打开，R 键关闭它
-        if (lootUI != null && lootUI.IsOpen)
+        if (Input.GetKeyDown(radialMenuKey))
         {
-            lootUI.Close();
-            return;
+            _radialTimer = 0f;
+            Debug.Log($"[Radial] R 按下  isInputEnabled={isInputEnabled}  slot={equipmentManager?.CurrentSlot?.itemData?.Name ?? "空"}");
         }
 
-        // 优先检测附近可搜刮的敌人尸体
-        EnemyInventory corpse = FindNearestSearchableCorpse();
-        if (corpse != null)
+        if (Input.GetKey(radialMenuKey))
         {
-            lootUI?.Open(corpse, playerInventory);
-            Debug.Log($"[Input] 开始搜刮：{corpse.gameObject.name}");
-            return;
+            _radialTimer += Time.deltaTime;
+            if (_radialTimer >= RadialThreshold && !_radialActive)
+                TryActivateRadialMenu();
         }
 
-        // 其次与场景物品交互
-        if (closestSceneItem == null)
+        if (Input.GetKeyUp(radialMenuKey))
         {
-            Debug.Log("[Input] 附近没有可交互物体（R 键）");
-            return;
+            if (!_radialActive && _radialTimer < RadialThreshold)
+                ExecuteSceneOrCorpseTap();
+            _radialTimer = 0f;
         }
-
-        bool success = closestSceneItem.TryInteract(playerUnit.gameObject);
-        if (success)
-        {
-            Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互成功");
-            // 上车成功 → 进入乘坐输入模式，隐藏普通移动范围
-            if (closestSceneItem.IsOccupied && closestSceneItem.IsRideable)
-            {
-                _mountedVehicle       = closestSceneItem;
-                currentMovementRange  = null;
-            }
-        }
-        else
-            Debug.Log($"[Input] 与 [{closestSceneItem.name}] 交互失败（可能是 AP 不足或被锁住）");
     }
 
-    /// <summary>在 lootRange 内寻找最近的可搜刮尸体</summary>
+    private void TryActivateRadialMenu()
+    {
+        List<HoldMenuEntry> entries = null;
+
+        if (closestSceneItem != null)
+        {
+            entries = BuildSceneItemEntries(closestSceneItem);
+            if (entries.Count == 1) { entries[0].onConfirm?.Invoke(); _radialTimer = float.MaxValue; return; }
+        }
+
+        if (entries == null || entries.Count == 0)
+            entries = BuildItemActionEntries();
+
+        Debug.Log($"[Radial] TryActivate: {entries.Count} 个条目 closestSceneItem={closestSceneItem} slot={equipmentManager?.CurrentSlot?.itemData?.Name}");
+
+        if (entries.Count == 0) return;
+        if (entries.Count == 1) { entries[0].onConfirm?.Invoke(); _radialTimer = float.MaxValue; return; }
+
+        _radialEntries  = entries;
+        _radialSelected = -1;
+        _radialActive   = true;
+        Debug.Log($"[Radial] 菜单激活，共 {entries.Count} 个选项");
+    }
+
+    /// <summary>径向菜单激活期间每帧调用：更新选项高亮，松键时执行</summary>
+    private void HandleRadialMenuInput()
+    {
+        UpdateRadialSelection();
+
+        if (Input.GetKeyUp(radialMenuKey))
+        {
+            if (_radialSelected >= 0 && _radialSelected < _radialEntries.Count)
+                _radialEntries[_radialSelected].onConfirm?.Invoke();
+            CancelRadialMenu();
+        }
+
+        // ESC 取消
+        if (Input.GetKeyDown(KeyCode.Escape))
+            CancelRadialMenu();
+    }
+
+    private void UpdateRadialSelection()
+    {
+        if (_radialEntries == null) { _radialSelected = -1; return; }
+
+        // 锚点与 DrawRadialMenu 保持一致：有摄像机用投影，否则用屏幕中心
+        Vector2 anchorPos;
+        if (mainCamera != null)
+        {
+            Vector3 scr = GetRadialAnchorScreen();
+            anchorPos = scr.z >= 0
+                ? new Vector2(scr.x - 140f, scr.y + 80f)
+                : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        }
+        else
+        {
+            anchorPos = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        }
+
+        Vector2 mousePos = Input.mousePosition;
+        Vector2 dir = new Vector2(mousePos.x - anchorPos.x, mousePos.y - anchorPos.y);
+
+        float deadZone = 30f;
+        if (dir.magnitude < deadZone) { _radialSelected = -1; return; }
+
+        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        int   count = _radialEntries.Count;
+        float step  = 360f / count;
+        float best  = float.MaxValue;
+        int   idx   = 0;
+        for (int i = 0; i < count; i++)
+        {
+            float optAngle = GetRadialAngle(i, count);
+            float diff = Mathf.Abs(Mathf.DeltaAngle(angle, optAngle));
+            if (diff < best) { best = diff; idx = i; }
+        }
+        _radialSelected = idx;
+    }
+
+    private void CancelRadialMenu()
+    {
+        _radialActive   = false;
+        _radialEntries  = null;
+        _radialSelected = -1;
+        _radialTimer    = 0f;
+    }
+
+    // 选项在圆上的角度（从正上方顺时针分布）
+    private float GetRadialAngle(int idx, int count)
+    {
+        // 从 90° 开始，顺时针 = 角度减小
+        return 90f - idx * (360f / count);
+    }
+
+    // 径向菜单锚点在屏幕坐标（y 未翻转，用于 Input.mousePosition 比较）
+    private Vector3 GetRadialAnchorScreen()
+    {
+        Vector3 world = closestSceneItem != null
+            ? closestSceneItem.transform.position + Vector3.up * 1.0f
+            : transform.position + Vector3.up * 2.0f;
+        return mainCamera != null ? mainCamera.WorldToScreenPoint(world) : Vector3.zero;
+    }
+
+    /// <summary>R 键短按：LootUI 关闭 → SceneItem 单动作执行 → 尸体搜刮</summary>
+    private void ExecuteSceneOrCorpseTap()
+    {
+        if (lootUI != null && lootUI.IsOpen) { lootUI.Close(); return; }
+
+        if (closestSceneItem != null)
+        {
+            var entries = BuildSceneItemEntries(closestSceneItem);
+            if (entries.Count == 1) { entries[0].onConfirm?.Invoke(); return; }
+            if (entries.Count > 1)  return; // 多动作交给长按菜单，短按不执行
+            // entries.Count == 0：SceneItem 无可用动作，继续向下检测尸体
+        }
+
+        EnemyInventory corpse = FindNearestSearchableCorpse();
+        if (corpse != null) { lootUI?.Open(corpse, playerInventory); return; }
+    }
+
+    /// <summary>QTE 窗口期间的简化交互（短按 R 即可）</summary>
+    private void HandleSceneInteractTap()
+    {
+        if (!Input.GetKeyDown(interactKey)) return;
+        ExecuteSceneOrCorpseTap();
+    }
+
+    // ── 模式持久性 ────────────────────────────────────────────────────
+
+    private void RefreshItemMode()
+    {
+        if (_modeLockedItem == null) return;
+        HotbarSlot slot = equipmentManager?.CurrentSlot;
+        bool ok = slot != null && !slot.IsEmpty && slot.itemData == _modeLockedItem;
+        if (!ok) { _currentItemMode = ItemMode.None; _modeLockedItem = null; isMeleeMode = false; }
+    }
+
+    // ── 条目构建 ──────────────────────────────────────────────────────
+
+    private List<HoldMenuEntry> BuildSceneItemEntries(SceneItemInstance target)
+    {
+        var entries = new List<HoldMenuEntry>();
+        foreach (var opt in target.GetAvailableInteractions())
+        {
+            var cap = opt; var capT = target;
+            entries.Add(new HoldMenuEntry
+            {
+                label = cap.label, apCost = cap.apCost,
+                onConfirm = () =>
+                {
+                    bool ok = capT.TryInteractAs(cap.kind, playerUnit.gameObject);
+                    if (ok && capT.IsOccupied && capT.IsRideable)
+                    { _mountedVehicle = capT; currentMovementRange = null; }
+                }
+            });
+        }
+        return entries;
+    }
+
+    private List<HoldMenuEntry> BuildItemActionEntries()
+    {
+        var entries = new List<HoldMenuEntry>();
+        if (equipmentManager == null) return entries;
+        HotbarSlot slot = equipmentManager.CurrentSlot;
+        if (slot == null || slot.IsEmpty) return entries;
+        ItemData d = slot.itemData;
+
+        foreach (var fn in d.GetAvailableFunctions())
+        {
+            var cap = fn;
+            switch (cap)
+            {
+                case ItemFunction.Melee:
+                    entries.Add(new HoldMenuEntry { label = "近战攻击", apCost = d.UseCost,
+                        onConfirm = () => { _currentItemMode = ItemMode.Melee; _modeLockedItem = d; isMeleeMode = true; } });
+                    break;
+                case ItemFunction.Throw:
+                    entries.Add(new HoldMenuEntry { label = "投掷", apCost = d.UseCost,
+                        onConfirm = () => { _currentItemMode = ItemMode.Throw; _modeLockedItem = d; isMeleeMode = false; } });
+                    break;
+                case ItemFunction.Consume:
+                    entries.Add(new HoldMenuEntry { label = "食用/使用", apCost = d.UseCost,
+                        onConfirm = () => { _currentItemMode = ItemMode.Consume; _modeLockedItem = d; isMeleeMode = false; } });
+                    break;
+            }
+        }
+        return entries;
+    }
+
+    // ── 尸体搜刮辅助 ─────────────────────────────────────────────────
+
     private EnemyInventory FindNearestSearchableCorpse()
     {
-        EnemyInventory best     = null;
-        float          bestDist = float.MaxValue;
-
+        EnemyInventory best = null; float bestDist = float.MaxValue;
         foreach (var inv in Object.FindObjectsOfType<EnemyInventory>())
         {
             if (!inv.IsSearchable) continue;
             float dist = Vector3.Distance(playerUnit.transform.position, inv.transform.position);
-            if (dist <= inv.lootRange && dist < bestDist)
-            {
-                bestDist = dist;
-                best     = inv;
-            }
+            if (dist <= inv.lootRange && dist < bestDist) { bestDist = dist; best = inv; }
         }
         return best;
     }
@@ -908,8 +1083,136 @@ public class PlayerInputController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 极简径向菜单：玩家头顶为圆心，选项为小圆点+文字，无背景。
+    /// </summary>
+    private void DrawRadialMenu()
+    {
+        if (_radialEntries == null) return;
+
+        // ── 锚点（玩家头顶屏幕坐标） ──────────────────────────────────
+        float cx, cy;
+        if (mainCamera != null)
+        {
+            Vector3 scr = GetRadialAnchorScreen();
+            if (scr.z < 0)
+            { cx = Screen.width * 0.5f; cy = Screen.height * 0.5f; }
+            else
+            { cx = scr.x - 140f; cy = Screen.height - scr.y - 80f; }
+        }
+        else
+        { cx = Screen.width * 0.5f; cy = Screen.height * 0.5f; }
+
+        int   count  = _radialEntries.Count;
+        float radius = 72f;
+
+        // ── 细连线：中心→各圆点 ───────────────────────────────────────
+        for (int i = 0; i < count; i++)
+        {
+            float ar = GetRadialAngle(i, count) * Mathf.Deg2Rad;
+            float ox = Mathf.Cos(ar) * radius;
+            float oy = -Mathf.Sin(ar) * radius;
+            bool  sel = (i == _radialSelected);
+
+            float lineAngle = Mathf.Atan2(-oy, ox) * Mathf.Rad2Deg;
+            float lineLen   = radius - 6f;
+            Matrix4x4 mat   = GUI.matrix;
+            GUIUtility.RotateAroundPivot(-lineAngle, new Vector2(cx, cy));
+            GUI.color = sel
+                ? new Color(0.75f, 0.75f, 0.75f, 0.9f)
+                : new Color(0.55f, 0.55f, 0.55f, 0.25f);
+            GUI.DrawTexture(new Rect(cx, cy - 0.75f, lineLen, 1.5f), Texture2D.whiteTexture);
+            GUI.matrix = mat;
+        }
+        GUI.color = Color.white;
+
+        // ── 方向指示线（鼠标方向，覆盖在连线上层） ───────────────────
+        Vector2 mPosGUI = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+        Vector2 mDir    = mPosGUI - new Vector2(cx, cy);
+        if (mDir.magnitude > 20f)
+        {
+            float lineAngle = Mathf.Atan2(-mDir.y, mDir.x) * Mathf.Rad2Deg;
+            float lineLen   = Mathf.Min(mDir.magnitude, radius - 8f);
+            Matrix4x4 mat   = GUI.matrix;
+            GUIUtility.RotateAroundPivot(-lineAngle, new Vector2(cx, cy));
+            GUI.color = new Color(0.75f, 0.75f, 0.75f, 0.65f);
+            GUI.DrawTexture(new Rect(cx, cy - 1f, lineLen, 2f), Texture2D.whiteTexture);
+            GUI.matrix = mat;
+            GUI.color  = Color.white;
+        }
+
+        // ── 中心小点 ──────────────────────────────────────────────────
+        const float dotR = 3f;
+        GUI.color = new Color(1f, 1f, 1f, 0.9f);
+        GUI.DrawTexture(new Rect(cx - dotR, cy - dotR, dotR * 2f, dotR * 2f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        // ── 各选项：圆点 + 文字 ───────────────────────────────────────
+        var lblStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize  = 10,
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter,
+        };
+
+        for (int i = 0; i < count; i++)
+        {
+            float ar  = GetRadialAngle(i, count) * Mathf.Deg2Rad;
+            float ox  = Mathf.Cos(ar) * radius;
+            float oy  = -Mathf.Sin(ar) * radius;
+            float nx  = cx + ox;
+            float ny  = cy + oy;
+            bool  sel = (i == _radialSelected);
+
+            float nodeR = sel ? 16f : 12f;
+            GUI.color = sel
+                ? new Color(0.80f, 0.80f, 0.80f, 1f)
+                : new Color(0.50f, 0.50f, 0.50f, 0.75f);
+            GUI.DrawTexture(new Rect(nx - nodeR, ny - nodeR, nodeR * 2f, nodeR * 2f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // 文字：只显示标签，AP 放在第二行（选中时才显示）
+            var entry = _radialEntries[i];
+            lblStyle.normal.textColor = sel ? Color.white : new Color(0.8f, 0.8f, 0.8f, 0.85f);
+            lblStyle.fontSize         = sel ? 10 : 9;
+
+            // 文字位置：圆点外侧偏移，避免遮住圆点
+            float labelOffsetX = ox > 0 ? nodeR + 2f : -(nodeR + 42f);
+            if (Mathf.Abs(ox) < 10f) labelOffsetX = -20f; // 正上/正下居中
+            GUI.Label(new Rect(nx + labelOffsetX, ny - 8f, 44f, 16f), entry.label, lblStyle);
+
+            if (sel && entry.apCost > 0)
+            {
+                var costStyle = new GUIStyle(lblStyle) { fontSize = 8 };
+                costStyle.normal.textColor = new Color(0.2f, 0.2f, 0.2f, 0.9f);
+                GUI.Label(new Rect(nx + labelOffsetX, ny + 6f, 44f, 12f), $"{entry.apCost}AP", costStyle);
+            }
+        }
+    }
+
+    private Texture2D MakeTex(int w, int h, Color col)
+    {
+        var t = new Texture2D(w, h);
+        t.SetPixel(0, 0, col);
+        t.Apply();
+        return t;
+    }
+
     void OnGUI()
     {
+        // 调试状态标签（始终显示，确认 OnGUI 正常执行）
+        var dbgStyle = new GUIStyle(GUI.skin.label) { fontSize = 11 };
+        dbgStyle.normal.textColor = _radialActive ? Color.yellow : new Color(0.6f, 0.6f, 0.6f, 0.5f);
+        GUI.Label(new Rect(6f, 6f, 300f, 18f),
+            $"[R菜单] active={_radialActive}  entries={_radialEntries?.Count ?? 0}  sel={_radialSelected}", dbgStyle);
+
+        // 径向功能菜单（按住 R 激活）
+        if (_radialActive)
+        {
+            DrawRadialMenu();
+            return;
+        }
+
         // 乘坐提示（覆盖正常 HUD）
         if (_mountedVehicle != null)
         {
@@ -955,18 +1258,28 @@ public class PlayerInputController : MonoBehaviour
         style.normal.textColor = Color.white;
 
         string hint;
-        if (isMeleeMode)
+        if (_currentItemMode == ItemMode.Melee)
         {
             style.normal.textColor = Color.red;
-            hint = "[ MELEE MODE ] LClick: Attack | W: Cancel";
+            hint = "[ 近战模式 ] 左键攻击  |  R 切换功能";
+        }
+        else if (_currentItemMode == ItemMode.Throw)
+        {
+            style.normal.textColor = new Color(0.3f, 0.8f, 1f);
+            hint = "[ 投掷模式 ] 左键选目标发射  |  R 切换功能";
+        }
+        else if (_currentItemMode == ItemMode.Consume)
+        {
+            style.normal.textColor = new Color(0.4f, 1f, 0.4f);
+            hint = "[ 使用模式 ] 左键立即使用  |  R 切换功能";
         }
         else if (turnBasedUnit.CanAct)
         {
-            hint = "RClick:Move | LClick:Throw | W:Melee | Q:Pickup | E:Floor | Space:EndTurn";
+            hint = "右键:移动  |  左键:投掷  |  R:选功能  |  Q:拾取  |  E:换层  |  Space:结束回合";
         }
         else
         {
-            hint = "Space: End Turn";
+            hint = "Space: 结束回合";
         }
 
         GUI.Box(new Rect(Screen.width / 2 - 280, Screen.height - 50, 560, 30), hint, style);

@@ -300,6 +300,12 @@ public class Inventory : MonoBehaviour
 
                 if (itemData.sanityAmount > 0)
                     playerCtrl.RestoreSanity(itemData.sanityAmount);
+
+                if (itemData.damageAmount > 0)
+                    playerCtrl.TakeDamage(itemData.damageAmount);
+
+                if (itemData.sanityDrain > 0)
+                    playerCtrl.ReduceSanity(itemData.sanityDrain);
             }
 
             if (itemData.meleeDamage > 0)

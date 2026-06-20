@@ -1624,7 +1624,11 @@ PrefabInstance:
     - target: {fileID: 2198886748902161750, guid: c1a66716dbc3b4d4b926b86a18e29ea7, type: 3}
       propertyPath: itemData
       value: 
-      objectReference: {fileID: 11400000, guid: 01a41dc1907fbdb4d8845be7d25b0f40, type: 2}
+      objectReference: {fileID: 11400000, guid: 09533f671bedd6147ab75e72760176f7, type: 2}
+    - target: {fileID: 2198886748902161750, guid: c1a66716dbc3b4d4b926b86a18e29ea7, type: 3}
+      propertyPath: quantity
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 2198886748902161750, guid: c1a66716dbc3b4d4b926b86a18e29ea7, type: 3}
       propertyPath: showPickupRange
       value: 0
@@ -6681,7 +6685,7 @@ MonoBehaviour:
   pickupKey: 113
   pickupDetectionRange: 2
   interactKey: 101
-  meleeModeKey: 102
+  radialMenuKey: 114
   throwKey: 323
 --- !u!4 &1769783663
 Transform:
