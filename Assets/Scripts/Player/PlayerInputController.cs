@@ -48,6 +48,9 @@ public class PlayerInputController : MonoBehaviour
     // 反应窗口状态（敌人射击时临时开放移动）
     private bool isReactionWindowOpen = false;
 
+    // 背包/仓库开启状态（Tab 键，开启时屏蔽所有其他输入）
+    private bool _inventoryOpen = false;
+
     // ============ 运行时数据 ============
 
     private HashSet<Vector2Int> currentMovementRange;
@@ -73,6 +76,10 @@ public class PlayerInputController : MonoBehaviour
         public int           apCost;
         public System.Action onConfirm;
     }
+
+    // ── 静态事件（解耦 UI 订阅） ──────────────────────────────────────
+    public static event System.Action        OnToggleInventory;
+    public static event System.Action<float> OnHotbarScroll;
 
     // ── 径向功能选择菜单（按住 R 拖动方向） ──────────────────────────
     private bool               _radialActive     = false;
@@ -165,12 +172,30 @@ public class PlayerInputController : MonoBehaviour
 
     void Update()
     {
+        // Tab：事件驱动（乘坐中禁用）
+        if (_mountedVehicle == null && Input.GetKeyDown(KeyCode.Tab))
+            OnToggleInventory?.Invoke();
+
+        // 滚轮：始终触发，不受仓库门控影响（EquipmentManager 订阅此事件切换槽位）
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(scroll) > 0.01f)
+        {
+            OnHotbarScroll?.Invoke(scroll);
+            // 切换槽位时清除当前物品使用模式
+            isMeleeMode      = false;
+            _currentItemMode = ItemMode.None;
+            _modeLockedItem  = null;
+            CancelRadialMenu();
+        }
+
+        if (_inventoryOpen) return;
+
         CheckNearbyItems();
         HandlePickupInput();
         CheckNearbySceneItems();
 
-        // 滚轮切换快捷栏（始终可用）
-        HandleHotbarScroll();
+        // 物品用尽时立即清除模式（涵盖 AI 拾取、其他途径消耗等情况）
+        RefreshItemMode();
 
         // 只有在投掷模式下才渲染抛物线瞄准；其他模式（包括近战/使用/None）均禁用
         if (equipmentManager != null)
@@ -496,6 +521,14 @@ public class PlayerInputController : MonoBehaviour
         _radialSelected = idx;
     }
 
+    /// <summary>由 InventoryCanvas 或 Tab 键调用，打开/关闭背包仓库</summary>
+    public void SetInventoryOpen(bool open)
+    {
+        _inventoryOpen = open;
+        // 打开背包时取消径向菜单
+        if (open && _radialActive) CancelRadialMenu();
+    }
+
     private void CancelRadialMenu()
     {
         _radialActive   = false;
@@ -550,7 +583,8 @@ public class PlayerInputController : MonoBehaviour
     {
         if (_modeLockedItem == null) return;
         HotbarSlot slot = equipmentManager?.CurrentSlot;
-        bool ok = slot != null && !slot.IsEmpty && slot.itemData == _modeLockedItem;
+        // 物品切换或数量耗尽时清除模式
+        bool ok = slot != null && !slot.IsEmpty && slot.itemData == _modeLockedItem && slot.quantity > 0;
         if (!ok) { _currentItemMode = ItemMode.None; _modeLockedItem = null; isMeleeMode = false; }
     }
 
@@ -742,7 +776,10 @@ public class PlayerInputController : MonoBehaviour
         {
             if (item != null && !item.IsPickedUp)
             {
-                if (playerInventory != null && playerInventory.AddItem(item.ItemData, item.Quantity))
+                bool pickedOk = equipmentManager != null
+                    ? equipmentManager.TryPickupItem(item.ItemData, item.Quantity)
+                    : playerInventory != null && playerInventory.AddItem(item.ItemData, item.Quantity);
+                if (pickedOk)
                 {
                     item.Pickup(playerUnit.gameObject);
                     pickedCount++;
@@ -1200,12 +1237,6 @@ public class PlayerInputController : MonoBehaviour
 
     void OnGUI()
     {
-        // 调试状态标签（始终显示，确认 OnGUI 正常执行）
-        var dbgStyle = new GUIStyle(GUI.skin.label) { fontSize = 11 };
-        dbgStyle.normal.textColor = _radialActive ? Color.yellow : new Color(0.6f, 0.6f, 0.6f, 0.5f);
-        GUI.Label(new Rect(6f, 6f, 300f, 18f),
-            $"[R菜单] active={_radialActive}  entries={_radialEntries?.Count ?? 0}  sel={_radialSelected}", dbgStyle);
-
         // 径向功能菜单（按住 R 激活）
         if (_radialActive)
         {

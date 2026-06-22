@@ -221,6 +221,7 @@ public class ItemData : ScriptableObject
     public string Name        = "物品";
     [TextArea(2, 4)]
     public string description = "物品描述";
+    public Sprite Icon; // UGUI 物品格子图标（可空，显示时用默认占位图）
 
     [Header("分类")]
     public ItemType   Type   = ItemType.Consumable;

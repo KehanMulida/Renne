@@ -83,6 +83,7 @@
     <Compile Include="Assets\Scripts\Sound\SoundListener.cs" />
     <Compile Include="Assets\Scripts\Items\WorldItemRegistry.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Demo\Scripts\csEyeController.cs" />
+    <Compile Include="Assets\Scripts\UI\DragDropController.cs" />
     <Compile Include="Assets\Scripts\units\GridManager.cs" />
     <Compile Include="Assets\Scripts\Ai\EnemyEquipment.cs" />
     <Compile Include="Assets\Scripts\Ai\IActionExecutor.cs" />
@@ -101,11 +102,13 @@
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\ConditionEvaluator.cs" />
     <Compile Include="Assets\Scripts\Ai\MoveToZoneExecutor.cs" />
     <Compile Include="Assets\Scripts\SystemManager\IDamageable.cs" />
+    <Compile Include="Assets\Scripts\UI\InventoryUI.cs" />
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\MissionManager.cs" />
     <Compile Include="Assets\Scripts\Ai\Sensor\VisionSensor.cs" />
     <Compile Include="Assets\Scripts\SystemManager\GameManager.cs" />
     <Compile Include="Assets\Scripts\Attributes\ConditionalHideAttribute.cs" />
     <Compile Include="Assets\Scripts\units\FloorManager.cs" />
+    <Compile Include="Assets\Scripts\UI\InventoryCanvas.cs" />
     <Compile Include="Assets\Scripts\units\FloorConnectionMarker.cs" />
     <Compile Include="Assets\Scripts\Items\ItemData.cs" />
     <Compile Include="Assets\Scripts\Ai\MovementExecutor.cs" />
@@ -122,6 +125,7 @@
     <Compile Include="Assets\Scripts\Ai\Sensor\SoundPerception.cs" />
     <Compile Include="Assets\Scripts\Combat\ChargeAction.cs" />
     <Compile Include="Assets\Scripts\Items\SceneItemInstance.cs" />
+    <Compile Include="Assets\Scripts\UI\HotbarUI.cs" />
     <Compile Include="Assets\Scripts\Sound\SoundEmitter.cs" />
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\MissionPool.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorVisibilityController.cs" />
@@ -130,6 +134,7 @@
     <Compile Include="Assets\Scripts\Ai\FollowLeaderExecutor.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Examples\csRevealerSpawner.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\Shadowcaster.cs" />
+    <Compile Include="Assets\Scripts\UI\ItemSlotUI.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerConfig.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorObjectMarker.cs" />
     <Compile Include="Assets\Scripts\Ai\EnemyStatEffect.cs" />
@@ -145,8 +150,29 @@
     <Compile Include="Assets\Scripts\Ai\Sensor\VisionPerception.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Overlay.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Mobile.cginc" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF SSD.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface-Mobile.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Surface.shader" />
+    <None Include="Assets\TextMesh Pro\Sprites\EmojiOne Attribution.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Custom-Atlas.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile SSD.shader" />
     <None Include="Assets\Scripts\AOSFogWar\README.txt" />
+    <None Include="Assets\TextMesh Pro\Resources\LineBreaking Leading Characters.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Properties.cginc" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMPro_Surface.cginc" />
+    <None Include="Assets\TextMesh Pro\Resources\LineBreaking Following Characters.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile Masking.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF Overlay.shader" />
     <None Include="Assets\Scripts\AOSFogWar\Shaders\FogPlane.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Bitmap-Mobile.shader" />
+    <None Include="Assets\TextMesh Pro\Fonts\LiberationSans - OFL.txt" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_SDF-Mobile.shader" />
+    <None Include="Assets\TextMesh Pro\Shaders\TMP_Sprite.shader" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

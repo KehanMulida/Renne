@@ -293,13 +293,6 @@ public class PlayerController : MonoBehaviour, IDamageable
         Debug.Log($"[PlayerController] Sanity reduced by {amount}. Sanity: {oldSanity} -> {runtimeConfig.CurrentSanity}");
 
         OnSanityChanged?.Invoke(runtimeConfig.CurrentSanity, runtimeConfig.MaxSanity);
-
-        // 精神值过低时的效果
-        if (runtimeConfig.CurrentSanity < runtimeConfig.MaxSanity * 0.3f)
-        {
-            Debug.LogWarning($"[PlayerController] {Name} is losing sanity!");
-            // 可以触发负面效果
-        }
     }
 
     /// <summary>
@@ -309,7 +302,6 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (runtimeConfig == null) return;
 
-        int oldSanity = runtimeConfig.CurrentSanity;
         runtimeConfig.CurrentSanity = Mathf.Min(runtimeConfig.MaxSanity, runtimeConfig.CurrentSanity + amount);
 
         OnSanityChanged?.Invoke(runtimeConfig.CurrentSanity, runtimeConfig.MaxSanity);

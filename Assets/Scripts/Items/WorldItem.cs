@@ -85,15 +85,19 @@ public class WorldItem : MonoBehaviour
 
     // ============ 初始化 ============
 
+    /// <summary>运行时生成（丢弃物品）时调用，在 Instantiate 后立即设置数据</summary>
+    public void Initialize(ItemData data, int qty)
+    {
+        itemData = data;
+        quantity = Mathf.Max(1, qty);
+    }
+
     void Start()
     {
         itemRenderer = GetComponent<Renderer>();
 
-        // 验证配置
         if (itemData == null)
-        {
             Debug.LogWarning($"[WorldItem] {gameObject.name} has no ItemData!");
-        }
 
         DebugLog($"Initialized: {itemData?.Name ?? "Unknown"} x{quantity}");
     }

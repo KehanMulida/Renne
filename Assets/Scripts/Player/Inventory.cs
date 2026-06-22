@@ -56,8 +56,14 @@ public class Inventory : MonoBehaviour
 
     public void SetDebugEnabled(bool v) { enableDebugLog = v; }
 
+    void Awake()
+    {
+        _playerCtrl = GetComponent<PlayerController>();
+    }
+
     // 运行时数据
-    private List<InventorySlot> slots = new List<InventorySlot>();
+    private List<InventorySlot>  slots      = new List<InventorySlot>();
+    private PlayerController     _playerCtrl;
 
     // ============ 公开属性 ============
 
@@ -282,30 +288,33 @@ public class Inventory : MonoBehaviour
     }
 
     /// <summary>
+    /// 只应用物品效果，不消耗库存（供 EquipmentManager 从 Hotbar 使用时调用）
+    /// </summary>
+    public void ApplyEffect(ItemData itemData) => ApplyItemEffect(itemData);
+
+    /// <summary>
     /// 应用物品效果
     /// </summary>
     private void ApplyItemEffect(ItemData itemData)
     {
-        PlayerController playerCtrl = GetComponent<PlayerController>();
-
         if (itemData.Type == ItemType.Consumable)
         {
-            if (playerCtrl != null)
+            if (_playerCtrl != null)
             {
                 if (itemData.healAmount > 0)
-                    playerCtrl.Heal(itemData.healAmount);
+                    _playerCtrl.Heal(itemData.healAmount);
 
                 if (itemData.staminaAmount > 0)
-                    playerCtrl.RestoreStamina(itemData.staminaAmount);
+                    _playerCtrl.RestoreStamina(itemData.staminaAmount);
 
                 if (itemData.sanityAmount > 0)
-                    playerCtrl.RestoreSanity(itemData.sanityAmount);
+                    _playerCtrl.RestoreSanity(itemData.sanityAmount);
 
                 if (itemData.damageAmount > 0)
-                    playerCtrl.TakeDamage(itemData.damageAmount);
+                    _playerCtrl.TakeDamage(itemData.damageAmount);
 
                 if (itemData.sanityDrain > 0)
-                    playerCtrl.ReduceSanity(itemData.sanityDrain);
+                    _playerCtrl.ReduceSanity(itemData.sanityDrain);
             }
 
             if (itemData.meleeDamage > 0)

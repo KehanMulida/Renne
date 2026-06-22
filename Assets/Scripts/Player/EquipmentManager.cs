@@ -25,7 +25,7 @@ public class HotbarSlot
 public class EquipmentManager : MonoBehaviour
 {
     [Header("快捷栏配置")]
-    [SerializeField] private int hotbarSize = 5;
+    [SerializeField][Range(5, 10)] private int hotbarSize = 8;
 
     [Header("投掷配置")]
     [SerializeField] private Camera mainCamera;
@@ -75,12 +75,18 @@ public class EquipmentManager : MonoBehaviour
             SetInventory(existingInventory);
         else
             Debug.Log("[EquipmentManager] Waiting for SetInventory() call");
+
+        PlayerInputController.OnHotbarScroll += OnHotbarScrollEvent;
+    }
+
+    void OnHotbarScrollEvent(float delta)
+    {
+        ScrollSlot(delta);
     }
 
     void OnDestroy()
     {
-        if (inventory != null)
-            inventory.OnInventoryChanged -= SyncHotbarFromInventory;
+        PlayerInputController.OnHotbarScroll -= OnHotbarScrollEvent;
     }
 
     // ============ 外部注入 ============
@@ -97,8 +103,7 @@ public class EquipmentManager : MonoBehaviour
 
         if (inventory != null)
         {
-            inventory.OnInventoryChanged += SyncHotbarFromInventory;
-            SyncHotbarFromInventory();
+            SyncHotbarFromInventory(); // 首次绑定时把 Inventory 里的物品转移到 Hotbar
             Debug.Log($"[EquipmentManager] Inventory linked: {inventory.gameObject.name}");
         }
     }
@@ -232,13 +237,15 @@ public class EquipmentManager : MonoBehaviour
 
         ThrowableProjectile.Launch(item, cfg, origin, targetPos, gameObject);
 
-        inventory.RemoveItem(item, 1);
+        hotbar[currentSlotIndex].quantity -= 1;
+        if (hotbar[currentSlotIndex].quantity <= 0)
+            hotbar[currentSlotIndex] = new HotbarSlot();
 
         if (turnBasedUnit != null)
             turnBasedUnit.ConsumeAP(item.UseCost);
 
         OnItemUsed?.Invoke(item);
-        SyncHotbarFromInventory();
+        OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
         isAiming = false;
         return true;
     }
@@ -277,15 +284,19 @@ public class EquipmentManager : MonoBehaviour
             DebugLog($"Melee [{CurrentSlot.itemData.Name}] dealt {cd.meleeDamage} to {hit.transform.root.name}");
         }
 
-        // 消耗品近战使用后移除（台球杆等可重复使用的物品 meleeDamage 可以设置 UseCost=0 且不走这里）
-        if (cd.Type == ItemType.Consumable && cd.UseCost > 0)
-            inventory.RemoveItem(cd, 1);
-
         if (turnBasedUnit != null)
             turnBasedUnit.ConsumeAP(Mathf.Max(cd.UseCost, 1));
 
-        OnItemUsed?.Invoke(CurrentSlot.itemData);
-        SyncHotbarFromInventory();
+        // 消耗品近战才扣数量（可重复用的武器 UseCost=0 不扣）
+        if (cd.Type == ItemType.Consumable && cd.UseCost > 0)
+        {
+            hotbar[currentSlotIndex].quantity -= 1;
+            if (hotbar[currentSlotIndex].quantity <= 0)
+                hotbar[currentSlotIndex] = new HotbarSlot();
+        }
+
+        OnItemUsed?.Invoke(cd);
+        OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
     }
 
     /// <summary>
@@ -301,41 +312,177 @@ public class EquipmentManager : MonoBehaviour
 
         ItemData item = CurrentSlot.itemData;
 
-        if (inventory != null && inventory.UseItem(item))
+        if (CurrentSlot.quantity > 0)
         {
             DebugLog($"Used [{item.Name}]");
+            inventory?.ApplyEffect(item); // 应用效果（回血等），不消耗 Inventory
 
             if (turnBasedUnit != null)
                 turnBasedUnit.ConsumeAP(item.UseCost);
 
+            hotbar[currentSlotIndex].quantity -= 1;
+            if (hotbar[currentSlotIndex].quantity <= 0)
+                hotbar[currentSlotIndex] = new HotbarSlot();
+
             OnItemUsed?.Invoke(item);
-            SyncHotbarFromInventory();
+            OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
             return true;
         }
 
         return false;
     }
 
-    // ============ 背包同步 ============
+    // ============ 拾取路由（捡到物品优先进 Hotbar，满了才进 Inventory） ============
+
+    /// <summary>
+    /// 拾取物品统一入口：Hotbar 有位置则进 Hotbar，否则进 Inventory。
+    /// 由 PlayerInputController 拾取时调用。
+    /// </summary>
+    public bool TryPickupItem(ItemData item, int qty)
+    {
+        if (item == null || qty <= 0) return false;
+        int remaining = qty;
+
+        // 先堆叠到 Hotbar 已有同类槽
+        for (int i = 0; i < hotbarSize && remaining > 0; i++)
+        {
+            if (!hotbar[i].IsEmpty && hotbar[i].itemData.ID == item.ID && item.maxStack > 1)
+            {
+                int space = item.maxStack - hotbar[i].quantity;
+                int add   = Mathf.Min(space, remaining);
+                hotbar[i].quantity += add;
+                remaining -= add;
+                OnSlotChanged?.Invoke(i, hotbar[i]);
+            }
+        }
+
+        // 再放空槽
+        for (int i = 0; i < hotbarSize && remaining > 0; i++)
+        {
+            if (hotbar[i].IsEmpty)
+            {
+                int add = item.maxStack > 1 ? Mathf.Min(item.maxStack, remaining) : remaining;
+                hotbar[i] = new HotbarSlot(item, add);
+                remaining -= add;
+                OnSlotChanged?.Invoke(i, hotbar[i]);
+            }
+        }
+
+        // Hotbar 满了，剩余进 Inventory
+        if (remaining > 0 && inventory != null)
+            inventory.AddItem(item, remaining);
+
+        DebugLog($"TryPickupItem: {item.Name} x{qty} → hotbar got {qty - remaining}, inventory got {remaining}");
+        return true;
+    }
+
+    // ============ Hotbar ↔ Inventory 手动搬运 ============
+
+    /// <summary>双击 Inventory 格：整栈从 Inventory 转移到 Hotbar 空槽。</summary>
+    public bool MoveToHotbar(ItemData item)
+    {
+        if (inventory == null || item == null) return false;
+        int qty = inventory.GetItemCount(item);
+        if (qty <= 0) return false;
+        int slot = FindFirstEmptySlot();
+        if (slot < 0) { DebugLog("Hotbar is full"); return false; }
+
+        inventory.RemoveItem(item, qty);
+        hotbar[slot] = new HotbarSlot(item, qty);
+        DebugLog($"MoveToHotbar: {item.Name} x{qty} → slot {slot}");
+        OnSlotChanged?.Invoke(slot, hotbar[slot]);
+        return true;
+    }
+
+    /// <summary>单击 Inventory 格：从 Inventory 取 1 个放到 Hotbar（堆叠或空槽）。</summary>
+    public bool MoveSingleToHotbar(ItemData item)
+    {
+        if (inventory == null || item == null) return false;
+        if (inventory.GetItemCount(item) <= 0) return false;
+
+        for (int i = 0; i < hotbarSize; i++)
+        {
+            if (!hotbar[i].IsEmpty && hotbar[i].itemData.ID == item.ID
+                && item.maxStack > 1 && hotbar[i].quantity < item.maxStack)
+            {
+                inventory.RemoveItem(item, 1);
+                hotbar[i].quantity++;
+                OnSlotChanged?.Invoke(i, hotbar[i]);
+                return true;
+            }
+        }
+
+        int empty = FindFirstEmptySlot();
+        if (empty < 0) { DebugLog("Hotbar is full"); return false; }
+        inventory.RemoveItem(item, 1);
+        hotbar[empty] = new HotbarSlot(item, 1);
+        OnSlotChanged?.Invoke(empty, hotbar[empty]);
+        return true;
+    }
+
+    /// <summary>双击 Hotbar 格：整栈从 Hotbar 搬回 Inventory。</summary>
+    public bool MoveToInventory(int slot)
+    {
+        if (slot < 0 || slot >= hotbarSize || hotbar[slot].IsEmpty) return false;
+        if (inventory == null) return false;
+
+        inventory.AddItem(hotbar[slot].itemData, hotbar[slot].quantity);
+        DebugLog($"MoveToInventory: {hotbar[slot].itemData.Name} x{hotbar[slot].quantity} from slot {slot}");
+        hotbar[slot] = new HotbarSlot();
+        OnSlotChanged?.Invoke(slot, hotbar[slot]);
+        return true;
+    }
+
+    /// <summary>交换两个 Hotbar 槽位（拖拽换位）。</summary>
+    public void SwapHotbarSlots(int a, int b)
+    {
+        if (a < 0 || a >= hotbarSize || b < 0 || b >= hotbarSize || a == b) return;
+        (hotbar[a], hotbar[b]) = (hotbar[b], hotbar[a]);
+        OnSlotChanged?.Invoke(a, hotbar[a]);
+        OnSlotChanged?.Invoke(b, hotbar[b]);
+    }
+
+    /// <summary>拖拽到指定空 Hotbar 槽（跨库拖拽，由 DragDropController 调用）。</summary>
+    public bool DragToHotbarSlot(ItemData item, int qty, int targetSlot)
+    {
+        if (item == null || qty <= 0 || targetSlot < 0 || targetSlot >= hotbarSize) return false;
+        if (!hotbar[targetSlot].IsEmpty) return false;
+        hotbar[targetSlot] = new HotbarSlot(item, qty);
+        OnSlotChanged?.Invoke(targetSlot, hotbar[targetSlot]);
+        return true;
+    }
+
+    /// <summary>返回第一个空 Hotbar 槽位索引，全满时返回 -1。</summary>
+    public int FindFirstEmptySlot()
+    {
+        for (int i = 0; i < hotbarSize; i++)
+            if (hotbar[i].IsEmpty) return i;
+        return -1;
+    }
+
+    // ============ 初始同步（首次绑定 Inventory 时，把已有物品转移到 Hotbar） ============
 
     private void SyncHotbarFromInventory()
     {
         if (inventory == null) return;
-
+        bool hasAny = false;
         for (int i = 0; i < hotbarSize; i++)
-            hotbar[i] = new HotbarSlot();
+            if (!hotbar[i].IsEmpty) { hasAny = true; break; }
+        if (hasAny) return;
 
-        int slotIndex = 0;
-        foreach (var slot in inventory.GetAllItems())
+        var items = inventory.GetAllItems();
+        int filled = 0;
+        for (int i = 0; i < items.Count && i < hotbarSize; i++)
         {
-            if (slotIndex >= hotbarSize) break;
-            if (slot.itemData == null) continue;
-
-            if (slot.itemData.Type == ItemType.Consumable)
-                hotbar[slotIndex++] = new HotbarSlot(slot.itemData, slot.quantity);
+            if (items[i].itemData == null) continue;
+            hotbar[i] = new HotbarSlot(items[i].itemData, items[i].quantity);
+            filled++;
         }
+        // 真正从 Inventory 移除（转移，不是复制）
+        foreach (var s in items)
+            if (s.itemData != null) inventory.RemoveItem(s.itemData, s.quantity);
 
-        DebugLog($"Hotbar synced: {slotIndex} consumable item(s)");
+        DebugLog($"SyncHotbarFromInventory: transferred {filled} item type(s) to Hotbar");
         OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
     }
 
