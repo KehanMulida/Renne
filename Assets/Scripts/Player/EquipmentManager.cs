@@ -7,7 +7,9 @@ public class HotbarSlot
     public ItemData itemData;
     public int quantity;
 
-    public bool IsEmpty => itemData == null || quantity <= 0;
+    // 武器槽弹药耗尽时仍保留槽位（枪还在，只是没子弹）
+    public bool IsEmpty => itemData == null ||
+        (quantity <= 0 && itemData.Type != ItemType.Weapon);
 
     public HotbarSlot() { }
     public HotbarSlot(ItemData data, int qty) { itemData = data; quantity = qty; }
@@ -31,6 +33,10 @@ public class EquipmentManager : MonoBehaviour
     [SerializeField] private Camera mainCamera;
     [SerializeField] private LayerMask throwTargetLayer;
 
+    [Header("射击配置")]
+    [Tooltip("武器开枪位置（枪口/肩部）；未设置则回退到 transform + 1.2m 高")]
+    [SerializeField] private Transform firePoint;
+
     [Header("调试")]
     [SerializeField] private bool enableDebugLog = true;
 
@@ -39,6 +45,10 @@ public class EquipmentManager : MonoBehaviour
     private Inventory inventory;
     private UnitMovement playerUnit;
     private TurnBasedUnit turnBasedUnit;
+
+    // 装备槽：防弹背心等 Equipment 类型物品
+    private ItemData equippedArmor = null;
+    private int currentArmorDurability = 0;
 
     // 瞄准状态（由 PlayerInputController 每帧调用 UpdateAiming 更新）
     private bool isAiming = false;
@@ -52,6 +62,7 @@ public class EquipmentManager : MonoBehaviour
     // ============ 公开属性 ============
 
     public int CurrentSlotIndex => currentSlotIndex;
+    public Vector3 FireOrigin => firePoint != null ? firePoint.position : transform.position + Vector3.up * 1.2f;
     public HotbarSlot CurrentSlot => hotbar.Count > 0 ? hotbar[currentSlotIndex] : null;
     public bool IsAiming => isAiming;
     public Vector3 AimTargetPos => aimTargetPos;
@@ -79,6 +90,41 @@ public class EquipmentManager : MonoBehaviour
         PlayerInputController.OnHotbarScroll += OnHotbarScrollEvent;
     }
 
+    void Update()
+    {
+        UpdateFirePointRotation();
+    }
+
+    /// <summary>
+    /// 武器槽激活时，FirePoint 绕玩家 Y 轴随鼠标方向旋转。
+    /// 保持 FirePoint 与玩家中心的水平偏移距离和高度不变。
+    /// </summary>
+    private void UpdateFirePointRotation()
+    {
+        if (firePoint == null) return;
+        var slot = CurrentSlot;
+        if (slot == null || slot.IsEmpty || slot.itemData?.Type != ItemType.Weapon) return;
+
+        Vector3 hitPoint = GetWeaponAimPosition();
+        Vector3 aimDir   = hitPoint - transform.position;
+        aimDir.y = 0f;
+        if (aimDir.sqrMagnitude < 0.001f) return;
+        aimDir.Normalize();
+
+        // 保留 firePoint 设定的水平偏移半径和高度
+        Vector3 localPos  = firePoint.localPosition;
+        float   radius    = new Vector2(localPos.x, localPos.z).magnitude;
+        float   height    = localPos.y;
+
+        // 若半径为 0（firePoint 放在玩家中心），偏移方向仍然有意义（用于朝向）
+        Vector3 newWorldPos = transform.position
+                            + aimDir * radius
+                            + Vector3.up * height;
+
+        firePoint.position = newWorldPos;
+        firePoint.rotation = Quaternion.LookRotation(aimDir, Vector3.up);
+    }
+
     void OnHotbarScrollEvent(float delta)
     {
         ScrollSlot(delta);
@@ -96,14 +142,11 @@ public class EquipmentManager : MonoBehaviour
     /// </summary>
     public void SetInventory(Inventory inv)
     {
-        if (inventory != null)
-            inventory.OnInventoryChanged -= SyncHotbarFromInventory;
-
         inventory = inv;
 
         if (inventory != null)
         {
-            SyncHotbarFromInventory(); // 首次绑定时把 Inventory 里的物品转移到 Hotbar
+            SyncHotbarFromInventory();
             Debug.Log($"[EquipmentManager] Inventory linked: {inventory.gameObject.name}");
         }
     }
@@ -139,30 +182,26 @@ public class EquipmentManager : MonoBehaviour
     /// 由 PlayerInputController.Update 每帧调用
     /// inMeleeMode = true 时禁用抛物线瞄准显示
     /// </summary>
-    public bool UpdateAiming(bool inMeleeMode = false)
+    public bool UpdateAiming(bool disableAim = false)
     {
-        // 近战模式下不显示投掷瞄准线
-        if (inMeleeMode)
-        {
-            isAiming = false;
-            return false;
-        }
+        if (disableAim) { isAiming = false; return false; }
+        if (CurrentSlot == null || CurrentSlot.IsEmpty) { isAiming = false; return false; }
 
-        if (CurrentSlot == null || CurrentSlot.IsEmpty || !CurrentSlot.itemData.IsThrowable)
-        {
-            isAiming = false;
-            return false;
-        }
+        var item = CurrentSlot.itemData;
 
-        if (TryGetAimPosition(out Vector3 pos))
+        // 武器：直线瞄准，始终显示
+        if (item.Type == ItemType.Weapon)
         {
-            aimTargetPos = pos;
+            aimTargetPos = GetWeaponAimPosition();
             isAiming = true;
+            return true;
         }
-        else
-        {
-            isAiming = false;
-        }
+
+        // 消耗品投掷：弧线瞄准
+        if (!item.IsThrowable) { isAiming = false; return false; }
+
+        if (TryGetAimPosition(out Vector3 pos)) { aimTargetPos = pos; isAiming = true; }
+        else isAiming = false;
 
         return isAiming;
     }
@@ -215,6 +254,166 @@ public class EquipmentManager : MonoBehaviour
         return true;
     }
 
+    // ============ 射击（由 PlayerInputController 调用）============
+
+    // 全自动射击计时器
+    private float _autoFireTimer = 0f;
+    // 点射协程状态（避免同帧重复触发）
+    private bool _burstFiring = false;
+
+    /// <summary>
+    /// 玩家射击入口，由 PlayerInputController 每帧或按键时调用。
+    /// GetKeyDown = SemiAuto / Burst；GetKey = FullAuto
+    /// </summary>
+    public bool ShootWeapon(bool held = false)
+    {
+        if (CurrentSlot == null) return false;
+        var slot = hotbar[currentSlotIndex];
+        if (slot.itemData == null || slot.itemData.Type != ItemType.Weapon) return false;
+
+        WeaponData weapon = slot.itemData as WeaponData;
+        if (weapon == null) return false;
+
+        if (weapon.IshasBullet && slot.quantity <= 0)
+        {
+            DebugLog("弹药耗尽，按 F 换弹");
+            return false;
+        }
+
+        switch (weapon.fireMode)
+        {
+            case FireMode.SemiAuto:
+                if (held) return false; // 半自动不响应按住
+                FireOneBurst(weapon, slot, 1);
+                break;
+
+            case FireMode.Burst:
+                if (held) return false;
+                if (!_burstFiring)
+                    StartCoroutine(FireBurstCoroutine(weapon, slot));
+                break;
+
+            case FireMode.FullAuto:
+                if (!held) { _autoFireTimer = 0f; return false; }
+                _autoFireTimer -= Time.deltaTime;
+                if (_autoFireTimer > 0f) return false;
+                _autoFireTimer = weapon.fireInterval;
+                FireOneBurst(weapon, slot, 1);
+                break;
+
+            case FireMode.Shotgun:
+                if (held) return false;
+                FireOneBurst(weapon, slot, weapon.pelletsPerShot, isPellet: true);
+                break;
+        }
+
+        return true;
+    }
+
+    // 发射 count 颗弹丸（散弹时 isPellet=true，叠加额外散布）
+    private void FireOneBurst(WeaponData weapon, HotbarSlot slot, int count, bool isPellet = false)
+    {
+        if (weapon.IshasBullet && slot.quantity <= 0) return;
+
+        Vector3 origin   = FireOrigin;
+        Vector3 hitPoint = GetWeaponAimPosition();
+        Vector3 toTarget = hitPoint - origin;
+        toTarget.y = 0f; // 水平方向，与 Straight throwable 一致
+        Vector3 baseDir  = toTarget.sqrMagnitude > 0.001f ? toTarget.normalized : transform.forward;
+
+        for (int i = 0; i < count; i++)
+        {
+            float spreadH = weapon.CalculateSpreadAngle();
+            float spreadV = weapon.CalculateSpreadAngle();
+            if (isPellet)
+            {
+                spreadH += Random.Range(-weapon.pelletSpreadAngle, weapon.pelletSpreadAngle);
+                spreadV += Random.Range(-weapon.pelletSpreadAngle, weapon.pelletSpreadAngle);
+            }
+            Vector3 dir = Quaternion.Euler(spreadV, spreadH, 0) * baseDir;
+            int dmg = weapon.CalculateDamage();
+            BulletProjectile.Fire(weapon, origin, dir, dmg, gameObject, weapon.weaponHitLayer, 0f);
+        }
+
+        if (weapon.IshasBullet)
+        {
+            slot.quantity -= count > 1 ? 1 : 1; // 散弹每次消耗 1 发弹药
+            DebugLog($"开枪 [{weapon.Name}] x{count}  弹药: {slot.quantity}/{weapon.MaxBullet}");
+        }
+
+        if (turnBasedUnit != null)
+            turnBasedUnit.ConsumeAP(weapon.UseCost);
+
+        OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
+    }
+
+    // 点射协程：按 fireInterval 间隔依次发射 burstCount 发
+    private System.Collections.IEnumerator FireBurstCoroutine(WeaponData weapon, HotbarSlot slot)
+    {
+        _burstFiring = true;
+        for (int i = 0; i < weapon.burstCount; i++)
+        {
+            if (weapon.IshasBullet && slot.quantity <= 0) break;
+            FireOneBurst(weapon, slot, 1);
+            if (i < weapon.burstCount - 1)
+                yield return new WaitForSeconds(weapon.fireInterval);
+        }
+        _burstFiring = false;
+    }
+
+    /// <summary>
+    /// 换弹：弹夹补满，消耗 ReloadApCost AP
+    /// </summary>
+    public bool ReloadWeapon()
+    {
+        var slot = hotbar[currentSlotIndex];
+        if (slot.itemData == null || slot.itemData.Type != ItemType.Weapon) return false;
+
+        WeaponData weapon = slot.itemData as WeaponData;
+        if (weapon == null || !weapon.IshasBullet) return false;
+        if (slot.quantity >= weapon.MaxBullet) { DebugLog("弹夹已满"); return false; }
+
+        slot.quantity = weapon.MaxBullet;
+
+        if (turnBasedUnit != null)
+            turnBasedUnit.ConsumeAP(weapon.ReloadApCost);
+
+        DebugLog($"换弹 [{weapon.Name}]  {slot.quantity}/{weapon.MaxBullet}");
+        OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
+        return true;
+    }
+
+    /// <summary>
+    /// 武器瞄准：射线打地面得到鼠标指向的世界坐标（与 Straight throwable 逻辑一致）。
+    /// 返回地面命中点；ShootWeapon / Visualizer 用 origin→hitPoint 方向后自行延伸到最大射程。
+    /// </summary>
+    public Vector3 GetWeaponAimPosition()
+    {
+        if (mainCamera == null) return transform.position + transform.forward * 20f;
+
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, throwTargetLayer);
+
+        if (hits.Length == 0)
+        {
+            // 无地面命中时沿摄像机射线取一个远点
+            return transform.position + ray.direction.normalized * 50f;
+        }
+
+        float targetY = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloorWorldY(playerUnit != null ? playerUnit.CurrentFloor : 0)
+            : 0f;
+
+        RaycastHit best = hits[0];
+        float minDiff = float.MaxValue;
+        foreach (RaycastHit h in hits)
+        {
+            float d = Mathf.Abs(h.point.y - targetY);
+            if (d < minDiff) { minDiff = d; best = h; }
+        }
+        return best.point;
+    }
+
     // ============ 投掷（由 PlayerInputController 调用）============
 
     /// <summary>
@@ -231,7 +430,7 @@ public class EquipmentManager : MonoBehaviour
 
         ItemData item = CurrentSlot.itemData;
         ThrowableConfig cfg = item.ThrowCfg;
-        Vector3 origin = transform.position + Vector3.up * 1.2f;
+        Vector3 origin = FireOrigin;
 
         DebugLog($"Throwing [{item.Name}] → {targetPos}");
 
@@ -315,7 +514,23 @@ public class EquipmentManager : MonoBehaviour
         if (CurrentSlot.quantity > 0)
         {
             DebugLog($"Used [{item.Name}]");
+
+            // 装备类：穿上防具而非消耗
+            if (item.Type == ItemType.Equipment)
+            {
+                EquipArmor(item);
+                if (turnBasedUnit != null) turnBasedUnit.ConsumeAP(item.UseCost);
+                hotbar[currentSlotIndex] = new HotbarSlot();
+                OnItemUsed?.Invoke(item);
+                OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
+                return true;
+            }
+
             inventory?.ApplyEffect(item); // 应用效果（回血等），不消耗 Inventory
+
+            // 肾上腺素：使用后立即追加 AP
+            if (item.apBonus > 0 && turnBasedUnit != null)
+                turnBasedUnit.AddAP(item.apBonus);
 
             if (turnBasedUnit != null)
                 turnBasedUnit.ConsumeAP(item.UseCost);
@@ -361,9 +576,12 @@ public class EquipmentManager : MonoBehaviour
         {
             if (hotbar[i].IsEmpty)
             {
-                int add = item.maxStack > 1 ? Mathf.Min(item.maxStack, remaining) : remaining;
-                hotbar[i] = new HotbarSlot(item, add);
-                remaining -= add;
+                // 武器拾取时 quantity = MaxBullet（满弹），忽略传入的 qty
+                int slotQty = (item.Type == ItemType.Weapon)
+                    ? Mathf.Max(1, item.MaxBullet)
+                    : (item.maxStack > 1 ? Mathf.Min(item.maxStack, remaining) : remaining);
+                hotbar[i] = new HotbarSlot(item, slotQty);
+                remaining -= (item.Type == ItemType.Weapon) ? remaining : slotQty; // 武器一次放完
                 OnSlotChanged?.Invoke(i, hotbar[i]);
             }
         }
@@ -465,10 +683,10 @@ public class EquipmentManager : MonoBehaviour
     private void SyncHotbarFromInventory()
     {
         if (inventory == null) return;
-        bool hasAny = false;
+
+        // 已有物品时不覆盖
         for (int i = 0; i < hotbarSize; i++)
-            if (!hotbar[i].IsEmpty) { hasAny = true; break; }
-        if (hasAny) return;
+            if (!hotbar[i].IsEmpty) return;
 
         var items = inventory.GetAllItems();
         int filled = 0;
@@ -478,12 +696,16 @@ public class EquipmentManager : MonoBehaviour
             hotbar[i] = new HotbarSlot(items[i].itemData, items[i].quantity);
             filled++;
         }
-        // 真正从 Inventory 移除（转移，不是复制）
+
+        // 从 Inventory 移除（转移而非复制），静默移除不触发多余事件
         foreach (var s in items)
             if (s.itemData != null) inventory.RemoveItem(s.itemData, s.quantity);
 
+        // 每个填充的槽都通知 UI，而非只通知 currentSlotIndex
+        for (int i = 0; i < hotbarSize; i++)
+            OnSlotChanged?.Invoke(i, hotbar[i]);
+
         DebugLog($"SyncHotbarFromInventory: transferred {filled} item type(s) to Hotbar");
-        OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
     }
 
     // ============ 调试 ============
@@ -497,10 +719,16 @@ public class EquipmentManager : MonoBehaviour
     {
         if (!Application.isPlaying || !isAiming) return;
 
-        ThrowableConfig cfg = CurrentSlot?.itemData?.ThrowCfg;
-        if (cfg == null) return;
+        Vector3 start = FireOrigin;
+        var item = CurrentSlot?.itemData;
+        if (item == null) return;
 
-        Vector3 start = transform.position + Vector3.up * 1.2f;
+        // 武器瞄准由 WeaponAimVisualizer（LineRenderer）负责，Gizmos 不重复绘制
+        if (item.Type == ItemType.Weapon) return;
+
+        // 消耗品投掷：弧线
+        ThrowableConfig cfg = item.ThrowCfg;
+        if (cfg == null) return;
 
         Gizmos.color = cfg.IsArc ? Color.yellow : Color.cyan;
         Vector3 prev = start;
@@ -509,9 +737,9 @@ public class EquipmentManager : MonoBehaviour
             float t = i / 20f;
             Vector3 linear = Vector3.Lerp(start, aimTargetPos, t);
             float arc = cfg.IsArc ? Mathf.Sin(t * Mathf.PI) * cfg.arcHeight : 0f;
-            Vector3 pos = linear + Vector3.up * arc;
-            Gizmos.DrawLine(prev, pos);
-            prev = pos;
+            Vector3 p = linear + Vector3.up * arc;
+            Gizmos.DrawLine(prev, p);
+            prev = p;
         }
 
         Gizmos.color = Color.red;
@@ -528,6 +756,50 @@ public class EquipmentManager : MonoBehaviour
             Gizmos.color = new Color(1f, 1f, 0f, 0.1f);
             Gizmos.DrawWireSphere(transform.position, cfg.throwRange * GridManager.Instance.CellSize);
         }
+    }
+
+    // ============ 防具管理 ============
+
+    public ItemData EquippedArmor => equippedArmor;
+
+    public bool EquipArmor(ItemData item)
+    {
+        if (item == null || item.Type != ItemType.Equipment) return false;
+        equippedArmor = item;
+        currentArmorDurability = item.armorDurability;
+        DebugLog($"装备防具: {item.Name}  减伤 {item.damageReduction}%  耐久 {item.armorDurability}");
+        return true;
+    }
+
+    public void UnequipArmor()
+    {
+        if (equippedArmor != null) DebugLog($"卸下防具: {equippedArmor.Name}");
+        equippedArmor = null;
+        currentArmorDurability = 0;
+    }
+
+    /// <summary>
+    /// 返回当前防具减伤百分比（0~50），并扣除耐久。
+    /// 调用时机：玩家受到物理伤害时（由 PlayerController.TakeDamage 调用）
+    /// </summary>
+    public int ConsumeArmorAndGetReduction()
+    {
+        if (equippedArmor == null) return 0;
+        int reduction = equippedArmor.damageReduction;
+
+        // 无限耐久不扣
+        if (equippedArmor.armorDurability < 0) return reduction;
+
+        currentArmorDurability--;
+        DebugLog($"防具耐久 -{1} → {currentArmorDurability}/{equippedArmor.armorDurability}");
+
+        if (currentArmorDurability <= 0)
+        {
+            DebugLog($"防具 [{equippedArmor.Name}] 已损毁");
+            equippedArmor = null;
+            currentArmorDurability = 0;
+        }
+        return reduction;
     }
 
     void OnGUI()

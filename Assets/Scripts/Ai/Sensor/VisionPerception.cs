@@ -161,6 +161,10 @@ public class VisionPerception : IPerceptionModule
             if (angle > config.visionAngle / 2f) return false;
         }
 
+        // 烟雾遮挡
+        if (SmokeZoneManager.IsLineOfSightSmoked(owner.position, target.position))
+            return false;
+
         // 射线检测（障碍物遮挡）
         Vector3 dir = (target.position - owner.position).normalized;
         return !Physics.Raycast(owner.position, dir,

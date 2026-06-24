@@ -104,6 +104,7 @@
     <Compile Include="Assets\Scripts\SystemManager\IDamageable.cs" />
     <Compile Include="Assets\Scripts\UI\InventoryUI.cs" />
     <Compile Include="Assets\Scripts\SystemManager\MissionSystem\MissionManager.cs" />
+    <Compile Include="Assets\Scripts\Items\SmokeZone.cs" />
     <Compile Include="Assets\Scripts\Ai\Sensor\VisionSensor.cs" />
     <Compile Include="Assets\Scripts\SystemManager\GameManager.cs" />
     <Compile Include="Assets\Scripts\Attributes\ConditionalHideAttribute.cs" />
@@ -123,6 +124,7 @@
     <Compile Include="Assets\Scripts\Items\ThrowableProjectile.cs" />
     <Compile Include="Assets\Scripts\units\DynamicObstacle.cs" />
     <Compile Include="Assets\Scripts\Ai\Sensor\SoundPerception.cs" />
+    <Compile Include="Assets\Scripts\Items\SmokeZoneManager.cs" />
     <Compile Include="Assets\Scripts\Combat\ChargeAction.cs" />
     <Compile Include="Assets\Scripts\Items\SceneItemInstance.cs" />
     <Compile Include="Assets\Scripts\UI\HotbarUI.cs" />
@@ -136,6 +138,7 @@
     <Compile Include="Assets\Scripts\AOSFogWar\Shadowcaster.cs" />
     <Compile Include="Assets\Scripts\UI\ItemSlotUI.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerConfig.cs" />
+    <Compile Include="Assets\Scripts\Player\WeaponAimVisualizer.cs" />
     <Compile Include="Assets\Scripts\Camera\FloorObjectMarker.cs" />
     <Compile Include="Assets\Scripts\Ai\EnemyStatEffect.cs" />
     <Compile Include="Assets\Scripts\AOSFogWar\csFogWar.cs" />

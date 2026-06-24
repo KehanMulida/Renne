@@ -38,8 +38,10 @@ public class PlayerInputController : MonoBehaviour
     [SerializeField] private KeyCode radialMenuKey = KeyCode.R;
 
     [Header("快捷栏输入")]
-    [Tooltip("投掷 / 近战攻击（左键）")]
-    [SerializeField] private KeyCode throwKey = KeyCode.Mouse0;
+    [Tooltip("投掷 / 近战攻击 / 开枪（左键）")]
+    [SerializeField] private KeyCode throwKey  = KeyCode.Mouse0;
+    [Tooltip("换弹（武器弹夹补满）")]
+    [SerializeField] private KeyCode reloadKey = KeyCode.F;
     // F 键近战切换已由 R 键径向菜单替代，不再使用
 
     // 近战模式状态
@@ -89,7 +91,7 @@ public class PlayerInputController : MonoBehaviour
     private int                _radialSelected   = -1;    // -1 = 死区/未选中
 
     // 当前选中的物品使用模式（由 R 键径向菜单设置，LMB 执行）
-    private enum ItemMode { None, Melee, Throw, Consume }
+    private enum ItemMode { None, Melee, Throw, Consume, Shoot }
     private ItemMode           _currentItemMode  = ItemMode.None;
     private ItemData           _modeLockedItem   = null;
 
@@ -197,9 +199,15 @@ public class PlayerInputController : MonoBehaviour
         // 物品用尽时立即清除模式（涵盖 AI 拾取、其他途径消耗等情况）
         RefreshItemMode();
 
-        // 只有在投掷模式下才渲染抛物线瞄准；其他模式（包括近战/使用/None）均禁用
+        // 武器槽自动进入/退出射击模式，无需 R 键
+        AutoDetectWeaponMode();
+
+        // 投掷/射击模式显示瞄准线，其余禁用
         if (equipmentManager != null)
-            equipmentManager.UpdateAiming(_currentItemMode != ItemMode.Throw);
+        {
+            bool disableAim = _currentItemMode != ItemMode.Throw && _currentItemMode != ItemMode.Shoot;
+            equipmentManager.UpdateAiming(disableAim);
+        }
 
         // 优先级 1：乘坐载具
         if (_mountedVehicle != null) { HandleRideInput(); return; }
@@ -261,39 +269,45 @@ public class PlayerInputController : MonoBehaviour
         if (equipmentManager == null) return;
         bool canAct = turnBasedUnit == null || (turnBasedUnit.IsMyTurn && turnBasedUnit.CanAct);
 
-        // ── W 键即时使用已注释：改由 R 键菜单选择后 LMB 执行 ──────────
-        // if (Input.GetKeyDown(KeyCode.W)) { ... }
+        // 换弹（F 键）：不受模式和 canAct 门控，只要当前槽是武器即可
+        if (Input.GetKeyDown(reloadKey))
+            equipmentManager.ReloadWeapon();
 
-        if (!Input.GetKeyDown(throwKey)) return;
         if (!canAct) return;
 
-        RefreshItemMode(); // 若切换了物品则清除模式
+        RefreshItemMode();
+
+        // 射击模式：独立处理按住（全自动）和单次（其他）
+        if (_currentItemMode == ItemMode.Shoot)
+        {
+            bool keyDown = Input.GetKeyDown(throwKey);
+            bool keyHeld = Input.GetKey(throwKey) && !keyDown;
+            if (keyDown || keyHeld)
+                equipmentManager.ShootWeapon(keyHeld);
+            return;
+        }
+
+        // 其他模式：只响应按下
+        if (!Input.GetKeyDown(throwKey)) return;
 
         switch (_currentItemMode)
         {
             case ItemMode.Melee:
                 if (TryGetMeleeTarget(out Vector2Int targetGrid))
-                {
                     equipmentManager.ExecuteMelee(targetGrid);
-                    // 近战单次消耗：攻击后模式持续（可连击），物品耗尽时 RefreshItemMode 会清除
-                }
                 break;
 
             case ItemMode.Throw:
                 if (equipmentManager.TryGetAimPosition(out Vector3 aimPos))
                 {
                     equipmentManager.ThrowItem(aimPos);
-                    RefreshItemMode(); // 投掷后检查剩余数量
+                    RefreshItemMode();
                 }
                 break;
 
             case ItemMode.Consume:
                 equipmentManager.UseItem();
                 RefreshItemMode();
-                break;
-
-            case ItemMode.None:
-                // 尚未通过 R 键选择功能，LMB 不执行物品动作
                 break;
         }
     }
@@ -529,6 +543,30 @@ public class PlayerInputController : MonoBehaviour
         if (open && _radialActive) CancelRadialMenu();
     }
 
+    // 武器槽选中时自动进入射击模式，切走时退出
+    private void AutoDetectWeaponMode()
+    {
+        if (equipmentManager == null) return;
+        var slot = equipmentManager.CurrentSlot;
+        bool isWeapon = slot != null && !slot.IsEmpty && slot.itemData?.Type == ItemType.Weapon;
+
+        if (isWeapon)
+        {
+            if (_currentItemMode != ItemMode.Shoot)
+            {
+                _currentItemMode = ItemMode.Shoot;
+                _modeLockedItem  = slot.itemData;
+                isMeleeMode      = false;
+                CancelRadialMenu();
+            }
+        }
+        else if (_currentItemMode == ItemMode.Shoot)
+        {
+            _currentItemMode = ItemMode.None;
+            _modeLockedItem  = null;
+        }
+    }
+
     private void CancelRadialMenu()
     {
         _radialActive   = false;
@@ -634,6 +672,10 @@ public class PlayerInputController : MonoBehaviour
                 case ItemFunction.Consume:
                     entries.Add(new HoldMenuEntry { label = "食用/使用", apCost = d.UseCost,
                         onConfirm = () => { _currentItemMode = ItemMode.Consume; _modeLockedItem = d; isMeleeMode = false; } });
+                    break;
+                case ItemFunction.Shoot:
+                    entries.Add(new HoldMenuEntry { label = "开枪", apCost = d.UseCost,
+                        onConfirm = () => { _currentItemMode = ItemMode.Shoot; _modeLockedItem = d; isMeleeMode = false; } });
                     break;
             }
         }
@@ -1303,6 +1345,11 @@ public class PlayerInputController : MonoBehaviour
         {
             style.normal.textColor = new Color(0.4f, 1f, 0.4f);
             hint = "[ 使用模式 ] 左键立即使用  |  R 切换功能";
+        }
+        else if (_currentItemMode == ItemMode.Shoot)
+        {
+            style.normal.textColor = new Color(1f, 0.6f, 0.2f);
+            hint = "[ 射击模式 ] 左键开枪  F:换弹  |  R 切换功能";
         }
         else if (turnBasedUnit.CanAct)
         {

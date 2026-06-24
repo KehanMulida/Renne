@@ -362,7 +362,12 @@ public class TurnBasedUnit : MonoBehaviour
     public void SetAP(int value)
     {
         remainingActionPoints = Mathf.Clamp(value, 0, GetMaxAP());
-        // Debug.Log($"[{gameObject.name}] SetAP:{remainingActionPoints}");
+    }
+
+    /// <summary>增加 AP（肾上腺素等道具用，不超过当回合上限）</summary>
+    public void AddAP(int points)
+    {
+        remainingActionPoints = Mathf.Min(remainingActionPoints + points, GetMaxAP());
     }
 
     // ============ 行动接口 ============

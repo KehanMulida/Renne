@@ -38,10 +38,15 @@ public class EnemyEquipment : MonoBehaviour
     /// 无武器时近战1格
     /// 确保敌人不会在看不见的地方攻击
     /// </summary>
+    /// <summary>
+    /// 有效攻击范围 = min(武器射程, 敌人视野)
+    /// 视野是开枪前提，武器射程是物理上限，两者取较小值。
+    /// 无武器时退回到近战范围。
+    /// </summary>
     public float GetAttackRange(EnemyConfig config)
     {
-        if (!HasWeapon) return 1f;
-        return Mathf.Min(weapon.AttackRange, config.visionRange);
+        if (!HasWeapon) return config != null ? config.attackRange : 1f;
+        return Mathf.Min(weapon.AttackRange, config != null ? config.visionRange : weapon.AttackRange);
     }
 
     // ============ 初始化 ============
@@ -63,73 +68,87 @@ public class EnemyEquipment : MonoBehaviour
     // ============ 射击 ============
 
     /// <summary>
-    /// 执行射击
-    /// 计算散布偏移 → 生成子弹 → 扣除弹药
-    /// 返回是否成功射击
+    /// 按武器 FireMode 执行完整射击序列（协程）
+    /// CombatExecutor 用 yield return 调用，可正确处理点射间隔
     /// </summary>
-    public bool Shoot(Transform target, EnemyConfig config)
+    public System.Collections.IEnumerator ShootCoroutine(Transform target, EnemyConfig config)
     {
-        if (!HasWeapon)
+        if (!HasWeapon || !HasAmmo) yield break;
+
+        Vector3 origin = muzzlePoint != null
+            ? muzzlePoint.position
+            : transform.position + Vector3.up * 1.0f + transform.forward * 0.5f;
+
+        float qteDur = config != null ? config.qteWindowDuration : 0f;
+
+        switch (weapon.fireMode)
         {
-            Log("No weapon equipped");
-            return false;
+            case FireMode.SemiAuto:
+                FirePellets(origin, target, 1, false, qteDur);
+                break;
+
+            case FireMode.Burst:
+                for (int i = 0; i < weapon.burstCount; i++)
+                {
+                    if (!HasAmmo) break;
+                    FirePellets(origin, target, 1, false, i == 0 ? qteDur : 0f);
+                    if (i < weapon.burstCount - 1)
+                        yield return new WaitForSeconds(weapon.fireInterval);
+                }
+                break;
+
+            case FireMode.FullAuto:
+                // AI 全自动：每次行动连发 burstCount 发（不做帧级别持续射击）
+                for (int i = 0; i < weapon.burstCount; i++)
+                {
+                    if (!HasAmmo) break;
+                    FirePellets(origin, target, 1, false, i == 0 ? qteDur : 0f);
+                    if (i < weapon.burstCount - 1)
+                        yield return new WaitForSeconds(weapon.fireInterval);
+                }
+                break;
+
+            case FireMode.Shotgun:
+                FirePellets(origin, target, weapon.pelletsPerShot, true, qteDur);
+                break;
+        }
+    }
+
+    // 发射 count 颗弹丸，扣 1 发弹药
+    private void FirePellets(Vector3 origin, Transform target, int count, bool isPellet, float qteDur)
+    {
+        Vector3 baseDir = (target.position - origin).normalized;
+
+        for (int i = 0; i < count; i++)
+        {
+            float spreadH = weapon.CalculateSpreadAngle();
+            float spreadV = weapon.CalculateSpreadAngle();
+            if (isPellet)
+            {
+                spreadH += Random.Range(-weapon.pelletSpreadAngle, weapon.pelletSpreadAngle);
+                spreadV += Random.Range(-weapon.pelletSpreadAngle, weapon.pelletSpreadAngle);
+            }
+            Vector3 dir = Quaternion.Euler(spreadV, spreadH * Random.Range(-1f, 1f), 0) * baseDir;
+            int dmg = weapon.CalculateDamage();
+            BulletProjectile.Fire(weapon, origin, dir, dmg, gameObject, hitLayer,
+                qteDuration: i == 0 ? qteDur : 0f); // QTE 只在第一颗触发
         }
 
-        if (!HasAmmo)
-        {
-            Log("Out of ammo!");
-            return false;
-        }
-
-        // 射击起点
-        Vector3 origin;
-        if (muzzlePoint != null)
-        {
-            origin = muzzlePoint.position;
-        }
-        else
-        {
-            origin = transform.position
-                   + Vector3.up * 1.0f
-                   + transform.forward * 0.5f;
-        }
-
-        // 基础方向（朝向目标）
-        Vector3 baseDirection = (target.position - origin).normalized;
-
-        // 计算散布偏移
-        float spreadAngle = weapon.CalculateSpreadAngle();
-
-        // 在水平面和垂直面各施加随机偏移
-        Vector3 spreadDirection = Quaternion.Euler(
-            spreadAngle,                            // 垂直偏移
-            spreadAngle * Random.Range(-1f, 1f),    // 水平随机偏移
-            0
-        ) * baseDirection;
-
-        // 计算伤害（含暴击）
-        int damage = weapon.CalculateDamage();
-
-        Log($"Shooting at {target.name} | spread: {spreadAngle:F1}° | damage: {damage}");
-
-        // 发射子弹
-        BulletProjectile.Fire(
-            weapon,
-            origin,
-            spreadDirection,
-            damage,
-            gameObject,
-            hitLayer,
-            qteDuration: config != null ? config.qteWindowDuration : 0f
-        );
-
-        // 扣除弹药
         if (weapon.IshasBullet)
         {
             currentAmmo--;
-            Log($"Ammo remaining: {currentAmmo}/{weapon.MaxBullet}");
+            Log($"射击 [{weapon.fireMode}] x{count}  弹药: {currentAmmo}/{weapon.MaxBullet}");
         }
+    }
 
+    /// <summary>向后兼容：SemiAuto 单发（CombatExecutor 已改用 ShootCoroutine）</summary>
+    public bool Shoot(Transform target, EnemyConfig config)
+    {
+        if (!HasWeapon || !HasAmmo) return false;
+        Vector3 origin = muzzlePoint != null
+            ? muzzlePoint.position
+            : transform.position + Vector3.up * 1.0f + transform.forward * 0.5f;
+        FirePellets(origin, target, 1, false, config != null ? config.qteWindowDuration : 0f);
         return true;
     }
 
@@ -157,6 +176,24 @@ public class EnemyEquipment : MonoBehaviour
         weapon = null;
         currentAmmo = 0;
         Log("Weapon unequipped");
+    }
+
+    /// <summary>
+    /// 从场景 WorldItem 拾取武器（AI 行为节点调用）
+    /// 要求 worldItem 的 ItemData 是 WeaponData，否则返回 false
+    /// </summary>
+    public bool TryPickupWeaponFromScene(WorldItem worldItem)
+    {
+        if (worldItem == null || worldItem.IsPickedUp) return false;
+
+        WeaponData wd = worldItem.ItemData as WeaponData;
+        if (wd == null) return false;
+
+        if (!worldItem.Pickup(gameObject)) return false;
+
+        EquipWeapon(wd);
+        Log($"从场景拾取武器: {wd.Name}");
+        return true;
     }
 
     // ============ 无武器时的基础攻击伤害 ============

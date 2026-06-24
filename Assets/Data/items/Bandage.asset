@@ -15,6 +15,7 @@ MonoBehaviour:
   ID: 2001
   Name: Bandage
   description: "\u7269\u54C1\u63CF\u8FF0"
+  Icon: {fileID: 0}
   Type: 0
   rarity: 0
   UseCost: 1
@@ -47,29 +48,52 @@ MonoBehaviour:
     debrisPrefab: {fileID: 0}
     throwSound: 
     impactSound: 
+    isSmokeGrenade: 0
+    smokeMinTurns: 2
+    smokeMaxTurns: 4
+    smokeRadius: 3
+    isDecoy: 0
+    decoyNoiseLevel: 4
+    decoyDuration: 5
+    decoyInterval: 1.5
   _isConsumable: 1
   _isWeapon: 0
   _isSceneItem: 0
+  _isEquipment: 0
   healAmount: 20
   staminaAmount: 0
   sanityAmount: 0
+  damageAmount: 0
+  sanityDrain: 0
   meleeDamage: 0
   meleeRange: 0
   meleeLayer:
     serializedVersion: 2
     m_Bits: 0
+  apBonus: 0
+  damageReduction: 20
+  armorDurability: 50
   WeaponType: Gun
-  Damage: 20
-  AttackRange: 5
-  NoiceLevel: 2
+  fireMode: 0
   IshasBullet: 1
   MaxBullet: 7
+  ReloadApCost: 1
+  Damage: 20
+  AttackRange: 5
   Accuracy: 70
   MaxSpreadAngle: 20
   CriticalChance: 10
   CriticalMultiplier: 2
+  burstCount: 1
+  pelletsPerShot: 1
+  pelletSpreadAngle: 10
+  fireInterval: 0.15
+  NoiceLevel: 2
   BulletSpeed: 30
   BulletMaxDistance: 50
+  weaponHitLayer:
+    serializedVersion: 2
+    m_Bits: 0
   BulletPrefab: {fileID: 0}
   HitVFXPrefab: {fileID: 0}
   MuzzleVFXPrefab: {fileID: 0}
@@ -154,6 +178,18 @@ MonoBehaviour:
     explosionVFXPrefab: {fileID: 0}
     explosionSound: 
     leaveDebris: 1
+  isRideable: 0
+  rideConfig:
+    maxSlideCells: 4
+    apCostToBoard: 0
+    apCostPerCell: 1
+    slideSpeed: 6
+    allowDiagonal: 0
+    slideNoiseLevel: 2
+    riderOffset: {x: 0, y: 0.2, z: 0}
+    boardAnimTrigger: 
+    slideAnimTrigger: 
+    dismountAnimTrigger: 
   animatorController: {fileID: 0}
   stateChangeVFXPrefab: {fileID: 0}
   sceneObjectId: 

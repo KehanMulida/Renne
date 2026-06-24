@@ -135,6 +135,15 @@ public class PlayerController : MonoBehaviour, IDamageable
     {
         if (runtimeConfig == null) return;
 
+        // 防弹背心减伤
+        EquipmentManager em = GetComponent<EquipmentManager>();
+        if (em != null && damage > 0)
+        {
+            int reduction = em.ConsumeArmorAndGetReduction();
+            if (reduction > 0)
+                damage = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - reduction / 100f)));
+        }
+
         int oldHp = runtimeConfig.CurrentHp;
         runtimeConfig.CurrentHp = Mathf.Max(0, runtimeConfig.CurrentHp - damage);
 

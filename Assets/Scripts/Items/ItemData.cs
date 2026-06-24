@@ -23,12 +23,21 @@ public enum FlightMode
     Straight,
 }
 
+public enum FireMode
+{
+    SemiAuto,  // 半自动：每次 LMB 射一次（手枪、狙击）
+    Burst,     // 点射：每次 LMB 连发 burstCount 发（突击步枪）
+    FullAuto,  // 全自动：按住 LMB 持续射击，受 fireInterval 控制射速（机枪）
+    Shotgun,   // 散弹：每次 LMB 同时发射 pelletsPerShot 颗弹丸
+}
+
 /// <summary>物品可注册的主动使用功能（用于径向菜单条目生成）</summary>
 public enum ItemFunction
 {
     Melee,   // 近战：以物品为武器攻击相邻格
     Throw,   // 投掷：弧线/直线抛出
     Consume, // 使用/食用：即时消耗触发效果
+    Shoot,   // 射击：武器开枪（消耗弹药）
 }
 
 // ── 投掷配置 ────────────────────────────────────────────────────────────────
@@ -60,6 +69,24 @@ public class ThrowableConfig
     [Header("声音")]
     public string throwSound = "";
     public string impactSound = "";
+
+    [Header("烟雾效果（烟雾罐）")]
+    public bool isSmokeGrenade = false;
+    [Tooltip("烟雾最少持续回合数")]
+    [Range(1, 10)] public int smokeMinTurns = 2;
+    [Tooltip("烟雾最多持续回合数（实际回合数在此区间随机）")]
+    [Range(1, 10)] public int smokeMaxTurns = 4;
+    [Tooltip("烟雾半径（格）")]
+    [Range(1, 8)] public int smokeRadius = 3;
+
+    [Header("声音诱饵（诱饵投掷物）")]
+    public bool isDecoy = false;
+    [Tooltip("诱饵噪音等级（越高越容易被 AI 听到）")]
+    [Range(1, 5)] public int decoyNoiseLevel = 4;
+    [Tooltip("诱饵持续发声时长（秒）")]
+    [Range(1f, 30f)] public float decoyDuration = 5f;
+    [Tooltip("诱饵发声间隔（秒）")]
+    [Range(0.5f, 5f)] public float decoyInterval = 1.5f;
 
     public bool HasSplash    => splashRadius > 0 && splashDamage > 0;
     public bool IsArc        => flightMode == FlightMode.Arc;
@@ -256,6 +283,7 @@ public class ItemData : ScriptableObject
     [HideInInspector] [SerializeField] private bool _isConsumable;
     [HideInInspector] [SerializeField] private bool _isWeapon;
     [HideInInspector] [SerializeField] private bool _isSceneItem;
+    [HideInInspector] [SerializeField] private bool _isEquipment;
 
     // ── 消耗品字段（Type == Consumable 时显示）──────────────────────────────
 
@@ -267,21 +295,52 @@ public class ItemData : ScriptableObject
     [ConditionalHide("_isConsumable")] public int       meleeDamage   = 0;
     [ConditionalHide("_isConsumable")] public int       meleeRange    = 0;
     [ConditionalHide("_isConsumable")] public LayerMask meleeLayer;
+    [Tooltip("使用后临时增加 AP（当前回合立即生效）")]
+    [ConditionalHide("_isConsumable")] public int       apBonus       = 0;
+
+    // ── 装备字段（Type == Equipment 时显示）──────────────────────────────────
+
+    [Header("  防具参数")]
+    [Tooltip("伤害减少百分比（0~50）")]
+    [ConditionalHide("_isEquipment")] [Range(0, 50)] public int damageReduction = 20;
+    [Tooltip("耐久度（-1 = 无限）")]
+    [ConditionalHide("_isEquipment")] public int armorDurability = 50;
 
     // ── 武器字段（Type == Weapon 时显示）────────────────────────────────────
 
-    [ConditionalHide("_isWeapon")] public string WeaponType        = "Gun";
-    [ConditionalHide("_isWeapon")] public int    Damage            = 20;
-    [ConditionalHide("_isWeapon")] public int    AttackRange       = 5;
-    [ConditionalHide("_isWeapon")] public int    NoiceLevel        = 2;
-    [ConditionalHide("_isWeapon")] public bool   IshasBullet       = true;
-    [ConditionalHide("_isWeapon")] public int    MaxBullet         = 7;
-    [ConditionalHide("_isWeapon")] public int    Accuracy          = 70;
-    [ConditionalHide("_isWeapon")] public float  MaxSpreadAngle    = 20f;
-    [ConditionalHide("_isWeapon")] public int    CriticalChance    = 10;
-    [ConditionalHide("_isWeapon")] public float  CriticalMultiplier = 2f;
-    [ConditionalHide("_isWeapon")] public float  BulletSpeed       = 30f;
-    [ConditionalHide("_isWeapon")] public float  BulletMaxDistance = 50f;
+    [ConditionalHide("_isWeapon")] public string   WeaponType         = "Gun";
+    [ConditionalHide("_isWeapon")] public FireMode fireMode           = FireMode.SemiAuto;
+
+    [Header("  弹药")]
+    [ConditionalHide("_isWeapon")] public bool     IshasBullet        = true;
+    [ConditionalHide("_isWeapon")] public int      MaxBullet          = 7;
+    [ConditionalHide("_isWeapon")] public int      ReloadApCost       = 1;
+
+    [Header("  射击参数")]
+    [ConditionalHide("_isWeapon")] public int      Damage             = 20;
+    [ConditionalHide("_isWeapon")] public int      AttackRange        = 5;
+    [ConditionalHide("_isWeapon")] public int      Accuracy           = 70;
+    [ConditionalHide("_isWeapon")] public float    MaxSpreadAngle     = 20f;
+    [ConditionalHide("_isWeapon")] public int      CriticalChance     = 10;
+    [ConditionalHide("_isWeapon")] public float    CriticalMultiplier = 2f;
+
+    [Header("  点射 / 散弹")]
+    [Tooltip("Burst：每次扣动扳机连发数；SemiAuto/FullAuto 填 1")]
+    [ConditionalHide("_isWeapon")] public int      burstCount         = 1;
+    [Tooltip("Shotgun：每次射击同时飞出的弹丸数")]
+    [ConditionalHide("_isWeapon")] public int      pelletsPerShot     = 1;
+    [Tooltip("散弹弹丸的额外散布角度（叠加在 MaxSpreadAngle 之上）")]
+    [ConditionalHide("_isWeapon")] public float    pelletSpreadAngle  = 10f;
+    [Tooltip("全自动 / 点射的射击间隔（秒），决定射速；SemiAuto 填 0")]
+    [ConditionalHide("_isWeapon")] public float    fireInterval       = 0.15f;
+
+    [Header("  噪音 & 弹道")]
+    [ConditionalHide("_isWeapon")] public int      NoiceLevel         = 2;
+    [ConditionalHide("_isWeapon")] public float    BulletSpeed        = 30f;
+    [ConditionalHide("_isWeapon")] public float    BulletMaxDistance  = 50f;
+    [ConditionalHide("_isWeapon")] public LayerMask weaponHitLayer;
+
+    [Header("  特效 & 预制体")]
     [ConditionalHide("_isWeapon")] public GameObject BulletPrefab;
     [ConditionalHide("_isWeapon")] public GameObject HitVFXPrefab;
     [ConditionalHide("_isWeapon")] public GameObject MuzzleVFXPrefab;
@@ -343,10 +402,22 @@ public class ItemData : ScriptableObject
     public System.Collections.Generic.List<ItemFunction> GetAvailableFunctions()
     {
         var list = new System.Collections.Generic.List<ItemFunction>();
+
+        if (Type == ItemType.Weapon)
+        {
+            list.Add(ItemFunction.Shoot);
+            return list;
+        }
+
+        if (Type == ItemType.Equipment)
+        {
+            list.Add(ItemFunction.Consume); // "穿上"防具
+            return list;
+        }
+
         if (Type != ItemType.Consumable) return list;
         if (meleeDamage > 0) list.Add(ItemFunction.Melee);
         if (isThrowable)     list.Add(ItemFunction.Throw);
-        // 消耗品始终可以直接使用（即使无数值效果）
         list.Add(ItemFunction.Consume);
         return list;
     }
@@ -410,6 +481,12 @@ public class ItemData : ScriptableObject
                 }
                 break;
 
+            case ItemType.Equipment:
+                info += "\n\n<b>防具属性</b>";
+                info += $"\n伤害减免: {damageReduction}%";
+                info += armorDurability < 0 ? "\n耐久: 无限" : $"\n耐久: {armorDurability}";
+                break;
+
             case ItemType.Weapon:
                 info += "\n\n<b>武器属性</b>";
                 info += $"\n类型: {WeaponType}";
@@ -471,18 +548,26 @@ public class ItemData : ScriptableObject
         _isConsumable = Type == ItemType.Consumable;
         _isWeapon     = Type == ItemType.Weapon;
         _isSceneItem  = Type == ItemType.SceneItem;
+        _isEquipment  = Type == ItemType.Equipment;
 
         // 值域 clamp（替代 [Range] 与 [ConditionalHide] 的 PropertyDrawer 冲突）
-        Accuracy       = Mathf.Clamp(Accuracy, 0, 100);
-        MaxSpreadAngle = Mathf.Clamp(MaxSpreadAngle, 0f, 45f);
-        CriticalChance = Mathf.Clamp(CriticalChance, 0, 100);
+        Accuracy          = Mathf.Clamp(Accuracy, 0, 100);
+        MaxSpreadAngle    = Mathf.Clamp(MaxSpreadAngle, 0f, 45f);
+        CriticalChance    = Mathf.Clamp(CriticalChance, 0, 100);
+        burstCount        = Mathf.Max(1, burstCount);
+        pelletsPerShot    = Mathf.Max(1, pelletsPerShot);
+        pelletSpreadAngle = Mathf.Clamp(pelletSpreadAngle, 0f, 45f);
+        fireInterval      = Mathf.Max(0f, fireInterval);
         meleeRange     = Mathf.Clamp(meleeRange, 0, 3);
         AttackRange    = Mathf.Max(AttackRange, 0);
         Damage         = Mathf.Max(Damage, 0);
-        healAmount     = Mathf.Max(healAmount, 0);
-        staminaAmount  = Mathf.Max(staminaAmount, 0);
-        sanityAmount   = Mathf.Max(sanityAmount, 0);
-        meleeDamage    = Mathf.Max(meleeDamage, 0);
+        healAmount      = Mathf.Max(healAmount, 0);
+        staminaAmount   = Mathf.Max(staminaAmount, 0);
+        sanityAmount    = Mathf.Max(sanityAmount, 0);
+        meleeDamage     = Mathf.Max(meleeDamage, 0);
+        apBonus         = Mathf.Max(apBonus, 0);
+        damageReduction = Mathf.Clamp(damageReduction, 0, 50);
+        if (armorDurability < -1) armorDurability = -1;
 
         if (gridWidth  < 1) gridWidth  = 1;
         if (gridDepth  < 1) gridDepth  = 1;
@@ -490,6 +575,8 @@ public class ItemData : ScriptableObject
 
         if (isLockable && !isToggleable)
             Debug.LogWarning($"[ItemData] {name}: isLockable=true 但 isToggleable=false");
+        if (throwableConfig.smokeMinTurns > throwableConfig.smokeMaxTurns)
+            throwableConfig.smokeMaxTurns = throwableConfig.smokeMinTurns;
         if (isExplosive && !isDestroyable)
             Debug.LogWarning($"[ItemData] {name}: isExplosive=true 但 isDestroyable=false");
         if (!string.IsNullOrEmpty(sceneObjectId) && sceneObjectId.Contains(" "))

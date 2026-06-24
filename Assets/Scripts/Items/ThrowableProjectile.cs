@@ -215,6 +215,14 @@ public class ThrowableProjectile : MonoBehaviour
         if (config.impactVFXPrefab != null)
             Instantiate(config.impactVFXPrefab, pos, Quaternion.identity);
 
+        // 烟雾效果
+        if (config.isSmokeGrenade)
+            SmokeZoneManager.SpawnSmoke(pos, config.smokeRadius, config.smokeMinTurns, config.smokeMaxTurns);
+
+        // 声音诱饵
+        if (config.isDecoy)
+            StartCoroutine(DecoyNoiseCoroutine(pos));
+
         if (config.breakOnImpact)
         {
             // 损坏：生成碎片后直接销毁（美术接入点：config.debrisPrefab）
@@ -222,13 +230,34 @@ public class ThrowableProjectile : MonoBehaviour
                 Instantiate(config.debrisPrefab, pos, Quaternion.identity);
 
             Debug.Log($"[Projectile:{itemData.Name}] Broken on impact");
-            Destroy(gameObject);
+            if (!config.isDecoy) Destroy(gameObject); // 诱饵需要保持存在以继续发声
         }
         else
         {
             // 未损坏：播放落地弹跳动画，动画结束后决定是否生成 WorldItem
             StartCoroutine(LandingBounceCoroutine(pos));
         }
+    }
+
+    private IEnumerator DecoyNoiseCoroutine(Vector3 pos)
+    {
+        float elapsed = 0f;
+        float radius = config.decoyNoiseLevel * 2f;
+        int floor = Mathf.FloorToInt(pos.y / 4f);
+
+        while (elapsed < config.decoyDuration)
+        {
+            if (SoundManager.Instance != null)
+            {
+                var evt = new SoundEvent(pos, radius, gameObject,
+                    SoundType.Environmental, config.decoyNoiseLevel / 5f);
+                SoundManager.Instance.BroadcastSound(evt);
+            }
+            yield return new WaitForSeconds(config.decoyInterval);
+            elapsed += config.decoyInterval;
+        }
+
+        Destroy(gameObject);
     }
 
     /// <summary>

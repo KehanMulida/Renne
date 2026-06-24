@@ -15,6 +15,7 @@ MonoBehaviour:
   ID: 3001
   Name: ak
   description: "\u7269\u54C1\u63CF\u8FF0"
+  Icon: {fileID: 0}
   Type: 1
   rarity: 0
   UseCost: 1
@@ -53,23 +54,34 @@ MonoBehaviour:
   healAmount: 0
   staminaAmount: 0
   sanityAmount: 0
+  damageAmount: 0
+  sanityDrain: 0
   meleeDamage: 0
   meleeRange: 0
   meleeLayer:
     serializedVersion: 2
     m_Bits: 0
   WeaponType: Gun
-  Damage: 20
-  AttackRange: 8
-  NoiceLevel: 2
+  fireMode: 1
   IshasBullet: 1
   MaxBullet: 35
-  Accuracy: 40
+  ReloadApCost: 1
+  Damage: 20
+  AttackRange: 8
+  Accuracy: 90
   MaxSpreadAngle: 20
   CriticalChance: 10
   CriticalMultiplier: 2
-  BulletSpeed: 7.8
+  burstCount: 3
+  pelletsPerShot: 3
+  pelletSpreadAngle: 10
+  fireInterval: 0.15
+  NoiceLevel: 2
+  BulletSpeed: 10
   BulletMaxDistance: 50
+  weaponHitLayer:
+    serializedVersion: 2
+    m_Bits: 392
   BulletPrefab: {fileID: 5556242017116236567, guid: bd4245bfafea67544b2bf1c8d42115d4, type: 3}
   HitVFXPrefab: {fileID: 0}
   MuzzleVFXPrefab: {fileID: 0}
@@ -154,6 +166,18 @@ MonoBehaviour:
     explosionVFXPrefab: {fileID: 0}
     explosionSound: 
     leaveDebris: 1
+  isRideable: 0
+  rideConfig:
+    maxSlideCells: 4
+    apCostToBoard: 0
+    apCostPerCell: 1
+    slideSpeed: 6
+    allowDiagonal: 0
+    slideNoiseLevel: 2
+    riderOffset: {x: 0, y: 0.2, z: 0}
+    boardAnimTrigger: 
+    slideAnimTrigger: 
+    dismountAnimTrigger: 
   animatorController: {fileID: 0}
   stateChangeVFXPrefab: {fileID: 0}
   sceneObjectId: 

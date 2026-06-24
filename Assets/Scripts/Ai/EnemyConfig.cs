@@ -95,6 +95,8 @@ public class EnemyConfig : ScriptableObject
     [Tooltip("攻击冷却时间（秒）")]
     public float attackCooldown = 1f;
 
+    [Tooltip("无武器时的近战攻击范围（格）")]
+    public int attackRange = 1;
     [Tooltip("无武器时的空手伤害（近战1格）")]
     public int attackDamage = 10;
 
