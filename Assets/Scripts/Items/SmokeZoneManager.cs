@@ -32,7 +32,12 @@ public class SmokeZoneManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    public void Register(SmokeZone zone)   => _activeZones.Add(zone);
+    public void Register(SmokeZone zone)
+    {
+        _activeZones.RemoveAll(z => z == null); // 顺便清理已销毁的残留引用
+        _activeZones.Add(zone);
+    }
+
     public void Unregister(SmokeZone zone) => _activeZones.Remove(zone);
 
     /// <summary>

@@ -13,16 +13,66 @@ using System.Collections;
 /// - 运行时创建配置副本，不修改原始配置
 /// - 提供事件通知属性变化
 /// </summary>
-public class PlayerController : MonoBehaviour, IDamageable
+public class PlayerController : MonoBehaviour, IDamageable, ITurnControllable, IDetectable
 {
-      public bool IsAlive => CurrentHp > 0;
+    public bool IsAlive => CurrentHp > 0;
+
+    // ── 下蹲 ─────────────────────────────────────────────────────────────
+    private bool _isCrouching = false;
+    public bool IsCrouching => _isCrouching;
+
+    // 当前生效的移动倍率（1.0 = 正常，0~1 = 受限）
+    private float _moveMultiplier = 1f;
+    public float MoveMultiplier => _moveMultiplier;
+
+    /// <summary>
+    /// 移动倍率变化事件，参数为新倍率（1.0 = 正常，0.6 = 下蹲，以此类推）。
+    /// PlayerInputController / SoundEmitter 等订阅此事件实时刷新移动格子和声音。
+    /// 其他状态效果（减速、中毒等）也通过此事件通知。
+    /// </summary>
+    public event System.Action<float> OnMoveMultiplierChanged;
+
+    /// <summary>AI 射线检测终点：下蹲时更低，更容易被矮障碍物遮挡</summary>
+    public Vector3 DetectionPosition =>
+        transform.position + Vector3.up * (
+            _isCrouching
+            ? (Config?.CrouchEyeHeight ?? 0.4f)
+            : (Config?.StandEyeHeight  ?? 1.0f));
+
+    public void ToggleCrouch()
+    {
+        _isCrouching = !_isCrouching;
+        _moveMultiplier = _isCrouching ? (Config?.CrouchMoveMultiplier ?? 0.6f) : 1f;
+
+        // 下蹲是可逆的战术姿态：按最新上限（GetCurrentAP 已把倍率算进去）重算本回合剩余 AP。
+        // 蹲下 → 剩余降到蹲姿上限；本回合内再站起 → 恢复为 站立上限 − 本回合已用 AP。
+        // RefreshAP 扣除“已用”，因此无法靠反复蹲/站刷出额外步数。
+        _turnBasedUnit?.RefreshAP();
+
+        // 通知订阅者（PlayerInputController 重画移动范围、SoundEmitter 缩放声音、
+        // DetectionPosition 变低）。移动范围直接反映重算后的剩余 AP。
+        OnMoveMultiplierChanged?.Invoke(_moveMultiplier);
+
+        // 美术接入点：触发 Animator 下蹲动画
+        // GetComponentInChildren<Animator>()?.SetBool("IsCrouching", _isCrouching);
+    }
+
+    // ITurnControllable：用 _moveMultiplier 计算当回合 AP 上限
+    public int GetCurrentAP()
+    {
+        int baseAP = Config?.GetCurrentAP() ?? 1;
+        return Mathf.Max(1, Mathf.RoundToInt(baseAP * _moveMultiplier));
+    }
 
     [Header("配置数据")]
     [SerializeField] private PlayerConfig configTemplate;  // 配置模板
     
     [Header("运行时数据（只读）")]
-    [SerializeField] private PlayerConfig runtimeConfig;   // 运行时配置副本
-    
+    [SerializeField] private PlayerConfig runtimeConfig;
+
+    private EquipmentManager _equipmentManager;
+    private TurnBasedUnit    _turnBasedUnit;
+
     // ============ 公开属性（只读）============
     
     public int ID => runtimeConfig?.ID ?? 0;
@@ -65,6 +115,8 @@ public class PlayerController : MonoBehaviour, IDamageable
     void Awake()
     {
         InitializeConfig();
+        _equipmentManager = GetComponent<EquipmentManager>();
+        _turnBasedUnit    = GetComponent<TurnBasedUnit>();
     }
 
     void Start()
@@ -136,10 +188,9 @@ public class PlayerController : MonoBehaviour, IDamageable
         if (runtimeConfig == null) return;
 
         // 防弹背心减伤
-        EquipmentManager em = GetComponent<EquipmentManager>();
-        if (em != null && damage > 0)
+        if (_equipmentManager != null && damage > 0)
         {
-            int reduction = em.ConsumeArmorAndGetReduction();
+            int reduction = _equipmentManager.ConsumeArmorAndGetReduction();
             if (reduction > 0)
                 damage = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - reduction / 100f)));
         }

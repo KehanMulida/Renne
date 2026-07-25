@@ -119,6 +119,10 @@ public class EnemyEquipment : MonoBehaviour
     {
         Vector3 baseDir = (target.position - origin).normalized;
 
+        // QTE 在开枪瞬间由装备层触发，子弹不再耦合 CombatModeManager
+        if (qteDur > 0f && CombatModeManager.Instance != null)
+            CombatModeManager.Instance.NotifyEnemyAction(gameObject, baseDir, qteDur);
+
         for (int i = 0; i < count; i++)
         {
             float spreadH = weapon.CalculateSpreadAngle();
@@ -130,8 +134,7 @@ public class EnemyEquipment : MonoBehaviour
             }
             Vector3 dir = Quaternion.Euler(spreadV, spreadH * Random.Range(-1f, 1f), 0) * baseDir;
             int dmg = weapon.CalculateDamage();
-            BulletProjectile.Fire(weapon, origin, dir, dmg, gameObject, hitLayer,
-                qteDuration: i == 0 ? qteDur : 0f); // QTE 只在第一颗触发
+            BulletProjectile.Fire(weapon, origin, dir, dmg, gameObject, hitLayer);
         }
 
         if (weapon.IshasBullet)

@@ -145,10 +145,27 @@ public class PlayerConfig : ScriptableObject
     [Tooltip("基础可见距离（格子数）")]
     [Range(1, 30)]
     public int BaseVisibility = 5;
-    
+
     [Tooltip("视野角度（度）")]
     [Range(0f, 360f)]
     public float ViewAngle = 120f;
+
+    [Header("下蹲")]
+    [Tooltip("下蹲时每回合可移动格子数的倍率（0~1）")]
+    [Range(0.1f, 1f)]
+    public float CrouchMoveMultiplier = 0.6f;
+
+    [Tooltip("下蹲时声音半径的倍率（0~1）")]
+    [Range(0f, 1f)]
+    public float CrouchSoundMultiplier = 0.3f;
+
+    [Tooltip("站立时视线检测高度（相对于 transform.position.y）")]
+    [Range(0f, 3f)]
+    public float StandEyeHeight = 1.0f;
+
+    [Tooltip("下蹲时视线检测高度（相对于 transform.position.y）")]
+    [Range(0f, 3f)]
+    public float CrouchEyeHeight = 0.4f;
 
     [Header("预制体")]
     [Tooltip("玩家预制体引用")]

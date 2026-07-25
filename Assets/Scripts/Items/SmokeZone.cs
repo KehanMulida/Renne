@@ -21,8 +21,7 @@ public class SmokeZone : MonoBehaviour
         if (TurnSystem.Instance != null)
             TurnSystem.Instance.OnTurnEnd += OnTurnEnd;
         else
-            // 回合系统不存在时回退到 5 秒（不应发生，安全兜底）
-            Destroy(gameObject, 5f);
+            Debug.LogError("[SmokeZone] TurnSystem.Instance 为 null，烟雾区将永不消散！");
     }
 
     void OnDestroy()
@@ -57,7 +56,7 @@ public class SmokeZone : MonoBehaviour
         float   t       = Mathf.Clamp(Vector3.Dot(center - from, segDir), 0f, segLen);
         Vector3 closest = from + segDir * t;
 
-        return Vector3.Distance(closest, center) < _radius;
+        return (closest - center).sqrMagnitude < _radius * _radius;
     }
 
 #if UNITY_EDITOR

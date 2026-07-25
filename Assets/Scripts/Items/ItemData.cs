@@ -38,6 +38,7 @@ public enum ItemFunction
     Throw,   // 投掷：弧线/直线抛出
     Consume, // 使用/食用：即时消耗触发效果
     Shoot,   // 射击：武器开枪（消耗弹药）
+    Equip,   // 穿戴：将装备类道具穿上身（防弹背心等）
 }
 
 // ── 投掷配置 ────────────────────────────────────────────────────────────────
@@ -265,7 +266,6 @@ public class ItemData : ScriptableObject
     public string VFX       = "";
 
     [Header("视觉")]
-    public Sprite     icon;
     public GameObject Prefab;
 
     [Header("属性")]
@@ -411,7 +411,7 @@ public class ItemData : ScriptableObject
 
         if (Type == ItemType.Equipment)
         {
-            list.Add(ItemFunction.Consume); // "穿上"防具
+            list.Add(ItemFunction.Equip);
             return list;
         }
 

@@ -332,12 +332,12 @@ public class EquipmentManager : MonoBehaviour
             }
             Vector3 dir = Quaternion.Euler(spreadV, spreadH, 0) * baseDir;
             int dmg = weapon.CalculateDamage();
-            BulletProjectile.Fire(weapon, origin, dir, dmg, gameObject, weapon.weaponHitLayer, 0f);
+            BulletProjectile.Fire(weapon, origin, dir, dmg, gameObject, weapon.weaponHitLayer);
         }
 
         if (weapon.IshasBullet)
         {
-            slot.quantity -= count > 1 ? 1 : 1; // 散弹每次消耗 1 发弹药
+            slot.quantity--; // 散弹每次消耗 1 发弹药
             DebugLog($"开枪 [{weapon.Name}] x{count}  弹药: {slot.quantity}/{weapon.MaxBullet}");
         }
 
@@ -515,30 +515,23 @@ public class EquipmentManager : MonoBehaviour
         {
             DebugLog($"Used [{item.Name}]");
 
-            // 装备类：穿上防具而非消耗
             if (item.Type == ItemType.Equipment)
             {
                 EquipArmor(item);
-                if (turnBasedUnit != null) turnBasedUnit.ConsumeAP(item.UseCost);
-                hotbar[currentSlotIndex] = new HotbarSlot();
-                OnItemUsed?.Invoke(item);
-                OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
-                return true;
+                hotbar[currentSlotIndex] = new HotbarSlot(); // 装备只有1个
+            }
+            else
+            {
+                inventory?.ApplyEffect(item);
+                if (item.apBonus > 0 && turnBasedUnit != null)
+                    turnBasedUnit.AddAP(item.apBonus);
+
+                hotbar[currentSlotIndex].quantity--;
+                if (hotbar[currentSlotIndex].quantity <= 0)
+                    hotbar[currentSlotIndex] = new HotbarSlot();
             }
 
-            inventory?.ApplyEffect(item); // 应用效果（回血等），不消耗 Inventory
-
-            // 肾上腺素：使用后立即追加 AP
-            if (item.apBonus > 0 && turnBasedUnit != null)
-                turnBasedUnit.AddAP(item.apBonus);
-
-            if (turnBasedUnit != null)
-                turnBasedUnit.ConsumeAP(item.UseCost);
-
-            hotbar[currentSlotIndex].quantity -= 1;
-            if (hotbar[currentSlotIndex].quantity <= 0)
-                hotbar[currentSlotIndex] = new HotbarSlot();
-
+            turnBasedUnit?.ConsumeAP(item.UseCost);
             OnItemUsed?.Invoke(item);
             OnSlotChanged?.Invoke(currentSlotIndex, CurrentSlot);
             return true;
@@ -788,7 +781,7 @@ public class EquipmentManager : MonoBehaviour
         int reduction = equippedArmor.damageReduction;
 
         // 无限耐久不扣
-        if (equippedArmor.armorDurability < 0) return reduction;
+        if (equippedArmor.armorDurability == -1) return reduction;
 
         currentArmorDurability--;
         DebugLog($"防具耐久 -{1} → {currentArmorDurability}/{equippedArmor.armorDurability}");

@@ -43,8 +43,7 @@ public class BulletProjectile : MonoBehaviour
         Vector3 targetDirection,
         int damage,
         GameObject shooter,
-        LayerMask hitLayer,
-        float qteDuration = 0f)
+        LayerMask hitLayer)
     {
         GameObject go;
 
@@ -76,10 +75,6 @@ public class BulletProjectile : MonoBehaviour
         bullet.damage       = damage;
         bullet.lastPosition = origin;
         bullet.hitLayer     = hitLayer;
-
-        // 子弹生成瞬间触发 QTE（敌人正在攻击中，玩家可以在飞行途中躲避）
-        if (CombatModeManager.Instance != null)
-            CombatModeManager.Instance.NotifyEnemyAction(shooter, targetDirection.normalized, qteDuration);
 
         return bullet;
     }

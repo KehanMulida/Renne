@@ -241,19 +241,18 @@ public class ThrowableProjectile : MonoBehaviour
 
     private IEnumerator DecoyNoiseCoroutine(Vector3 pos)
     {
-        float elapsed = 0f;
-        float radius = config.decoyNoiseLevel * 2f;
-        int floor = Mathf.FloorToInt(pos.y / 4f);
+        float elapsed  = 0f;
+        float radius   = config.decoyNoiseLevel * 2f;
+        float intensity = config.decoyNoiseLevel / 5f;
+        var   wait     = new WaitForSeconds(config.decoyInterval);
 
         while (elapsed < config.decoyDuration)
         {
             if (SoundManager.Instance != null)
-            {
-                var evt = new SoundEvent(pos, radius, gameObject,
-                    SoundType.Environmental, config.decoyNoiseLevel / 5f);
-                SoundManager.Instance.BroadcastSound(evt);
-            }
-            yield return new WaitForSeconds(config.decoyInterval);
+                SoundManager.Instance.BroadcastSound(
+                    new SoundEvent(pos, radius, gameObject, SoundType.Environmental, intensity));
+
+            yield return wait;
             elapsed += config.decoyInterval;
         }
 

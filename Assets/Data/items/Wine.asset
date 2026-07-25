@@ -24,7 +24,6 @@ MonoBehaviour:
   Sound: 
   Animation: 
   VFX: 
-  icon: {fileID: 0}
   Prefab: {fileID: 0}
   weight: 1
   value: 10
@@ -63,8 +62,8 @@ MonoBehaviour:
   healAmount: 0
   staminaAmount: 0
   sanityAmount: 0
-  damageAmount: 0
-  sanityDrain: 0
+  damageAmount: 20
+  sanityDrain: 20
   meleeDamage: 10
   meleeRange: 1
   meleeLayer:

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -9,13 +7,9 @@ using UnityEngine;
 /// </summary>
 public interface IDamageable
 {
-    /// <summary>
-    /// 受到伤害
-    /// </summary>
     /// <param name="damage">伤害值</param>
     /// <param name="attacker">攻击者（可为 null）</param>
     void TakeDamage(int damage, GameObject attacker = null);
 
-    /// <summary>是否存活</summary>
     bool IsAlive { get; }
 }

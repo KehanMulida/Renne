@@ -44,8 +44,13 @@ public class PlayerInputController : MonoBehaviour
     [SerializeField] private KeyCode reloadKey = KeyCode.F;
     // F 键近战切换已由 R 键径向菜单替代，不再使用
 
+    [Header("姿态输入")]
+    [SerializeField] private KeyCode crouchKey = KeyCode.C;
+
     // 近战模式状态
     private bool isMeleeMode = false;
+
+    private PlayerController _playerController;
 
     // 反应窗口状态（敌人射击时临时开放移动）
     private bool isReactionWindowOpen = false;
@@ -134,7 +139,7 @@ public class PlayerInputController : MonoBehaviour
             if (TurnSystem.Instance.IsCurrentFaction(TurnFaction.Player))
             {
                 isInputEnabled = true;
-                ShowMovementRange();
+                RefreshMovementDisplay();
             }
         }
         else
@@ -142,13 +147,18 @@ public class PlayerInputController : MonoBehaviour
             Debug.LogError("[PlayerInputController] TurnSystem not found!");
         }
 
-        turnBasedUnit.OnMyTurnStart += OnPlayerTurnStart;
-        turnBasedUnit.OnMyTurnEnd += OnPlayerTurnEnd;
+        turnBasedUnit.OnMyTurnStart  += OnPlayerTurnStart;
+        turnBasedUnit.OnMyTurnEnd    += OnPlayerTurnEnd;
+        turnBasedUnit.OnAPExhausted  += EndPlayerTurn;
 
         // 初始化背包
         playerInventory = playerUnit.GetComponent<Inventory>();
         if (playerInventory == null)
             playerInventory = playerUnit.gameObject.AddComponent<Inventory>();
+
+        _playerController = playerUnit.GetComponent<PlayerController>();
+        if (_playerController != null)
+            _playerController.OnMoveMultiplierChanged += OnMoveMultiplierChanged;
 
         // 获取 EquipmentManager 并注入 Inventory
         equipmentManager = playerUnit.GetComponent<EquipmentManager>();
@@ -177,6 +187,12 @@ public class PlayerInputController : MonoBehaviour
         // Tab：事件驱动（乘坐中禁用）
         if (_mountedVehicle == null && Input.GetKeyDown(KeyCode.Tab))
             OnToggleInventory?.Invoke();
+
+        // C：切换下蹲（不消耗 AP，移动中/乘坐/仓库开启时禁用）
+        if (_mountedVehicle == null && !_inventoryOpen
+            && !(playerUnit != null && playerUnit.IsMoving)
+            && Input.GetKeyDown(crouchKey))
+            _playerController?.ToggleCrouch();
 
         // 滚轮：始终触发，不受仓库门控影响（EquipmentManager 订阅此事件切换槽位）
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -677,6 +693,10 @@ public class PlayerInputController : MonoBehaviour
                     entries.Add(new HoldMenuEntry { label = "开枪", apCost = d.UseCost,
                         onConfirm = () => { _currentItemMode = ItemMode.Shoot; _modeLockedItem = d; isMeleeMode = false; } });
                     break;
+                case ItemFunction.Equip:
+                    entries.Add(new HoldMenuEntry { label = "穿戴", apCost = d.UseCost,
+                        onConfirm = () => { _currentItemMode = ItemMode.Consume; _modeLockedItem = d; isMeleeMode = false; } });
+                    break;
             }
         }
         return entries;
@@ -1006,14 +1026,14 @@ public class PlayerInputController : MonoBehaviour
         }
         else
         {
-            ShowMovementRange();
+            RefreshMovementDisplay();
         }
     }
 
     private void OnPlayerTurnStart()
     {
         isInputEnabled = true;
-        ShowMovementRange();
+        RefreshMovementDisplay();
     }
 
     private void OnPlayerTurnEnd()
@@ -1034,7 +1054,7 @@ public class PlayerInputController : MonoBehaviour
         }
 
         if (turnBasedUnit.CanAct)
-            ShowMovementRange();
+            RefreshMovementDisplay();
         else
             ClearMovementRange();
     }
@@ -1049,12 +1069,6 @@ public class PlayerInputController : MonoBehaviour
     }
 
     // ============ 移动范围 ============
-
-    private void ShowMovementRange()
-    {
-        if (!turnBasedUnit.CanAct) { currentMovementRange = null; return; }
-        currentMovementRange = playerUnit.GetMovementRange();
-    }
 
     private void ClearMovementRange()
     {
@@ -1076,9 +1090,35 @@ public class PlayerInputController : MonoBehaviour
 
         if (turnBasedUnit != null)
         {
-            turnBasedUnit.OnMyTurnStart -= OnPlayerTurnStart;
-            turnBasedUnit.OnMyTurnEnd -= OnPlayerTurnEnd;
+            turnBasedUnit.OnMyTurnStart  -= OnPlayerTurnStart;
+            turnBasedUnit.OnMyTurnEnd    -= OnPlayerTurnEnd;
+            turnBasedUnit.OnAPExhausted  -= EndPlayerTurn;
         }
+
+        if (_playerController != null)
+            _playerController.OnMoveMultiplierChanged -= OnMoveMultiplierChanged;
+    }
+
+    // ── 移动倍率变化（由 PlayerController.OnMoveMultiplierChanged 驱动）────
+    // 下蹲已在 PlayerController.ToggleCrouch 里即时 clamp 了剩余 AP，
+    // 这里只需按最新剩余 AP 重画范围即可。
+    private void OnMoveMultiplierChanged(float multiplier)
+    {
+        if (isInputEnabled)
+            RefreshMovementDisplay();
+    }
+
+    /// <summary>
+    /// 刷新可移动格子显示。始终按 turnBasedUnit 的当前剩余 AP 计算——
+    /// 下蹲/状态效果等对移动能力的影响已反映在剩余 AP 里（真实扣 AP），
+    /// 此处无需再做显示层缩放。
+    /// </summary>
+    public void RefreshMovementDisplay()
+    {
+        if (turnBasedUnit == null || playerUnit == null) return;
+        if (!turnBasedUnit.CanAct) { currentMovementRange = null; return; }
+
+        currentMovementRange = playerUnit.GetMovementRange();
     }
 
     // ============ 可视化 ============

@@ -3,9 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-public class EnemyAIController : MonoBehaviour, IDamageable
+public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
 {
     public EnemyConfig config;
+    public int GetCurrentAP() => config?.GetCurrentAP() ?? 1;
 
     [Header("身份")]
     [Tooltip("Enemy 编号，对应 MissionData.assignedEnemies，如 E01")]
@@ -577,15 +578,8 @@ public class EnemyAIController : MonoBehaviour, IDamageable
 
         if (TurnSystem.Instance == null || !turnBasedUnit.IsMyTurn) return;
 
-        var allEnemies = FindObjectsOfType<EnemyAIController>();
-        foreach (var enemy in allEnemies)
-        {
-            if (enemy == null) continue;
-            if (enemy.IsExecuting) return;
-        }
-
-        Debug.Log($"[AI:{gameObject.name}] All enemies done, ending faction turn");
-        TurnSystem.Instance.EndCurrentTurn();
+        // 委托给 CombatModeManager，使用已注册列表而非 FindObjectsOfType
+        CombatModeManager.Instance?.NotifyEnemyTurnComplete(this);
     }
 
     // ============ 巡逻目标（否定格子逻辑在这里）============

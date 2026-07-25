@@ -195,4 +195,18 @@ public class CombatModeManager : MonoBehaviour
         yield return null;
         CheckExitCombat();
     }
+
+    /// <summary>
+    /// 某个敌人行动结束时调用。
+    /// 使用已注册列表检查是否所有敌人均已完成，避免每个敌人各自 FindObjectsOfType。
+    /// </summary>
+    public void NotifyEnemyTurnComplete(EnemyAIController caller)
+    {
+        if (TurnSystem.Instance == null) return;
+        foreach (var enemy in registeredEnemies)
+        {
+            if (enemy != null && enemy.IsExecuting) return;
+        }
+        TurnSystem.Instance.EndCurrentTurn();
+    }
 }

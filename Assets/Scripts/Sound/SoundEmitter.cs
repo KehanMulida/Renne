@@ -64,7 +64,40 @@ public class SoundEmitter : MonoBehaviour
 
     // 运行时数据
     private float lastSoundTime = 0f;
-    private const float minSoundInterval = 0.1f; // 最小声音间隔，避免频繁发声
+    private const float minSoundInterval = 0.1f;
+    private float _baseMovementRadius;   // 记录 Inspector 设置的原始半径
+    private float _crouchMultiplier = 1f;
+
+    void Awake()
+    {
+        _baseMovementRadius = movementSoundRadius;
+
+        var movement = GetComponent<UnitMovement>();
+        if (movement != null) movement.OnStep += EmitMovementSound;
+
+        var player = GetComponent<PlayerController>();
+        if (player != null) player.OnMoveMultiplierChanged += OnMoveMultiplierChanged;
+    }
+
+    void OnDestroy()
+    {
+        var movement = GetComponent<UnitMovement>();
+        if (movement != null) movement.OnStep -= EmitMovementSound;
+
+        var player = GetComponent<PlayerController>();
+        if (player != null) player.OnMoveMultiplierChanged -= OnMoveMultiplierChanged;
+    }
+
+    private void OnMoveMultiplierChanged(float multiplier)
+    {
+        // 声音半径按移动倍率等比缩放（下蹲 0.6 → 声音也更小）
+        // CrouchSoundMultiplier 进一步压低声音，使下蹲比移动减少更明显
+        var config = GetComponent<PlayerController>()?.Config;
+        float soundScale = multiplier < 1f
+            ? multiplier * (config?.CrouchSoundMultiplier ?? 0.3f) / (config?.CrouchMoveMultiplier ?? 0.6f)
+            : 1f;
+        movementSoundRadius = _baseMovementRadius * soundScale;
+    }
 
     // ============ 配置接口 ============
 

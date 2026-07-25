@@ -21,12 +21,15 @@ public class TurnBasedUnit : MonoBehaviour
     // ============ 运行时状态 ============
 
     private int remainingActionPoints = 0;
+    // 本回合已消耗的 AP 累计。剩余 AP 恒满足 remaining = Clamp(GetMaxAP() - _apSpentThisTurn)，
+    // 使 AP 上限中途改变（下蹲/站起、战斗模式切换）时能可升可降地正确重算（见 RefreshAP）。
+    private int _apSpentThisTurn = 0;
     private bool isMyTurn = false;
 
     // 组件缓存
-    private UnitMovement unitMovement;
-    private PlayerController playerController;
-    private EnemyAIController enemyController;
+    private UnitMovement      unitMovement;
+    private ITurnControllable _controller;
+    private IDamageable       _damageable;
 
     // 战斗模式状态
     private bool isInCombatMode = false;
@@ -67,13 +70,20 @@ public class TurnBasedUnit : MonoBehaviour
     /// </summary>
     public event System.Action<int> OnAPConsumed;
 
+    /// <summary>
+    /// 玩家单位在战斗模式下 AP 归零时触发。
+    /// PlayerInputController 订阅此事件以结束回合，
+    /// 避免在 ConsumeAP 内部直接调用 TurnSystem。
+    /// </summary>
+    public event System.Action OnAPExhausted;
+
     // ============ 初始化 ============
 
     void Awake()
     {
-        unitMovement     = GetComponent<UnitMovement>();
-        playerController = GetComponent<PlayerController>();
-        enemyController  = GetComponent<EnemyAIController>();
+        unitMovement = GetComponent<UnitMovement>();
+        _controller  = GetComponent<ITurnControllable>();
+        _damageable  = GetComponent<IDamageable>();
 
         if (unitMovement == null)
             Debug.LogError($"[{gameObject.name}] TurnBasedUnit requires UnitMovement!");
@@ -101,7 +111,7 @@ public class TurnBasedUnit : MonoBehaviour
             if (TurnSystem.Instance.IsCurrentFaction(faction))
             {
                 isMyTurn = true;
-                remainingActionPoints = GetMaxAP();
+                ResetTurnAP();
 
                 if (faction == TurnFaction.Player && selectionIndicator != null)
                     selectionIndicator.SetActive(true);
@@ -144,13 +154,10 @@ public class TurnBasedUnit : MonoBehaviour
     /// </summary>
     private int GetMaxAP()
     {
-        if (playerController != null && playerController.Config != null)
-            return playerController.Config.GetCurrentAP();
+        if (_controller != null)
+            return _controller.GetCurrentAP();
 
-        if (enemyController != null && enemyController.config != null)
-            return enemyController.config.GetCurrentAP();
-
-        Debug.LogWarning($"[{gameObject.name}] No config found, defaulting AP to 1");
+        Debug.LogWarning($"[{gameObject.name}] No ITurnControllable found, defaulting AP to 1");
         return 1;
     }
 
@@ -161,7 +168,7 @@ public class TurnBasedUnit : MonoBehaviour
         if (turnData.currentFaction != faction) return;
 
         // 敌人已死亡（尸体状态），自动跳过回合
-        if (enemyController != null && !enemyController.IsAlive)
+        if (faction == TurnFaction.Enemy && _damageable != null && !_damageable.IsAlive)
         {
             Debug.Log($"[{gameObject.name}] Dead, skipping turn");
             if (TurnSystem.Instance != null)
@@ -170,7 +177,7 @@ public class TurnBasedUnit : MonoBehaviour
         }
 
         isMyTurn = true;
-        remainingActionPoints = GetMaxAP();
+        ResetTurnAP();
 
         // 玩家回合开始时强制关闭 QTE 窗口
         // 避免敌人回合的 QTE 残留导致玩家输入走 QTE 路径（2格限制/跳过AP检查）
@@ -205,7 +212,7 @@ public class TurnBasedUnit : MonoBehaviour
         if (!wasMyTurn && isMyTurn)
         {
             // 敌人已死亡，自动跳过
-            if (enemyController != null && !enemyController.IsAlive)
+            if (faction == TurnFaction.Enemy && _damageable != null && !_damageable.IsAlive)
             {
                 Debug.Log($"[{gameObject.name}] Dead, skipping turn via FactionChanged");
                 isMyTurn = false;
@@ -214,7 +221,7 @@ public class TurnBasedUnit : MonoBehaviour
                 return;
             }
 
-            remainingActionPoints = GetMaxAP();
+            ResetTurnAP();
 
             // 玩家回合开始时强制关闭 QTE 窗口（同 HandleTurnStart）
             if (faction == TurnFaction.Player)
@@ -308,19 +315,23 @@ public class TurnBasedUnit : MonoBehaviour
     }
 
     /// <summary>
-    /// 战斗模式切换时立即刷新当前回合剩余 AP
-    /// 取当前剩余值与新上限的较小值，确保不超过战斗模式限制
-    /// 仅对当前正在行动的回合生效（isMyTurn == true）
-    /// 非当前回合的单位在其回合开始时会自动读取新 AP 上限，无需处理
-    /// 由 CombatModeManager 在 Enter/ExitCombatMode 更新完所有 Config 后调用
+    /// 战斗模式切换时立即刷新当前回合剩余 AP。
+    /// 现统一走 RefreshAP（按 上限−已用 重算），进入战斗时收紧、退出战斗时按已用返还。
+    /// 由 CombatModeManager 在 Enter/ExitCombatMode 更新完所有 Config 后调用。
     /// </summary>
-    public void RefreshCombatAP()
+    public void RefreshCombatAP() => RefreshAP();
+
+    /// <summary>
+    /// 按最新 AP 上限重算本回合剩余 AP：remaining = Clamp(GetMaxAP() - 本回合已用, 0, GetMaxAP())。
+    /// 可升可降——用于下蹲/站起、战斗模式切换等中途改变 AP 上限的场景。
+    /// 例：站立上限5、蹲下走3格后站起 → 5-3=2。因扣除“已用”，无法靠反复蹲/站刷出额外步数。
+    /// 仅在本单位回合内生效；非当前回合的单位在其回合开始时自动读取新上限。
+    /// </summary>
+    public void RefreshAP()
     {
         if (!isMyTurn) return;
         int newMax = GetMaxAP();
-        int clamped = Mathf.Min(remainingActionPoints, newMax);
-        // Debug.Log($"[{gameObject.name}] RefreshCombatAP | NewMax:{newMax} | {remainingActionPoints}→{clamped}");
-        remainingActionPoints = clamped;
+        remainingActionPoints = Mathf.Clamp(newMax - _apSpentThisTurn, 0, newMax);
     }
 
     // ============ AP 消耗接口 ============
@@ -337,18 +348,19 @@ public class TurnBasedUnit : MonoBehaviour
         // 计算实际消耗量（不超过当前剩余），用于 OnAPConsumed 事件上报精确值
         int actual = Mathf.Min(points, remainingActionPoints);
         remainingActionPoints = Mathf.Max(0, remainingActionPoints - points);
+        _apSpentThisTurn += actual; // 累计已用，供 RefreshAP 在上限变化时按“上限−已用”重算
         if (actual > 0) OnAPConsumed?.Invoke(actual);
         // Debug.Log($"[{gameObject.name}] ConsumeAP:{points} | Remaining:{remainingActionPoints} | CombatMode:{isInCombatMode}");
 
-        // 战斗模式下 AP 耗尽立即结束回合（仅玩家）
-        // Enemy 单位由 EnemyAIController.EndTurn() 统一处理，不在此自动结束，
-        // 避免多个 Enemy 并行行动时提前切换回合、留下游荡的移动协程
+        // 战斗模式下 AP 耗尽时通知外部（仅玩家）。
+        // 由 PlayerInputController 订阅 OnAPExhausted 来结束回合，
+        // 避免在此直接耦合 TurnSystem。
+        // Enemy 单位由 EnemyAIController.EndTurn() → CombatModeManager 统一处理。
         if (remainingActionPoints <= 0 && isMyTurn && isInCombatMode
             && faction == TurnFaction.Player)
         {
-            Debug.Log($"[{gameObject.name}] Combat mode: AP exhausted, auto ending turn");
-            if (TurnSystem.Instance != null)
-                TurnSystem.Instance.EndCurrentTurn();
+            Debug.Log($"[{gameObject.name}] Combat mode: AP exhausted");
+            OnAPExhausted?.Invoke();
         }
     }
 
@@ -361,13 +373,18 @@ public class TurnBasedUnit : MonoBehaviour
     /// <summary>直接设置剩余 AP（buff/debuff 用）</summary>
     public void SetAP(int value)
     {
-        remainingActionPoints = Mathf.Clamp(value, 0, GetMaxAP());
+        int max = GetMaxAP();
+        remainingActionPoints = Mathf.Clamp(value, 0, max);
+        _apSpentThisTurn = max - remainingActionPoints; // 维持 remaining = max - spent 不变式
     }
 
     /// <summary>增加 AP（肾上腺素等道具用，不超过当回合上限）</summary>
     public void AddAP(int points)
     {
+        int before = remainingActionPoints;
         remainingActionPoints = Mathf.Min(remainingActionPoints + points, GetMaxAP());
+        // 反映到已用累计（负向），使 RefreshAP 重算时保留这部分加成
+        _apSpentThisTurn = Mathf.Max(0, _apSpentThisTurn - (remainingActionPoints - before));
     }
 
     // ============ 行动接口 ============
@@ -387,12 +404,17 @@ public class TurnBasedUnit : MonoBehaviour
 
     public void SkipAction()
     {
+        _apSpentThisTurn += remainingActionPoints; // 剩余全部计为已用，维持不变式
         remainingActionPoints = 0;
     }
 
-    public void ResetActionState()
+    public void ResetActionState() => ResetTurnAP();
+
+    /// <summary>回合开始（或强制重置）：剩余 AP 置为上限，已用清零。</summary>
+    private void ResetTurnAP()
     {
         remainingActionPoints = GetMaxAP();
+        _apSpentThisTurn = 0;
     }
 
     // ============ 兼容旧接口 ============

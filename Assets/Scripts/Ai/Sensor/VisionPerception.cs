@@ -166,9 +166,14 @@ public class VisionPerception : IPerceptionModule
             return false;
 
         // 射线检测（障碍物遮挡）
-        Vector3 dir = (target.position - owner.position).normalized;
+        // 用 IDetectable.DetectionPosition 作为目标点：
+        // 玩家下蹲时高度降低，矮障碍物可遮挡视线
+        var detectable = target.GetComponent<IDetectable>();
+        Vector3 targetPos = detectable != null ? detectable.DetectionPosition : target.position;
+
+        Vector3 dir = (targetPos - owner.position).normalized;
         return !Physics.Raycast(owner.position, dir,
-            Vector3.Distance(owner.position, target.position), obstacleLayer);
+            Vector3.Distance(owner.position, targetPos), obstacleLayer);
     }
 
     private float CalculateVisibility(Transform target)

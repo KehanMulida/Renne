@@ -26,6 +26,7 @@ public class SceneItemInstance : MonoBehaviour
     private int  _currentHp     = 0;     // isDestroyable 的剩余 HP
     private bool _isDestroyed   = false; // 已被破坏
     private bool _isToppled     = false; // 已被推倒（一次性）
+    private bool _isExploding    = false; // 爆炸进行中（防链式递归 / AoE 重复施加）
     private bool _hasBeenLooted = false; // 容器已开启
     private bool       _isAnimating   = false; // 推动/推倒动画进行中（屏蔽新交互）
     private bool       _isOccupied   = false;  // 有骑手正在乘坐
@@ -119,12 +120,27 @@ public class SceneItemInstance : MonoBehaviour
         // 注册格子并应用初始阻挡
         InitializeGrid();
         RefreshGridBlocking();
+
+        // 回合末补正阻挡：关门/推倒会击退占据格子的单位，
+        // SetCellsWalkable 阻挡时跳过被占据的格（见 SetCellsWalkable），
+        // 待单位在回合内移走后，于回合末重新标记这些格为不可走，避免可走性泄漏。
+        if (TurnSystem.Instance != null)
+            TurnSystem.Instance.OnTurnEnd += HandleTurnEndReblock;
     }
 
     void OnDestroy()
     {
+        if (TurnSystem.Instance != null)
+            TurnSystem.Instance.OnTurnEnd -= HandleTurnEndReblock;
+
         // 释放所有占用格（防止残留不可走标记）
         SetCellsWalkable(true);
+    }
+
+    private void HandleTurnEndReblock(TurnData _)
+    {
+        if (_isDestroyed) return;
+        ReapplyGridBlocking();
     }
 
     // ── 网格初始化 ────────────────────────────────────────────────────
@@ -525,17 +541,21 @@ public class SceneItemInstance : MonoBehaviour
         // 检查目标格是否可走
         Vector2Int newAnchor = _anchorCell + dir;
         var newCells = ComputeCellsForAnchor(newAnchor);
+
+        // 先释放自身当前占用格：多格物体推动时新旧 footprint 会重叠，
+        // 若不先释放，重叠格仍被自己标记为不可走会误判“受阻”。
+        SetCellsWalkable(true);
         foreach (var c in newCells)
         {
             if (!GridManager.Instance.IsWalkable(c, _floor, ignoreOccupied: false))
             {
                 Debug.Log($"[SceneItem:{name}] 推动受阻（目标格 {c} 不可走）");
+                RefreshGridBlocking(); // 恢复原阻挡
                 return false;
             }
         }
 
         // 立即更新格子数据（游戏逻辑即时生效）
-        SetCellsWalkable(true);
         _anchorCell    = newAnchor;
         _occupiedCells = newCells;
         RefreshGridBlocking();
@@ -1130,7 +1150,14 @@ public class SceneItemInstance : MonoBehaviour
     /// </summary>
     public bool TriggerExplosion(GameObject source = null)
     {
-        if (!data.isExplosive) return false;
+        // 防重入：链式引爆回环（A→B→A）会栈溢出崩溃；主动引爆 → ExecuteDestroy
+        // → explodeOnDestroy 也会二次进入导致 AoE 施加两次。仅用 _isExploding 守卫：
+        // 不能加 _isDestroyed，否则“被伤害破坏后 explodeOnDestroy 引爆”这一正常路径
+        // （ExecuteDestroy 已先置 _isDestroyed=true）会被误挡。
+        if (_isExploding) return false;
+        if (data == null || !data.isExplosive) return false;
+        _isExploding = true;
+
         var cfg = data.explosiveConfig;
 
         PlayVFX(cfg.explosionVFXPrefab);
@@ -1184,9 +1211,16 @@ public class SceneItemInstance : MonoBehaviour
             : new Vector2Int(0, delta.y > 0 ? 1 : -1);
     }
 
+    /// <summary>以 anchor 为左下角，按 gridWidth×gridDepth 展开占用格（与 ComputeStandingCells 一致）</summary>
     private List<Vector2Int> ComputeCellsForAnchor(Vector2Int anchor)
     {
-        return new List<Vector2Int> { anchor };
+        int w = Mathf.Max(1, data.gridWidth);
+        int d = Mathf.Max(1, data.gridDepth);
+        var cells = new List<Vector2Int>(w * d);
+        for (int dx = 0; dx < w; dx++)
+            for (int dz = 0; dz < d; dz++)
+                cells.Add(anchor + new Vector2Int(dx, dz));
+        return cells;
     }
 
     private void TriggerAnimator(string triggerName)

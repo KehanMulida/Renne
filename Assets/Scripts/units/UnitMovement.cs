@@ -43,7 +43,6 @@ public class UnitMovement : MonoBehaviour
     private Vector2Int currentGridPosition;
     private int currentFloor = 0;
     private bool isMoving = false;
-    private SoundEmitter soundEmitter;
 
     // ============ 公개属性 ============
 
@@ -105,11 +104,8 @@ public class UnitMovement : MonoBehaviour
     public event System.Action OnMoveComplete;
     public event System.Action<Vector2Int> OnPositionChanged;
     public event System.Action<int> OnFloorChanged;
-
-    void Awake()
-    {
-        soundEmitter = GetComponent<SoundEmitter>();
-    }
+    /// <summary>每走完一格时触发，SoundEmitter 订阅此事件播放脚步音效</summary>
+    public event System.Action OnStep;
 
     void Start()
     {
@@ -259,6 +255,12 @@ public class UnitMovement : MonoBehaviour
             usablePoints,
             currentFloor
         );
+    }
+
+    /// <summary>以指定步数上限计算移动范围（通用工具；下蹲已改为真实扣 AP，不再走此重载）</summary>
+    public HashSet<Vector2Int> GetMovementRange(int maxSteps)
+    {
+        return PathfindingService.CalculateMovementRange(currentGridPosition, maxSteps, currentFloor);
     }
 
     /// <summary>
@@ -504,8 +506,7 @@ public class UnitMovement : MonoBehaviour
             currentGridPosition = gridPos;
             currentStep++;
 
-            if (soundEmitter != null)
-                soundEmitter.EmitMovementSound();
+            OnStep?.Invoke();
 
             OnPositionChanged?.Invoke(currentGridPosition);
         }
@@ -552,8 +553,7 @@ public class UnitMovement : MonoBehaviour
                     yield return StartCoroutine(MoveToPositionCoroutine(targetWorldPos));
                     currentGridPosition = gridPos;
 
-                    if (soundEmitter != null)
-                        soundEmitter.EmitMovementSound();
+                    OnStep?.Invoke();
                 }
             }
 
