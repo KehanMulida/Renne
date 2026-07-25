@@ -1,0 +1,65 @@
+# ============================================================
+# Unity 生成的目录（本地缓存/构建产物，不应纳入版本管理）
+# 标准 Unity 项目只跟踪 Assets/ ProjectSettings/ Packages/
+# ============================================================
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Unity 自动生成的资产元数据缓存
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# ============================================================
+# IDE / 编辑器
+# ============================================================
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.tmp
+*.opendb
+*.VC.db
+
+# Rider
+/.idea/
+
+# ============================================================
+# 编译产物 / 崩溃日志
+# ============================================================
+*.pdb
+*.mdb
+*.apk
+*.aab
+*.app
+*.unitypackage
+*.unitypackage.meta
+ExportedObj/
+crashlytics-build.properties
+sysinfo.txt
+
+# ============================================================
+# Plastic SCM 工作区元数据（git 不应跟踪）
+# ============================================================
+.plastic/
+
+# ============================================================
+# OS 生成文件
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
