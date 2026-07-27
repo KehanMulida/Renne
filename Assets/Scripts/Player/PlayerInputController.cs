@@ -46,6 +46,11 @@ public class PlayerInputController : MonoBehaviour
 
     [Header("姿态输入")]
     [SerializeField] private KeyCode crouchKey = KeyCode.C;
+    [SerializeField] private KeyCode proneKey  = KeyCode.Z; // 切换匍匐（趴下/起身）
+
+    [Header("掩体动作（贴掩体时按住）")]
+    [SerializeField] private KeyCode peekKey      = KeyCode.V;           // 探头：露身精准，暴露
+    [SerializeField] private KeyCode blindFireKey = KeyCode.LeftControl; // 廖枪：露枪盲射（+LMB），身体安全
 
     // 近战模式状态
     private bool isMeleeMode = false;
@@ -63,6 +68,7 @@ public class PlayerInputController : MonoBehaviour
     private HashSet<Vector2Int> currentMovementRange;
     private Vector2Int? hoveredGridPos;
     private bool isInputEnabled = false;
+    private int _proneCrawlUsedThisTurn = 0; // 本回合匍匐已爬格数（回合开始清零，限制总爬行 ≤ ProneCrawlRange）
 
     // 附近可交互的场景物品
     private List<SceneItemInstance> nearbySceneItems = new List<SceneItemInstance>();
@@ -158,7 +164,7 @@ public class PlayerInputController : MonoBehaviour
 
         _playerController = playerUnit.GetComponent<PlayerController>();
         if (_playerController != null)
-            _playerController.OnMoveMultiplierChanged += OnMoveMultiplierChanged;
+            _playerController.OnStanceChanged += OnStanceChanged;
 
         // 获取 EquipmentManager 并注入 Inventory
         equipmentManager = playerUnit.GetComponent<EquipmentManager>();
@@ -193,6 +199,15 @@ public class PlayerInputController : MonoBehaviour
             && !(playerUnit != null && playerUnit.IsMoving)
             && Input.GetKeyDown(crouchKey))
             _playerController?.ToggleCrouch();
+
+        // Z：切换匍匐（趴下/起身；不消耗 AP，移动中/乘坐/仓库开启时禁用）
+        if (_mountedVehicle == null && !_inventoryOpen
+            && !(playerUnit != null && playerUnit.IsMoving)
+            && Input.GetKeyDown(proneKey))
+            _playerController?.ToggleProne();
+
+        // 掩体动作：探头(V) / 廖枪盲射(Ctrl)，每帧跟踪按住状态
+        HandleCoverActions();
 
         // 滚轮：始终触发，不受仓库门控影响（EquipmentManager 订阅此事件切换槽位）
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -958,6 +973,18 @@ public class PlayerInputController : MonoBehaviour
 
         if (path == null || path.Count == 0) return;
 
+        // 匍匐：本回合总爬行 ≤ ProneCrawlRange，扣除已爬后超出则拒绝（与显示范围一致）
+        bool proneMove = _playerController != null && _playerController.IsProne;
+        if (proneMove)
+        {
+            int crawlLeft = Mathf.Max(0, _playerController.ProneCrawlRange - _proneCrawlUsedThisTurn);
+            if (path.Count > crawlLeft)
+            {
+                Debug.Log($"[Input] 匍匐本回合只能再爬 {crawlLeft} 格（需先起身）");
+                return;
+            }
+        }
+
         // 检查 AP 是否足够
         if (!turnBasedUnit.HasEnoughMovementPoints(path.Count))
         {
@@ -966,6 +993,7 @@ public class PlayerInputController : MonoBehaviour
         }
 
         ClearMovementRange();
+        if (proneMove) _proneCrawlUsedThisTurn += path.Count; // 累计本回合已爬格数
         playerUnit.MoveToGrid(gridPos);
     }
 
@@ -1033,6 +1061,7 @@ public class PlayerInputController : MonoBehaviour
     private void OnPlayerTurnStart()
     {
         isInputEnabled = true;
+        _proneCrawlUsedThisTurn = 0; // 新回合重置匍匐爬行预算
         RefreshMovementDisplay();
     }
 
@@ -1096,29 +1125,83 @@ public class PlayerInputController : MonoBehaviour
         }
 
         if (_playerController != null)
-            _playerController.OnMoveMultiplierChanged -= OnMoveMultiplierChanged;
+            _playerController.OnStanceChanged -= OnStanceChanged;
     }
 
-    // ── 移动倍率变化（由 PlayerController.OnMoveMultiplierChanged 驱动）────
-    // 下蹲已在 PlayerController.ToggleCrouch 里即时 clamp 了剩余 AP，
-    // 这里只需按最新剩余 AP 重画范围即可。
-    private void OnMoveMultiplierChanged(float multiplier)
+    // ── 姿态变化（由 PlayerController.OnStanceChanged 驱动）────
+    // 姿态切换已在 PlayerController.SetStance 里即时 RefreshAP，这里只需重画移动范围。
+    private void OnStanceChanged(Stance stance)
     {
         if (isInputEnabled)
             RefreshMovementDisplay();
     }
 
     /// <summary>
-    /// 刷新可移动格子显示。始终按 turnBasedUnit 的当前剩余 AP 计算——
-    /// 下蹲/状态效果等对移动能力的影响已反映在剩余 AP 里（真实扣 AP），
-    /// 此处无需再做显示层缩放。
+    /// 刷新可移动格子显示。默认按 turnBasedUnit 的当前剩余 AP 计算（下蹲等已反映在剩余 AP）。
+    /// 匍匐额外把可达范围上限压到 ProneCrawlRange（短距离爬行，射击/其它 AP 不受影响）。
     /// </summary>
     public void RefreshMovementDisplay()
     {
         if (turnBasedUnit == null || playerUnit == null) return;
         if (!turnBasedUnit.CanAct) { currentMovementRange = null; return; }
 
-        currentMovementRange = playerUnit.GetMovementRange();
+        if (_playerController != null && _playerController.IsProne)
+        {
+            // 匍匐：可达范围 = min(剩余AP, 本回合剩余爬行预算)
+            int crawlLeft = Mathf.Max(0, _playerController.ProneCrawlRange - _proneCrawlUsedThisTurn);
+            int steps = Mathf.Min(turnBasedUnit.RemainingActionPoints, crawlLeft);
+            currentMovementRange = steps > 0 ? playerUnit.GetMovementRange(steps) : null;
+        }
+        else
+        {
+            currentMovementRange = playerUnit.GetMovementRange();
+        }
+    }
+
+    // ── 掩体动作：探头(V) / 廖枪盲射(Ctrl) ────────────────────────────────
+    // 每帧跟踪按住状态：贴掩体（墙角判定）时，
+    //   探头 → 把眼位/被侦测点横移到探出点（PlayerController.SetPeekOffset），身体暴露但能精准看/打；
+    //   廖枪 → 打开 EquipmentManager.BlindFireMode（大散布盲射），身体不暴露。
+    // 匍匐/乘坐/仓库开启时不可用。
+    private void HandleCoverActions()
+    {
+        if (_playerController == null || playerUnit == null) return;
+
+        bool peekHeld  = Input.GetKey(peekKey);
+        bool blindHeld = Input.GetKey(blindFireKey);
+        bool canCover  = _mountedVehicle == null && !_inventoryOpen && !_playerController.IsProne;
+
+        CoverUtil.CoverPeek cover = default;
+        bool atCover = canCover && (peekHeld || blindHeld)
+            && CoverUtil.TryGetCover(playerUnit.CurrentGridPosition, playerUnit.CurrentFloor, out cover);
+
+        // 探头（优先于廖枪）：横移眼位到探出侧
+        if (peekHeld && atCover)
+        {
+            Vector2Int side = PickPeekSide(cover);
+            float cellSize  = GridManager.Instance != null ? GridManager.Instance.CellSize : 1f;
+            _playerController.SetPeekOffset(new Vector3(side.x, 0f, side.y) * (cellSize * 0.6f));
+        }
+        else if (_playerController.IsPeeking)
+        {
+            _playerController.ClearPeek();
+        }
+
+        // 廖枪盲射模式（与探头互斥）
+        if (equipmentManager != null)
+            equipmentManager.BlindFireMode = blindHeld && !peekHeld && atCover;
+    }
+
+    // 两侧都可探时，按鼠标所指格的方向选更一致的一侧
+    private Vector2Int PickPeekSide(CoverUtil.CoverPeek cover)
+    {
+        Vector2 desired = Vector2.zero;
+        if (hoveredGridPos.HasValue)
+        {
+            Vector2Int d = hoveredGridPos.Value - playerUnit.CurrentGridPosition;
+            desired = new Vector2(d.x, d.y);
+        }
+        return CoverUtil.PickSide(cover, desired);
     }
 
     // ============ 可视化 ============

@@ -37,14 +37,32 @@ public class EquipmentManager : MonoBehaviour
     [Tooltip("武器开枪位置（枪口/肩部）；未设置则回退到 transform + 1.2m 高")]
     [SerializeField] private Transform firePoint;
 
+    [Header("廖枪（盲射）")]
+    [Tooltip("盲射额外随机散布角度（度）——朝鼠标方向大范围乱打")]
+    [SerializeField] private float blindFireAngle = 20f;
+    [Tooltip("盲射时枪口沿瞄准方向前伸的距离（越过掩体，避免打到自己的掩体）")]
+    [SerializeField] private float blindFirePoke = 0.7f;
+
+    /// <summary>廖枪盲射模式：由 PlayerInputController 在贴掩体按住廖枪键时置真。</summary>
+    public bool BlindFireMode { get; set; }
+
     [Header("调试")]
     [SerializeField] private bool enableDebugLog = true;
+    [Tooltip("画枪口高度/朝向、廖枪盲射前伸出膛点与散布锥（调试用）")]
+    [SerializeField] private bool debugFireGizmos = true;
 
     private List<HotbarSlot> hotbar = new List<HotbarSlot>();
     private int currentSlotIndex = 0;
     private Inventory inventory;
     private UnitMovement playerUnit;
     private TurnBasedUnit turnBasedUnit;
+    private PlayerController _playerController;
+
+    // firePoint 的“基准”本地偏移（半径/高度）缓存一次，避免每帧读回被自身写入污染，
+    // 也让按姿态缩放枪口高度不会逐帧累乘。SetFirePoint / RecacheFireBase 时失效重算。
+    private float _fireBaseRadius;
+    private float _fireBaseHeight;
+    private bool  _fireBaseCached;
 
     // 装备槽：防弹背心等 Equipment 类型物品
     private ItemData equippedArmor = null;
@@ -62,12 +80,32 @@ public class EquipmentManager : MonoBehaviour
     // ============ 公开属性 ============
 
     public int CurrentSlotIndex => currentSlotIndex;
-    public Vector3 FireOrigin => firePoint != null ? firePoint.position : transform.position + Vector3.up * 1.2f;
+    // 探头时枪口横移到探出点（PlayerController.PeekOffset），子弹从探出位置出膛、绕过掩体。
+    // 无 firePoint 时的回退高度也按姿态缩放（下蹲/匍匐枪口下沉）；有 firePoint 时高度已在
+    // UpdateFirePointRotation 里按姿态处理，这里不重复缩放。
+    public Vector3 FireOrigin
+    {
+        get
+        {
+            float mul = _playerController != null ? _playerController.FireHeightMultiplier : 1f;
+            Vector3 basePos = firePoint != null
+                ? firePoint.position
+                : transform.position + Vector3.up * (1.2f * mul);
+            return basePos + (_playerController != null ? _playerController.PeekOffset : Vector3.zero);
+        }
+    }
     public HotbarSlot CurrentSlot => hotbar.Count > 0 ? hotbar[currentSlotIndex] : null;
     public bool IsAiming => isAiming;
     public Vector3 AimTargetPos => aimTargetPos;
     public int HotbarSize => hotbarSize;
     public HotbarSlot GetSlot(int index) => (index >= 0 && index < hotbar.Count) ? hotbar[index] : null;
+
+    /// <summary>开枪位置(枪口)Transform；未设置时 FireOrigin 回退到 transform + 1.2m。</summary>
+    public Transform FirePoint => firePoint;
+    /// <summary>调试/装配用：外部指定开枪位置（枪口）。用于占位枪校准廖枪高度/方向。</summary>
+    public void SetFirePoint(Transform t) { firePoint = t; _fireBaseCached = false; }
+    /// <summary>firePoint 基准偏移变化后（如运行时改枪口高度）强制重算缓存。</summary>
+    public void RecacheFireBase() => _fireBaseCached = false;
 
     // ============ 初始化 ============
 
@@ -77,6 +115,7 @@ public class EquipmentManager : MonoBehaviour
 
         playerUnit    = GetComponent<UnitMovement>();
         turnBasedUnit = GetComponent<TurnBasedUnit>();
+        _playerController = GetComponent<PlayerController>();
 
         for (int i = 0; i < hotbarSize; i++)
             hotbar.Add(new HotbarSlot());
@@ -102,6 +141,8 @@ public class EquipmentManager : MonoBehaviour
     private void UpdateFirePointRotation()
     {
         if (firePoint == null) return;
+        if (!_fireBaseCached) CacheFireBase();
+
         var slot = CurrentSlot;
         if (slot == null || slot.IsEmpty || slot.itemData?.Type != ItemType.Weapon) return;
 
@@ -111,18 +152,27 @@ public class EquipmentManager : MonoBehaviour
         if (aimDir.sqrMagnitude < 0.001f) return;
         aimDir.Normalize();
 
-        // 保留 firePoint 设定的水平偏移半径和高度
-        Vector3 localPos  = firePoint.localPosition;
-        float   radius    = new Vector2(localPos.x, localPos.z).magnitude;
-        float   height    = localPos.y;
+        // 用缓存的基准半径/高度（不每帧读回被自身写入污染的 localPosition）。
+        // 高度按当前姿态缩放：站立×1 / 下蹲、匍匐依次下沉，枪口随身体上下移动。
+        float mul    = _playerController != null ? _playerController.FireHeightMultiplier : 1f;
+        float height = _fireBaseHeight * mul;
 
-        // 若半径为 0（firePoint 放在玩家中心），偏移方向仍然有意义（用于朝向）
         Vector3 newWorldPos = transform.position
-                            + aimDir * radius
+                            + aimDir * _fireBaseRadius
                             + Vector3.up * height;
 
         firePoint.position = newWorldPos;
         firePoint.rotation = Quaternion.LookRotation(aimDir, Vector3.up);
+    }
+
+    // 缓存 firePoint 的基准本地偏移（半径/高度），只在首次或 SetFirePoint/RecacheFireBase 后取一次
+    private void CacheFireBase()
+    {
+        if (firePoint == null) { _fireBaseCached = false; return; }
+        Vector3 lp = firePoint.localPosition;
+        _fireBaseRadius = new Vector2(lp.x, lp.z).magnitude;
+        _fireBaseHeight = lp.y;
+        _fireBaseCached = true;
     }
 
     void OnHotbarScrollEvent(float delta)
@@ -321,6 +371,10 @@ public class EquipmentManager : MonoBehaviour
         toTarget.y = 0f; // 水平方向，与 Straight throwable 一致
         Vector3 baseDir  = toTarget.sqrMagnitude > 0.001f ? toTarget.normalized : transform.forward;
 
+        // 廖枪盲射：把枪口沿瞄准方向前伸，越过掩体后再出膛（避免子弹打到自己的掩体）
+        if (BlindFireMode)
+            origin += baseDir * blindFirePoke + Vector3.up * 0.2f;
+
         for (int i = 0; i < count; i++)
         {
             float spreadH = weapon.CalculateSpreadAngle();
@@ -329,6 +383,12 @@ public class EquipmentManager : MonoBehaviour
             {
                 spreadH += Random.Range(-weapon.pelletSpreadAngle, weapon.pelletSpreadAngle);
                 spreadV += Random.Range(-weapon.pelletSpreadAngle, weapon.pelletSpreadAngle);
+            }
+            // 盲射：叠加大范围随机散布（保证无论武器多准都“乱打”）
+            if (BlindFireMode)
+            {
+                spreadH += Random.Range(-blindFireAngle, blindFireAngle);
+                spreadV += Random.Range(-blindFireAngle, blindFireAngle);
             }
             Vector3 dir = Quaternion.Euler(spreadV, spreadH, 0) * baseDir;
             int dmg = weapon.CalculateDamage();
@@ -716,8 +776,8 @@ public class EquipmentManager : MonoBehaviour
         var item = CurrentSlot?.itemData;
         if (item == null) return;
 
-        // 武器瞄准由 WeaponAimVisualizer（LineRenderer）负责，Gizmos 不重复绘制
-        if (item.Type == ItemType.Weapon) return;
+        // 武器：画枪口高度/朝向 + 廖枪盲射前伸出膛点与散布锥（调试）；直线弹道仍由 WeaponAimVisualizer 负责
+        if (item.Type == ItemType.Weapon) { DrawWeaponFireGizmos(start); return; }
 
         // 消耗品投掷：弧线
         ThrowableConfig cfg = item.ThrowCfg;
@@ -749,6 +809,39 @@ public class EquipmentManager : MonoBehaviour
             Gizmos.color = new Color(1f, 1f, 0f, 0.1f);
             Gizmos.DrawWireSphere(transform.position, cfg.throwRange * GridManager.Instance.CellSize);
         }
+    }
+
+    // 廖枪/射击调试可视化：枪口(高度)、瞄准方向；盲射时画前伸出膛点与 ±blindFireAngle 水平散布锥
+    private void DrawWeaponFireGizmos(Vector3 origin)
+    {
+        if (!debugFireGizmos) return;
+
+        Vector3 flat = GetWeaponAimPosition() - origin; flat.y = 0f;
+        Vector3 dir  = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
+
+        // 枪口(高度)：黄点 + 到地面的竖直参考线
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawSphere(origin, 0.06f);
+        Gizmos.color = new Color(1f, 1f, 0f, 0.35f);
+        Gizmos.DrawLine(origin, new Vector3(origin.x, transform.position.y, origin.z));
+
+        // 瞄准方向：青线
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawLine(origin, origin + dir * 2f);
+
+        if (!BlindFireMode) return;
+
+        // 廖枪盲射：真实出膛点（沿瞄准方向前伸 blindFirePoke + 抬高 0.2）
+        Vector3 poke = origin + dir * blindFirePoke + Vector3.up * 0.2f;
+        Gizmos.color = Color.red;
+        Gizmos.DrawSphere(poke, 0.06f);
+
+        // ±blindFireAngle 水平散布锥
+        Gizmos.color = new Color(1f, 0.35f, 0f, 0.9f);
+        Vector3 l = Quaternion.Euler(0f, -blindFireAngle, 0f) * dir;
+        Vector3 r = Quaternion.Euler(0f,  blindFireAngle, 0f) * dir;
+        Gizmos.DrawLine(poke, poke + l * 3f);
+        Gizmos.DrawLine(poke, poke + r * 3f);
     }
 
     // ============ 防具管理 ============

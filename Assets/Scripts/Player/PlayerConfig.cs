@@ -159,6 +159,10 @@ public class PlayerConfig : ScriptableObject
     [Range(0f, 1f)]
     public float CrouchSoundMultiplier = 0.3f;
 
+    [Tooltip("下蹲时开枪高度(枪口)的倍率（0~1，枪口随身体下沉）")]
+    [Range(0f, 1f)]
+    public float CrouchFireHeightMultiplier = 0.55f;
+
     [Tooltip("站立时视线检测高度（相对于 transform.position.y）")]
     [Range(0f, 3f)]
     public float StandEyeHeight = 1.0f;
@@ -166,6 +170,23 @@ public class PlayerConfig : ScriptableObject
     [Tooltip("下蹲时视线检测高度（相对于 transform.position.y）")]
     [Range(0f, 3f)]
     public float CrouchEyeHeight = 0.4f;
+
+    [Header("匍匐")]
+    [Tooltip("匍匐每回合可爬行的格数上限（短距离移动）")]
+    [Range(0, 5)]
+    public int ProneCrawlRange = 1;
+
+    [Tooltip("匍匐时声音半径的倍率（0~1，最静）")]
+    [Range(0f, 1f)]
+    public float ProneSoundMultiplier = 0.1f;
+
+    [Tooltip("匍匐时开枪高度(枪口)的倍率（0~1，最低，枪口贴近地面）")]
+    [Range(0f, 1f)]
+    public float ProneFireHeightMultiplier = 0.2f;
+
+    [Tooltip("匍匐时视线检测高度（相对于 transform.position.y，最低）")]
+    [Range(0f, 3f)]
+    public float ProneEyeHeight = 0.15f;
 
     [Header("预制体")]
     [Tooltip("玩家预制体引用")]

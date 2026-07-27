@@ -24,7 +24,13 @@ public class PlayerVision : MonoBehaviour
         new Vector3(0, 1.6f, 0)
     };
 
-    public Vector3 EyePos => transform.position + Vector3.up * eyeHeight;
+    private PlayerController _pc;
+    void Awake() { _pc = GetComponentInParent<PlayerController>(); }
+
+    // 探头时眼位横移到探出点（绕过掩体看另一侧）；由 PlayerController.PeekOffset 驱动
+    public Vector3 EyePos => transform.position
+        + (_pc != null ? _pc.PeekOffset : Vector3.zero)
+        + Vector3.up * eyeHeight;
 
     // ==================================================================
     // 1) 可见性检测

@@ -66,7 +66,7 @@ public class SoundEmitter : MonoBehaviour
     private float lastSoundTime = 0f;
     private const float minSoundInterval = 0.1f;
     private float _baseMovementRadius;   // 记录 Inspector 设置的原始半径
-    private float _crouchMultiplier = 1f;
+    private PlayerController _player;
 
     void Awake()
     {
@@ -75,8 +75,8 @@ public class SoundEmitter : MonoBehaviour
         var movement = GetComponent<UnitMovement>();
         if (movement != null) movement.OnStep += EmitMovementSound;
 
-        var player = GetComponent<PlayerController>();
-        if (player != null) player.OnMoveMultiplierChanged += OnMoveMultiplierChanged;
+        _player = GetComponent<PlayerController>();
+        if (_player != null) _player.OnStanceChanged += OnStanceChanged;
     }
 
     void OnDestroy()
@@ -84,19 +84,14 @@ public class SoundEmitter : MonoBehaviour
         var movement = GetComponent<UnitMovement>();
         if (movement != null) movement.OnStep -= EmitMovementSound;
 
-        var player = GetComponent<PlayerController>();
-        if (player != null) player.OnMoveMultiplierChanged -= OnMoveMultiplierChanged;
+        if (_player != null) _player.OnStanceChanged -= OnStanceChanged;
     }
 
-    private void OnMoveMultiplierChanged(float multiplier)
+    // 姿态变化时按当前姿态的声音半径倍率缩放移动噪音：站立1.0 → 下蹲0.3 → 匍匐0.1（最静）
+    private void OnStanceChanged(Stance stance)
     {
-        // 声音半径按移动倍率等比缩放（下蹲 0.6 → 声音也更小）
-        // CrouchSoundMultiplier 进一步压低声音，使下蹲比移动减少更明显
-        var config = GetComponent<PlayerController>()?.Config;
-        float soundScale = multiplier < 1f
-            ? multiplier * (config?.CrouchSoundMultiplier ?? 0.3f) / (config?.CrouchMoveMultiplier ?? 0.6f)
-            : 1f;
-        movementSoundRadius = _baseMovementRadius * soundScale;
+        float mult = _player != null ? _player.SoundRadiusMultiplier : 1f;
+        movementSoundRadius = _baseMovementRadius * mult;
     }
 
     // ============ 配置接口 ============
@@ -106,7 +101,12 @@ public class SoundEmitter : MonoBehaviour
     /// </summary>
     public void SetMovementSoundRadius(float radius)
     {
-        movementSoundRadius = Mathf.Max(0f, radius);
+        // 这是“基准”半径（配置层 BaseNoiceLevel 驱动），记录下来供姿态缩放使用，
+        // 并按当前姿态倍率立即重算生效半径。修复：此前 _baseMovementRadius 只在 Awake
+        // 抓 Inspector 值，被 ApplyConfigToComponents 覆盖后基准与生效值脱节。
+        _baseMovementRadius = Mathf.Max(0f, radius);
+        float mult = _player != null ? _player.SoundRadiusMultiplier : 1f;
+        movementSoundRadius = _baseMovementRadius * mult;
     }
 
     /// <summary>

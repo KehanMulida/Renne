@@ -13,48 +13,79 @@ using System.Collections;
 /// - 运行时创建配置副本，不修改原始配置
 /// - 提供事件通知属性变化
 /// </summary>
+/// <summary>玩家姿态：站立 / 下蹲 / 匍匐（趴下爬行）</summary>
+public enum Stance { Stand, Crouch, Prone }
+
 public class PlayerController : MonoBehaviour, IDamageable, ITurnControllable, IDetectable
 {
     public bool IsAlive => CurrentHp > 0;
 
-    // ── 下蹲 ─────────────────────────────────────────────────────────────
-    private bool _isCrouching = false;
-    public bool IsCrouching => _isCrouching;
+    // ── 姿态（站/蹲/匍匐）────────────────────────────────────────────────────
+    private Stance _stance = Stance.Stand;
+    public Stance CurrentStance => _stance;
+    public bool IsCrouching => _stance == Stance.Crouch; // 向后兼容
+    public bool IsProne     => _stance == Stance.Prone;
 
-    // 当前生效的移动倍率（1.0 = 正常，0~1 = 受限）
+    // 当前生效的移动倍率（影响 AP 上限）：站1 / 蹲0.6 / 匍匐1（匍匐AP不减，移动靠爬行范围上限约束）
     private float _moveMultiplier = 1f;
     public float MoveMultiplier => _moveMultiplier;
 
+    /// <summary>匍匐每回合可爬行的格数上限（短距离移动）</summary>
+    public int ProneCrawlRange => Config?.ProneCrawlRange ?? 1;
+
+    /// <summary>当前姿态的声音半径倍率：匍匐最静</summary>
+    public float SoundRadiusMultiplier =>
+        _stance == Stance.Prone  ? (Config?.ProneSoundMultiplier  ?? 0.1f) :
+        _stance == Stance.Crouch ? (Config?.CrouchSoundMultiplier ?? 0.3f) : 1f;
+
+    /// <summary>当前姿态的开枪高度(枪口)倍率：站立1，下蹲/匍匐依次下沉，让枪口随身体上下移动。</summary>
+    public float FireHeightMultiplier =>
+        _stance == Stance.Prone  ? (Config?.ProneFireHeightMultiplier  ?? 0.2f)  :
+        _stance == Stance.Crouch ? (Config?.CrouchFireHeightMultiplier ?? 0.55f) : 1f;
+
     /// <summary>
-    /// 移动倍率变化事件，参数为新倍率（1.0 = 正常，0.6 = 下蹲，以此类推）。
-    /// PlayerInputController / SoundEmitter 等订阅此事件实时刷新移动格子和声音。
-    /// 其他状态效果（减速、中毒等）也通过此事件通知。
+    /// 姿态变化事件。PlayerInputController（重画移动范围）、SoundEmitter（缩放声音）等订阅。
+    /// DetectionPosition 也随姿态变化。
     /// </summary>
-    public event System.Action<float> OnMoveMultiplierChanged;
+    public event System.Action<Stance> OnStanceChanged;
 
-    /// <summary>AI 射线检测终点：下蹲时更低，更容易被矮障碍物遮挡</summary>
+    // ── 探头（Peek）横移眼位 ──────────────────────────────────────────
+    // 探头时把「眼位 + 被侦测点」一起横移到探出点：
+    // PlayerVision 从探出点看出去（绕过掩体），敌人 VisionPerception 也能命中探出点（暴露）。
+    private Vector3 _peekOffset = Vector3.zero;
+    public Vector3 PeekOffset => _peekOffset;
+    public bool IsPeeking => _peekOffset.sqrMagnitude > 0.0001f;
+    public void SetPeekOffset(Vector3 worldLateralOffset) => _peekOffset = worldLateralOffset;
+    public void ClearPeek() => _peekOffset = Vector3.zero;
+
+    /// <summary>AI 射线检测终点：姿态越低越低（匍匐最难被发现）；探头时横移到探出点（暴露）。</summary>
     public Vector3 DetectionPosition =>
-        transform.position + Vector3.up * (
-            _isCrouching
-            ? (Config?.CrouchEyeHeight ?? 0.4f)
-            : (Config?.StandEyeHeight  ?? 1.0f));
+        transform.position + _peekOffset + Vector3.up * (
+            _stance == Stance.Prone  ? (Config?.ProneEyeHeight  ?? 0.15f) :
+            _stance == Stance.Crouch ? (Config?.CrouchEyeHeight ?? 0.4f)  :
+                                       (Config?.StandEyeHeight  ?? 1.0f));
 
-    public void ToggleCrouch()
+    /// <summary>C 键：站立 ⇄ 下蹲</summary>
+    public void ToggleCrouch() => SetStance(_stance == Stance.Crouch ? Stance.Stand : Stance.Crouch);
+
+    /// <summary>Z 键：站立 ⇄ 匍匐</summary>
+    public void ToggleProne() => SetStance(_stance == Stance.Prone ? Stance.Stand : Stance.Prone);
+
+    /// <summary>
+    /// 设置姿态。可逆战术姿态：切换后按最新上限重算本回合剩余 AP（RefreshAP 扣除“已用”，
+    /// 无法靠反复切姿态刷步数）。匍匐移动倍率保持1（AP不减），移动由爬行范围上限约束。
+    /// </summary>
+    public void SetStance(Stance stance)
     {
-        _isCrouching = !_isCrouching;
-        _moveMultiplier = _isCrouching ? (Config?.CrouchMoveMultiplier ?? 0.6f) : 1f;
+        if (_stance == stance) return;
+        _stance = stance;
+        _moveMultiplier = _stance == Stance.Crouch ? (Config?.CrouchMoveMultiplier ?? 0.6f) : 1f;
 
-        // 下蹲是可逆的战术姿态：按最新上限（GetCurrentAP 已把倍率算进去）重算本回合剩余 AP。
-        // 蹲下 → 剩余降到蹲姿上限；本回合内再站起 → 恢复为 站立上限 − 本回合已用 AP。
-        // RefreshAP 扣除“已用”，因此无法靠反复蹲/站刷出额外步数。
         _turnBasedUnit?.RefreshAP();
+        OnStanceChanged?.Invoke(_stance);
 
-        // 通知订阅者（PlayerInputController 重画移动范围、SoundEmitter 缩放声音、
-        // DetectionPosition 变低）。移动范围直接反映重算后的剩余 AP。
-        OnMoveMultiplierChanged?.Invoke(_moveMultiplier);
-
-        // 美术接入点：触发 Animator 下蹲动画
-        // GetComponentInChildren<Animator>()?.SetBool("IsCrouching", _isCrouching);
+        // 美术接入点：Animator 姿态整数
+        // GetComponentInChildren<Animator>()?.SetInteger("Stance", (int)_stance);
     }
 
     // ITurnControllable：用 _moveMultiplier 计算当回合 AP 上限

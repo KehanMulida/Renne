@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System;
+using System.Collections;
 
 /// <summary>
 /// 单个物品格子（Hotbar 和仓库通用）
@@ -44,6 +45,7 @@ public class ItemSlotUI : MonoBehaviour,
 
     private float _lastClickTime = -1f;
     private const float DoubleClickThreshold = 0.3f;
+    private Coroutine _pendingSingleClick;  // 挂起的单击（确认不是双击后才触发）
 
     private bool _selected;
     private bool _hovered;
@@ -95,19 +97,27 @@ public class ItemSlotUI : MonoBehaviour,
 
     private void RefreshContent()
     {
-        bool hasItem = Item != null && Quantity > 0;
+        // 武器即使弹药为 0 也保留图标（占据槽位、显示为空弹夹）；其它物品数量为 0 视为空
+        bool isWeapon = Item != null && Item.Type == ItemType.Weapon;
+        bool hasItem  = Item != null && (Quantity > 0 || isWeapon);
+        bool emptyGun = isWeapon && Quantity <= 0;
 
         if (iconImage != null)
         {
             iconImage.enabled = hasItem;
             if (hasItem && Item.Icon != null)
                 iconImage.sprite = Item.Icon;
+            // 弹药耗尽的武器：图标变暗，直观提示"没有子弹"
+            if (hasItem)
+                iconImage.color = emptyGun ? new Color(1f, 1f, 1f, 0.4f) : Color.white;
         }
 
         if (quantityText != null)
         {
-            quantityText.enabled = hasItem && Quantity > 1;
-            if (hasItem) quantityText.text = Quantity.ToString();
+            // 武器始终显示弹药数（含 0）；其它物品数量 > 1 才显示
+            bool showQty = hasItem && (isWeapon || Quantity > 1);
+            quantityText.enabled = showQty;
+            if (showQty) quantityText.text = Quantity.ToString();
         }
     }
 
@@ -133,14 +143,27 @@ public class ItemSlotUI : MonoBehaviour,
         float now = Time.unscaledTime;
         if (now - _lastClickTime <= DoubleClickThreshold)
         {
+            // 双击：取消挂起的单击，只执行双击。否则单击会先移 1 个、双击再移剩余，
+            // 堆叠被拆成 1 + (n-1)，多出一个在堆叠外。
+            if (_pendingSingleClick != null) { StopCoroutine(_pendingSingleClick); _pendingSingleClick = null; }
             OnSlotDoubleClicked?.Invoke(this);
             _lastClickTime = -1f;
         }
         else
         {
             _lastClickTime = now;
-            OnSlotClicked?.Invoke(this);
+            // 延迟单击：等一个双击阈值，没有第二击才真正触发（与双击互斥）
+            if (_pendingSingleClick != null) StopCoroutine(_pendingSingleClick);
+            _pendingSingleClick = StartCoroutine(FireSingleClickDelayed());
         }
+    }
+
+    // 用 Realtime 计时，避免仓库打开时若 timeScale=0 导致单击不触发
+    private IEnumerator FireSingleClickDelayed()
+    {
+        yield return new WaitForSecondsRealtime(DoubleClickThreshold);
+        _pendingSingleClick = null;
+        OnSlotClicked?.Invoke(this);
     }
 
     public void OnPointerEnter(PointerEventData eventData)
