@@ -49,18 +49,9 @@ public class PlayerController : MonoBehaviour, IDamageable, ITurnControllable, I
     /// </summary>
     public event System.Action<Stance> OnStanceChanged;
 
-    // ── 探头（Peek）横移眼位 ──────────────────────────────────────────
-    // 探头时把「眼位 + 被侦测点」一起横移到探出点：
-    // PlayerVision 从探出点看出去（绕过掩体），敌人 VisionPerception 也能命中探出点（暴露）。
-    private Vector3 _peekOffset = Vector3.zero;
-    public Vector3 PeekOffset => _peekOffset;
-    public bool IsPeeking => _peekOffset.sqrMagnitude > 0.0001f;
-    public void SetPeekOffset(Vector3 worldLateralOffset) => _peekOffset = worldLateralOffset;
-    public void ClearPeek() => _peekOffset = Vector3.zero;
-
-    /// <summary>AI 射线检测终点：姿态越低越低（匍匐最难被发现）；探头时横移到探出点（暴露）。</summary>
+    /// <summary>AI 射线检测终点：姿态越低越低（匍匐最难被发现）</summary>
     public Vector3 DetectionPosition =>
-        transform.position + _peekOffset + Vector3.up * (
+        transform.position + Vector3.up * (
             _stance == Stance.Prone  ? (Config?.ProneEyeHeight  ?? 0.15f) :
             _stance == Stance.Crouch ? (Config?.CrouchEyeHeight ?? 0.4f)  :
                                        (Config?.StandEyeHeight  ?? 1.0f));

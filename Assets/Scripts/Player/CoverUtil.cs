@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 掩体/墙角判定（供探头、廖枪使用）。
+/// 掩体/墙角判定（供廖枪盲射判断是否贴掩体使用）。
 /// 纯网格几何：不依赖 CoverConfig，只看邻格是否阻挡。
 /// 规则（玩家在格 cell）：
 ///   1. 某方向 d 的邻格不可走 → 该方向有掩体（墙/障碍）。
@@ -58,15 +58,5 @@ public static class CoverUtil
         Vector2Int beyond = cell + coverDir + side;
         return gm.IsValid(lean)   && gm.IsWalkable(lean,   floor, ignoreOccupied: true)
             && gm.IsValid(beyond) && gm.IsWalkable(beyond, floor, ignoreOccupied: true);
-    }
-
-    /// <summary>在两个可探侧里，选与期望方向（世界向量投影到网格）更一致的一侧。</summary>
-    public static Vector2Int PickSide(CoverPeek cover, Vector2 desiredGridDir)
-    {
-        if (cover.sideA == Vector2Int.zero) return cover.sideB;
-        if (cover.sideB == Vector2Int.zero) return cover.sideA;
-        float dotA = Vector2.Dot(desiredGridDir, cover.sideA);
-        float dotB = Vector2.Dot(desiredGridDir, cover.sideB);
-        return dotA >= dotB ? cover.sideA : cover.sideB;
     }
 }

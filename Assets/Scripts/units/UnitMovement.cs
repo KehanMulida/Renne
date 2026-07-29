@@ -48,6 +48,9 @@ public class UnitMovement : MonoBehaviour
 
     public Vector2Int CurrentGridPosition => currentGridPosition;
     public int CurrentFloor => currentFloor;
+
+    /// <summary>网格位置/楼层是否已初始化完成（延迟一帧后才为 true）</summary>
+    public bool IsInitialized { get; private set; }
     public bool IsMoving => isMoving;
     public int MoveRange => moveRange;
 
@@ -107,6 +110,9 @@ public class UnitMovement : MonoBehaviour
     /// <summary>每走完一格时触发，SoundEmitter 订阅此事件播放脚步音效</summary>
     public event System.Action OnStep;
 
+    /// <summary>网格位置/楼层初始化完成时触发（供 PlayerInputController 首帧后再画移动范围）</summary>
+    public event System.Action OnInitialized;
+
     void Start()
     {
         // GridManager.Start 和 UnitMovement.Start 执行顺序不确定
@@ -157,6 +163,10 @@ public class UnitMovement : MonoBehaviour
 
         // Step 3：位置确定后再标记占据（修复原来的顺序 bug）
         GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+
+        // Step 4：标记初始化完成并通知（PlayerInputController 等这个事件才画移动范围）
+        IsInitialized = true;
+        OnInitialized?.Invoke();
 
         // Debug.Log($"[{gameObject.name}] Initialized at grid: {currentGridPosition}, floor: {currentFloor}, world: {transform.position}");
     }

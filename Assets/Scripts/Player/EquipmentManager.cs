@@ -80,18 +80,16 @@ public class EquipmentManager : MonoBehaviour
     // ============ 公开属性 ============
 
     public int CurrentSlotIndex => currentSlotIndex;
-    // 探头时枪口横移到探出点（PlayerController.PeekOffset），子弹从探出位置出膛、绕过掩体。
-    // 无 firePoint 时的回退高度也按姿态缩放（下蹲/匍匐枪口下沉）；有 firePoint 时高度已在
+    // 无 firePoint 时的回退高度按姿态缩放（下蹲/匍匐枪口下沉）；有 firePoint 时高度已在
     // UpdateFirePointRotation 里按姿态处理，这里不重复缩放。
     public Vector3 FireOrigin
     {
         get
         {
             float mul = _playerController != null ? _playerController.FireHeightMultiplier : 1f;
-            Vector3 basePos = firePoint != null
+            return firePoint != null
                 ? firePoint.position
                 : transform.position + Vector3.up * (1.2f * mul);
-            return basePos + (_playerController != null ? _playerController.PeekOffset : Vector3.zero);
         }
     }
     public HotbarSlot CurrentSlot => hotbar.Count > 0 ? hotbar[currentSlotIndex] : null;

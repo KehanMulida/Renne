@@ -49,7 +49,6 @@ public class PlayerInputController : MonoBehaviour
     [SerializeField] private KeyCode proneKey  = KeyCode.Z; // 切换匍匐（趴下/起身）
 
     [Header("掩体动作（贴掩体时按住）")]
-    [SerializeField] private KeyCode peekKey      = KeyCode.V;           // 探头：露身精准，暴露
     [SerializeField] private KeyCode blindFireKey = KeyCode.LeftControl; // 廖枪：露枪盲射（+LMB），身体安全
 
     // 近战模式状态
@@ -137,6 +136,10 @@ public class PlayerInputController : MonoBehaviour
 
         playerUnit.OnMoveComplete += OnUnitMoveComplete;
 
+        // 单位网格位置延迟一帧初始化：就绪后再画一次移动范围，避免首帧画在原点 (0,0)
+        if (playerUnit.IsInitialized) RefreshMovementDisplay();
+        else playerUnit.OnInitialized += OnUnitInitialized;
+
         if (TurnSystem.Instance != null)
         {
             TurnSystem.Instance.OnFactionChanged += OnFactionChanged;
@@ -206,7 +209,7 @@ public class PlayerInputController : MonoBehaviour
             && Input.GetKeyDown(proneKey))
             _playerController?.ToggleProne();
 
-        // 掩体动作：探头(V) / 廖枪盲射(Ctrl)，每帧跟踪按住状态
+        // 掩体动作：廖枪盲射(Ctrl)，每帧跟踪按住状态
         HandleCoverActions();
 
         // 滚轮：始终触发，不受仓库门控影响（EquipmentManager 订阅此事件切换槽位）
@@ -1073,6 +1076,13 @@ public class PlayerInputController : MonoBehaviour
         isShowingFloorPrompt = false;
     }
 
+    // 单位网格位置初始化完成（延迟一帧）后，补画一次移动范围
+    private void OnUnitInitialized()
+    {
+        if (playerUnit != null) playerUnit.OnInitialized -= OnUnitInitialized;
+        RefreshMovementDisplay();
+    }
+
     private void OnUnitMoveComplete()
     {
         // 反应窗口中移动完成，关闭窗口
@@ -1109,7 +1119,10 @@ public class PlayerInputController : MonoBehaviour
     void OnDestroy()
     {
         if (playerUnit != null)
+        {
             playerUnit.OnMoveComplete -= OnUnitMoveComplete;
+            playerUnit.OnInitialized  -= OnUnitInitialized;
+        }
 
         if (TurnSystem.Instance != null)
         {
@@ -1143,6 +1156,8 @@ public class PlayerInputController : MonoBehaviour
     public void RefreshMovementDisplay()
     {
         if (turnBasedUnit == null || playerUnit == null) return;
+        // 单位网格位置未初始化前不画范围，避免落在原点 (0,0)
+        if (!playerUnit.IsInitialized) { currentMovementRange = null; return; }
         if (!turnBasedUnit.CanAct) { currentMovementRange = null; return; }
 
         if (_playerController != null && _playerController.IsProne)
@@ -1158,50 +1173,19 @@ public class PlayerInputController : MonoBehaviour
         }
     }
 
-    // ── 掩体动作：探头(V) / 廖枪盲射(Ctrl) ────────────────────────────────
-    // 每帧跟踪按住状态：贴掩体（墙角判定）时，
-    //   探头 → 把眼位/被侦测点横移到探出点（PlayerController.SetPeekOffset），身体暴露但能精准看/打；
-    //   廖枪 → 打开 EquipmentManager.BlindFireMode（大散布盲射），身体不暴露。
-    // 匍匐/乘坐/仓库开启时不可用。
+    // ── 掩体动作：廖枪盲射(Ctrl) ────────────────────────────────
+    // 每帧跟踪按住状态：贴掩体（墙角判定）时按住廖枪键 → 打开 EquipmentManager.BlindFireMode
+    // （枪口前伸越掩体、大散布盲射、身体不暴露）。匍匐/乘坐/仓库开启时不可用。
     private void HandleCoverActions()
     {
-        if (_playerController == null || playerUnit == null) return;
+        if (_playerController == null || playerUnit == null || equipmentManager == null) return;
 
-        bool peekHeld  = Input.GetKey(peekKey);
         bool blindHeld = Input.GetKey(blindFireKey);
         bool canCover  = _mountedVehicle == null && !_inventoryOpen && !_playerController.IsProne;
+        bool atCover   = canCover && blindHeld
+            && CoverUtil.TryGetCover(playerUnit.CurrentGridPosition, playerUnit.CurrentFloor, out _);
 
-        CoverUtil.CoverPeek cover = default;
-        bool atCover = canCover && (peekHeld || blindHeld)
-            && CoverUtil.TryGetCover(playerUnit.CurrentGridPosition, playerUnit.CurrentFloor, out cover);
-
-        // 探头（优先于廖枪）：横移眼位到探出侧
-        if (peekHeld && atCover)
-        {
-            Vector2Int side = PickPeekSide(cover);
-            float cellSize  = GridManager.Instance != null ? GridManager.Instance.CellSize : 1f;
-            _playerController.SetPeekOffset(new Vector3(side.x, 0f, side.y) * (cellSize * 0.6f));
-        }
-        else if (_playerController.IsPeeking)
-        {
-            _playerController.ClearPeek();
-        }
-
-        // 廖枪盲射模式（与探头互斥）
-        if (equipmentManager != null)
-            equipmentManager.BlindFireMode = blindHeld && !peekHeld && atCover;
-    }
-
-    // 两侧都可探时，按鼠标所指格的方向选更一致的一侧
-    private Vector2Int PickPeekSide(CoverUtil.CoverPeek cover)
-    {
-        Vector2 desired = Vector2.zero;
-        if (hoveredGridPos.HasValue)
-        {
-            Vector2Int d = hoveredGridPos.Value - playerUnit.CurrentGridPosition;
-            desired = new Vector2(d.x, d.y);
-        }
-        return CoverUtil.PickSide(cover, desired);
+        equipmentManager.BlindFireMode = atCover;
     }
 
     // ============ 可视化 ============
