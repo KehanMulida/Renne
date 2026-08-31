@@ -17,15 +17,16 @@ MonoBehaviour:
   canSeeAcrossFloors: 0
   hearingRange: 10
   canHearAcrossFloors: 0
-  moveSpeed: 5
+  moveSpeed: 1
   moveRange: 10
   combatMoveRange: 4
-  chaseSpeed: 5
+  chaseSpeed: 2
   rotationSpeed: 5
   patrolMinDistance: 3
   patrolMaxDistance: 6
   patrolMaxAttempts: 20
   attackCooldown: 1
+  attackRange: 1
   attackDamage: 10
   maxHp: 100
   maxSanity: 100
@@ -35,4 +36,5 @@ MonoBehaviour:
   investigationDuration: 5
   turnStartDelay: 0.53
   actionInterval: 0.47
+  qteWindowDuration: 2
   behaviorTreeAsset: {fileID: 4900000, guid: 645ff57a88cc2db40839b3c6916c3e4c, type: 3}
