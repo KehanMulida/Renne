@@ -248,6 +248,22 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
     private void Update()
     {
         perception.UpdateAll();
+        UpdateAimVisual();
+    }
+
+    // 有视觉接触时持续把程序化瞄准指向玩家（丢失接触后 aimHoldTime 秒自动收枪）
+    private ProceduralAimController _aimController;
+    private bool _aimResolved;
+    private void UpdateAimVisual()
+    {
+        if (!_aimResolved) { _aimController = GetComponent<ProceduralAimController>(); _aimResolved = true; }
+        if (_aimController == null || blackboard == null) return;
+
+        if (blackboard.TryGetValue("hasVisualContact", out var vc) && vc is bool seeing && seeing
+            && blackboard.TryGetValue("lastSeenPosition", out var p) && p is Vector3 pos)
+        {
+            _aimController.AimAt(pos);
+        }
     }
 
     // ============ 回合 ============

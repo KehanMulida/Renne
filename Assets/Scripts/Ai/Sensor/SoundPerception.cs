@@ -39,9 +39,8 @@ public class SoundPerception : IPerceptionModule
         if (soundEvent.source != null &&
             soundEvent.source.GetComponent<EnemyAIController>() != null) return;
 
-        // 转向声音方向
-        TurnTowardsSound(soundEvent.position);
-
+        // 听觉只负责“判断位置”：上报到黑板（lastHeardPosition），供 AI 在自己回合调查。
+        // 不在此转身/瞄准——感知模块不应旋转 transform。
         OnPerceptionEvent?.Invoke(new PerceptionEvent
         {
             Type = PerceptionType.SoundHeard,
@@ -49,20 +48,6 @@ public class SoundPerception : IPerceptionModule
             Confidence = 1f - (distance / config.hearingRange),
             Floor = soundEvent.floor
         });
-    }
-
-    private void TurnTowardsSound(Vector3 soundPosition)
-    {
-        Vector3 direction = soundPosition - owner.position;
-        direction.y = 0; // 只水平旋转
-        
-        if (direction.sqrMagnitude > 0.01f)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            owner.rotation = targetRotation; // 立即转向
-            
-            //Debug.Log($"[SoundPerception] Turned towards sound at {soundPosition}");
-        }
     }
 
     private int GetFloor(Transform target)

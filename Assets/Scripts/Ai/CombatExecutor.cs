@@ -44,8 +44,10 @@ public class CombatExecutor : IActionExecutor
 
         if (distance > attackRange) yield break;
 
-        // 前摇：转向目标
-        owner.LookAt(context.TargetObject);
+        // 前摇：转向目标。有程序化瞄准则交给它（±40°转root、超出转身），否则整体转身。
+        var aim = owner.GetComponent<ProceduralAimController>();
+        if (aim != null) aim.AimAt(context.TargetObject.position);
+        else owner.LookAt(context.TargetObject);
         if (config != null && config.actionInterval > 0.01f)
             yield return new WaitForSeconds(config.actionInterval);
 
