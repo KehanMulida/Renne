@@ -63,7 +63,7 @@ MonoBehaviour:
     m_Bits: 0
   WeaponType: Gun
   fireMode: 3
-  IshasBullet: 0
+  IshasBullet: 1
   MaxBullet: 7
   ReloadApCost: 1
   Damage: 10
