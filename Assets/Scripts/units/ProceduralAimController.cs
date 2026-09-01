@@ -1,7 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// 程序化瞄准：基于 AI 的瞄准方向，旋转 root 骨骼做上半身瞄准。
+/// 角色程序化动画（分层驱动）：
+///   · Upper Body Layer：基于 AI 瞄准方向旋转 root 骨骼做上半身瞄准（±40/转身/切 Center-left-right）。
+///   · Base Layer：腿部运动——移动(追击/调查)=Run、站立=Stand。
+/// 两层各司其职、互不干扰；合并在一个组件里以复用 Animator/层解析/CrossFade。
 ///
 /// 规则（yaw = 瞄准方向相对身体 forward 的偏航角）：
 ///   - |yaw| ≤ maxRootYaw(默认40°)：身体不动，旋转 root 骨骼精确瞄准；
@@ -18,7 +21,7 @@ using UnityEngine;
 public class ProceduralAimController : MonoBehaviour
 {
     [Header("引用（留空自动解析）")]
-    [Tooltip("角色 Animator；留空自动取子物体上的 Animator 或 CharacterVisual.Animator")]
+    [Tooltip("角色 Animator；留空自动取子物体上的 Animator")]
     public Animator animator;
     [Tooltip("要旋转的 root 骨骼；留空则在模型层级里按名字查找")]
     public Transform rootBone;
@@ -48,6 +51,18 @@ public class ProceduralAimController : MonoBehaviour
     [Tooltip("状态切换淡入时间（秒）")]
     public float stateCrossfade = 0.15f;
 
+    [Header("腿部运动 (Base Layer)")]
+    [Tooltip("是否驱动 Base Layer 腿部动画（站立/巡逻走/追击跑）")]
+    public bool driveLocomotion = true;
+    [Tooltip("站立（不移动）时的状态")]
+    public string standState = "Beiye_root|Stand";
+    [Tooltip("巡逻/调查（移动但没看见玩家）时的状态")]
+    public string walkState  = "Beiye_root|Walk";
+    [Tooltip("追击（移动且看见玩家）时的状态")]
+    public string runState   = "Beiye_root|Run";
+    [Tooltip("腿部所在层名（默认 Base Layer；留空则自动用含 walkState 的层）")]
+    public string baseLayerName = "Base Layer";
+
     [Header("行为")]
     [Tooltip("停止调用 AimAt 超过此秒数后回到 idle/Cente")]
     public float aimHoldTime = 0.4f;
@@ -60,15 +75,15 @@ public class ProceduralAimController : MonoBehaviour
     private float _lastAimTime = -999f;
     private string _currentState;
     private int _aimLayer = -1;
+    private int _baseLayer = -1;
+    private string _currentBaseState;
     private float _bodyYawVel;   // 身体转身平滑速度（SmoothDampAngle 用）
     private float _rootYaw;      // 平滑后的 root 偏航
     private float _rootYawVel;   // root 偏航平滑速度
-    private CharacterVisual _visual;
     private UnitMovement _movement;
 
     void Awake()
     {
-        _visual   = GetComponent<CharacterVisual>();
         _movement = GetComponent<UnitMovement>();
 
         // 挂错位置自检：本组件必须挂在敌人【根物体】（有 UnitMovement/EnemyAIController）上，
@@ -94,15 +109,23 @@ public class ProceduralAimController : MonoBehaviour
     {
         if (!ResolveRefs()) return;
 
-        // 超时自动收枪 → 回中立姿态（层权重保持不变，只切状态）
+        // 先更新 IsAiming（超时收枪），供腿部判断"是否看见玩家"
         if (IsAiming && Time.time - _lastAimTime > aimHoldTime)
             IsAiming = false;
+
+        // 腿部（Base Layer）：站立=Stand；移动时——看见玩家(IsAiming)=Run(追击)，否则=Walk(巡逻/调查丢失视野)
+        if (driveLocomotion && _movement != null)
+        {
+            string loco = !_movement.IsMoving ? standState
+                        : (IsAiming ? runState : walkState);
+            CrossFadeState(_baseLayer, loco, ref _currentBaseState);
+        }
 
         if (!IsAiming)
         {
             // 收枪：平滑量归零，下次瞄准从头缓动
             _bodyYawVel = 0f; _rootYaw = 0f; _rootYawVel = 0f;
-            SetState(string.IsNullOrEmpty(idleState) ? centerState : idleState);
+            CrossFadeState(_aimLayer, string.IsNullOrEmpty(idleState) ? centerState : idleState, ref _currentState);
             return;
         }
 
@@ -137,32 +160,32 @@ public class ProceduralAimController : MonoBehaviour
         // 选动画状态（用平滑后的角度）：死区内 Center，否则按正负 left/right
         string state = Mathf.Abs(_rootYaw) < centerDeadzone ? centerState
                      : (_rootYaw < 0f ? leftState : rightState);
-        SetState(state);
+        CrossFadeState(_aimLayer, state, ref _currentState);
 
         // 叠加 root 骨骼偏航（世界 up 轴，避免 rig 局部轴朝向问题）
         if (rootBone != null)
             rootBone.rotation = Quaternion.AngleAxis(_rootYaw, Vector3.up) * rootBone.rotation;
     }
 
-    private void SetState(string state)
+    // 通用状态切换：在指定层 CrossFade 到 state（用 tracker 去重）。瞄准层和腿部层共用。
+    private void CrossFadeState(int layer, string state, ref string tracker)
     {
-        if (string.IsNullOrEmpty(state) || state == _currentState || animator == null) return;
-        int layer = _aimLayer < 0 ? 0 : _aimLayer;
+        if (string.IsNullOrEmpty(state) || state == tracker || animator == null || layer < 0) return;
         if (!animator.HasState(layer, Animator.StringToHash(state)))
         {
             if (enableDebugLog)
-                Debug.LogWarning($"[Aim] 层 {layer} 没有状态 '{state}'，CrossFade 会静默失败。检查状态名/层是否正确。", this);
+                Debug.LogWarning($"[Anim] 层 {layer} 没有状态 '{state}'，CrossFade 会静默失败。检查状态名/层是否正确。", this);
             return;
         }
         animator.CrossFade(state, stateCrossfade, layer);
-        _currentState = state;
-        if (enableDebugLog) Debug.Log($"[Aim] CrossFade → '{state}' (layer {layer})", this);
+        tracker = state;
+        if (enableDebugLog) Debug.Log($"[Anim] CrossFade → '{state}' (layer {layer})", this);
     }
 
     private bool ResolveRefs()
     {
         if (animator == null)
-            animator = (_visual != null ? _visual.Animator : null) ?? GetComponentInChildren<Animator>();
+            animator = GetComponentInChildren<Animator>();
         if (animator == null) return false;
 
         if (rootBone == null && !string.IsNullOrEmpty(rootBoneName))
@@ -186,7 +209,26 @@ public class ProceduralAimController : MonoBehaviour
             // 保证瞄准层权重为 1（上半身始终有动画；瞄准/收枪只切状态、不动权重）
             if (_aimLayer > 0) animator.SetLayerWeight(_aimLayer, 1f);
             if (enableDebugLog)
-                Debug.Log($"[Aim] 瞄准层 = {_aimLayer} ({animator.GetLayerName(_aimLayer)})", this);
+                Debug.Log($"[Anim] 瞄准层 = {_aimLayer} ({animator.GetLayerName(_aimLayer)})", this);
+        }
+
+        // 解析腿部层（Base Layer）：优先按层名，否则找含 walkState 的层
+        if (_baseLayer < 0)
+        {
+            if (!string.IsNullOrEmpty(baseLayerName))
+                for (int i = 0; i < animator.layerCount; i++)
+                    if (animator.GetLayerName(i) == baseLayerName) { _baseLayer = i; break; }
+
+            if (_baseLayer < 0)
+            {
+                int h = Animator.StringToHash(walkState);
+                for (int i = 0; i < animator.layerCount; i++)
+                    if (animator.HasState(i, h)) { _baseLayer = i; break; }
+            }
+
+            if (_baseLayer < 0) _baseLayer = 0;
+            if (enableDebugLog)
+                Debug.Log($"[Anim] 腿部层 = {_baseLayer} ({animator.GetLayerName(_baseLayer)})", this);
         }
 
         return true;
