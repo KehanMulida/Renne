@@ -31,14 +31,20 @@ public class ProceduralAimController : MonoBehaviour
     [Header("瞄准角度")]
     [Tooltip("root 骨骼最大偏航角；超出则转身")]
     public float maxRootYaw = 40f;
+    [Tooltip("追视阈值：有视觉接触且站立时，玩家偏航超过此角度就平滑转身把玩家转回正面（保持在视野锥内、不丢目标）。" +
+             "应设为 ≤ 敌人视野锥半角(visionAngle/2)，否则玩家绕到视野边缘仍会丢失。0 或 ≥maxRootYaw 时退化为只在超 maxRootYaw 才转。")]
+    public float trackTurnThreshold = 25f;
     [Tooltip("死区：|yaw| 小于此值用 Center 状态")]
     public float centerDeadzone = 8f;
     [Tooltip("超过 maxRootYaw 时身体转向的最大速度（度/秒）")]
     public float bodyTurnSpeed = 360f;
     [Tooltip("身体转身平滑时间（越大越缓、越自然；0=瞬时）")]
     public float turnSmoothTime = 0.2f;
-    [Tooltip("上半身 root 瞄准平滑时间（小幅迟滞让瞄准更自然）")]
+    [Tooltip("上半身 root 瞄准平滑时间（小幅迟滞让瞄准更自然）。站立↔移动的偏向过渡也用它，越大越平滑。")]
     public float rootSmoothTime = 0.08f;
+    [Tooltip("移动时上半身保留多少朝玩家的偏向：0=移动时完全回正，1=和站立一样满偏侧身。移动中不整体转身，只用 root 偏这么多，形成边跑边侧身看玩家。")]
+    [Range(0f, 1f)]
+    public float movingAimBlend = 0.5f;
 
     [Header("动画状态名（瞄准状态所在层会自动检测）")]
     public string centerState = "Beiye_root|Rifle_Aim_Cente";
@@ -62,6 +68,8 @@ public class ProceduralAimController : MonoBehaviour
     public string runState   = "Beiye_root|Run";
     [Tooltip("腿部所在层名（默认 Base Layer；留空则自动用含 walkState 的层）")]
     public string baseLayerName = "Base Layer";
+    [Tooltip("腿部状态切换淡入时间（站立/走/跑之间；比瞄准姿态切换稍长，避免 Stand→Run 突跳）")]
+    public float locomotionCrossfade = 0.25f;
 
     [Header("行为")]
     [Tooltip("停止调用 AimAt 超过此秒数后回到 idle/Cente")]
@@ -113,62 +121,81 @@ public class ProceduralAimController : MonoBehaviour
         if (IsAiming && Time.time - _lastAimTime > aimHoldTime)
             IsAiming = false;
 
+        bool moving = _movement != null && _movement.IsMoving;
+
         // 腿部（Base Layer）：站立=Stand；移动时——看见玩家(IsAiming)=Run(追击)，否则=Walk(巡逻/调查丢失视野)
+        // 用较长的 locomotionCrossfade，Stand↔Walk↔Run 之间过渡更顺（避免静止直接跳全速跑）。
         if (driveLocomotion && _movement != null)
         {
-            string loco = !_movement.IsMoving ? standState
+            string loco = !moving ? standState
                         : (IsAiming ? runState : walkState);
-            CrossFadeState(_baseLayer, loco, ref _currentBaseState);
+            CrossFadeState(_baseLayer, loco, ref _currentBaseState, locomotionCrossfade);
         }
 
-        if (!IsAiming)
+        // ── 上半身偏航目标：瞄准时始终朝玩家偏，站立满偏 / 移动保留部分偏向 ──────────────
+        // 需求：旋转一定角度瞄准后要移动时，不要直接回正到 center，而是让上半身保留“一些朝玩家的偏向”
+        // （边跑边侧身看玩家）；站立↔移动之间由 SmoothDampAngle 平滑过渡，不突变。
+        //   · 站立瞄准：满偏（超 ±maxRootYaw 时整体转身把目标带回范围内）
+        //   · 移动瞄准：不整体转身（朝向交给行进方向），只保留 movingAimBlend 比例的 root 偏向
+        //   · 未瞄准：目标 0（平滑回正，不瞬移）
+        float targetRootYaw = 0f;
+        if (IsAiming)
         {
-            // 收枪：平滑量归零，下次瞄准从头缓动
-            _bodyYawVel = 0f; _rootYaw = 0f; _rootYawVel = 0f;
-            CrossFadeState(_aimLayer, string.IsNullOrEmpty(idleState) ? centerState : idleState, ref _currentState);
-            return;
-        }
-
-        // 目标相对身体的水平方向
-        Vector3 flatDir = _aimTarget - transform.position;
-        flatDir.y = 0f;
-        if (flatDir.sqrMagnitude < 0.0001f) return;
-
-        float yaw = Vector3.SignedAngle(transform.forward, flatDir, Vector3.up);
-
-        // 超出 root 范围：平滑转身把目标带回范围内（SmoothDampAngle：起步加速、临近减速，自然）。
-        // 移动中不转身——身体朝向交给 UnitMovement（面向行进方向），此时只用 root 尽力瞄。
-        bool moving = _movement != null && _movement.IsMoving;
-        if (Mathf.Abs(yaw) > maxRootYaw && !moving)
-        {
-            float curY = transform.eulerAngles.y;
-            float tgtY = Quaternion.LookRotation(flatDir, Vector3.up).eulerAngles.y;
-            float newY = Mathf.SmoothDampAngle(curY, tgtY, ref _bodyYawVel, turnSmoothTime, bodyTurnSpeed);
-            Vector3 e = transform.eulerAngles; e.y = newY; transform.eulerAngles = e;
-
-            // 转身后重算 yaw，root 用剩余角度
-            flatDir = _aimTarget - transform.position;
+            Vector3 flatDir = _aimTarget - transform.position;
             flatDir.y = 0f;
-            yaw = Vector3.SignedAngle(transform.forward, flatDir, Vector3.up);
+            if (flatDir.sqrMagnitude >= 0.0001f)
+            {
+                float yaw = Vector3.SignedAngle(transform.forward, flatDir, Vector3.up);
+
+                // 追视阈值：默认 trackTurnThreshold（<maxRootYaw 时生效），否则退化为 maxRootYaw
+                float turnAt = (trackTurnThreshold > 0f && trackTurnThreshold < maxRootYaw)
+                    ? trackTurnThreshold : maxRootYaw;
+
+                // 仅站立时整体转身追视：玩家偏航超过 turnAt 就平滑转向面对玩家，把它保持在视野锥内。
+                // （移动时身体朝向属于行进方向，不抢；此时只用 root 保留部分偏向）
+                if (!moving && Mathf.Abs(yaw) > turnAt)
+                {
+                    float curY = transform.eulerAngles.y;
+                    float tgtY = Quaternion.LookRotation(flatDir, Vector3.up).eulerAngles.y;
+                    float newY = Mathf.SmoothDampAngle(curY, tgtY, ref _bodyYawVel, turnSmoothTime, bodyTurnSpeed);
+                    Vector3 e = transform.eulerAngles; e.y = newY; transform.eulerAngles = e;
+
+                    flatDir = _aimTarget - transform.position;
+                    flatDir.y = 0f;
+                    yaw = Vector3.SignedAngle(transform.forward, flatDir, Vector3.up);
+                }
+
+                float clamped = Mathf.Clamp(yaw, -maxRootYaw, maxRootYaw);
+                // 移动时只保留部分偏向（一些偏向玩家）；站立时满偏
+                targetRootYaw = moving ? clamped * movingAimBlend : clamped;
+            }
+        }
+        else
+        {
+            _bodyYawVel = 0f;   // 未瞄准，不转身
         }
 
-        float clamped = Mathf.Clamp(yaw, -maxRootYaw, maxRootYaw);
+        // root 偏航平滑到目标：站立满偏 → 移动部分偏向 → 收枪回正，全程平滑过渡（无硬切/无瞬移）
+        _rootYaw = Mathf.SmoothDampAngle(_rootYaw, targetRootYaw, ref _rootYawVel, rootSmoothTime);
 
-        // 上半身瞄准也做小幅平滑（跟随迟滞，更像真人）
-        _rootYaw = Mathf.SmoothDampAngle(_rootYaw, clamped, ref _rootYawVel, rootSmoothTime);
-
-        // 选动画状态（用平滑后的角度）：死区内 Center，否则按正负 left/right
-        string state = Mathf.Abs(_rootYaw) < centerDeadzone ? centerState
+        // 上半身姿态：按平滑后的偏航选 Center/左/右；未瞄准且已回正到中立才用 idle
+        string aimState;
+        if (!IsAiming && Mathf.Abs(_rootYaw) < centerDeadzone)
+            aimState = string.IsNullOrEmpty(idleState) ? centerState : idleState;
+        else
+            aimState = Mathf.Abs(_rootYaw) < centerDeadzone ? centerState
                      : (_rootYaw < 0f ? leftState : rightState);
-        CrossFadeState(_aimLayer, state, ref _currentState);
+        CrossFadeState(_aimLayer, aimState, ref _currentState, stateCrossfade);
 
-        // 叠加 root 骨骼偏航（世界 up 轴，避免 rig 局部轴朝向问题）
-        if (rootBone != null)
+        // 叠加 root 骨骼偏航（世界 up 轴）；回正到 ~0 后停止叠加，交还给纯动画
+        if (rootBone != null && Mathf.Abs(_rootYaw) > 0.05f)
             rootBone.rotation = Quaternion.AngleAxis(_rootYaw, Vector3.up) * rootBone.rotation;
+        else
+            _rootYaw = 0f;
     }
 
-    // 通用状态切换：在指定层 CrossFade 到 state（用 tracker 去重）。瞄准层和腿部层共用。
-    private void CrossFadeState(int layer, string state, ref string tracker)
+    // 通用状态切换：在指定层用 dur 秒 CrossFade 到 state（用 tracker 去重）。瞄准层和腿部层共用。
+    private void CrossFadeState(int layer, string state, ref string tracker, float dur)
     {
         if (string.IsNullOrEmpty(state) || state == tracker || animator == null || layer < 0) return;
         if (!animator.HasState(layer, Animator.StringToHash(state)))
@@ -177,9 +204,9 @@ public class ProceduralAimController : MonoBehaviour
                 Debug.LogWarning($"[Anim] 层 {layer} 没有状态 '{state}'，CrossFade 会静默失败。检查状态名/层是否正确。", this);
             return;
         }
-        animator.CrossFade(state, stateCrossfade, layer);
+        animator.CrossFade(state, dur, layer);
         tracker = state;
-        if (enableDebugLog) Debug.Log($"[Anim] CrossFade → '{state}' (layer {layer})", this);
+        if (enableDebugLog) Debug.Log($"[Anim] CrossFade → '{state}' (layer {layer}, {dur:F2}s)", this);
     }
 
     private bool ResolveRefs()

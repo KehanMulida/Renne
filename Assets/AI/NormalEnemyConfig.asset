@@ -20,7 +20,7 @@ MonoBehaviour:
   moveSpeed: 1
   moveRange: 10
   combatMoveRange: 4
-  chaseSpeed: 2
+  chaseSpeed: 1.5
   rotationSpeed: 5
   patrolMinDistance: 3
   patrolMaxDistance: 6
