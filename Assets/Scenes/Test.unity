@@ -6458,14 +6458,24 @@ MonoBehaviour:
   rootBone: {fileID: 370835051}
   rootBoneName: Beiye_root
   maxRootYaw: 40
+  trackTurnThreshold: 25
   centerDeadzone: 8
   bodyTurnSpeed: 360
+  turnSmoothTime: 0.2
+  rootSmoothTime: 0.08
+  movingAimBlend: 0.5
   centerState: Beiye_root|Rifle_Aim_Cente
   leftState: Beiye_root|Rifle_Aim_left
   rightState: Beiye_root|Rifle_Aim_right
   idleState: 
   aimLayerName: Upper Body Layer
   stateCrossfade: 0.15
+  driveLocomotion: 1
+  standState: Beiye_root|Stand
+  walkState: Beiye_root|Walk
+  runState: Beiye_root|Run
+  baseLayerName: Base Layer
+  locomotionCrossfade: 0.25
   aimHoldTime: 0.4
   enableDebugLog: 0
 --- !u!1 &1490020619
@@ -8986,13 +8996,33 @@ PrefabInstance:
       propertyPath: m_Name
       value: Enemy (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 2443653250784580391, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3762441861863271570, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.672
+      objectReference: {fileID: 0}
+    - target: {fileID: 3762441861863271570, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.374
+      objectReference: {fileID: 0}
+    - target: {fileID: 3762441861863271570, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.572
+      objectReference: {fileID: 0}
+    - target: {fileID: 4258435410958119246, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.394
+      objectReference: {fileID: 0}
     - target: {fileID: 6793511420073333574, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
       propertyPath: m_LocalPosition.x
       value: 22.29
       objectReference: {fileID: 0}
     - target: {fileID: 6793511420073333574, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.27
+      value: -0.617
       objectReference: {fileID: 0}
     - target: {fileID: 6793511420073333574, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
       propertyPath: m_LocalPosition.z
@@ -9024,6 +9054,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6793511420073333574, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7924414107395533620, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      propertyPath: m_ApplyRootMotion
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
