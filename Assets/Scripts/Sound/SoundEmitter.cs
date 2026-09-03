@@ -22,7 +22,12 @@ public class SoundEvent
         soundType = type;
         intensity = intense;
         timestamp = Time.time;
-        floor = Mathf.FloorToInt(pos.y / 4f); // 添加这一行 - 自动计算楼层
+        // 楼层必须用 FloorManager 的真实分层（floorHeight 可配置，默认 3m），
+        // 不能硬编码 y/4f —— 否则声音楼层与敌人 CurrentFloor / 网格寻路的楼层不一致，
+        // 导致 InvestigationExecutor 在错误楼层做 IsWalkable/FindPath 而放弃调查。
+        floor = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloorFromWorldY(pos.y)
+            : 0;
     }
 }
 
@@ -148,19 +153,8 @@ public class SoundEmitter : MonoBehaviour
     {
         if (!enableSound) return;
 
-        SoundEvent soundEvent = new SoundEvent(
-            transform.position,
-            radius,
-            gameObject,
-            soundType,
-            intensity
-        );
-
-        // 通过SoundManager广播声音
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.BroadcastSound(soundEvent);
-        }
+        // 走统一入口发声（构造 + 广播都在 Emit 里）
+        Emit(transform.position, soundType, radius, gameObject, intensity);
 
         lastSoundTime = Time.time;
 
@@ -168,6 +162,23 @@ public class SoundEmitter : MonoBehaviour
         {
             Debug.Log($"[SoundEmitter:{gameObject.name}] Emitted {soundType} sound, radius: {radius}");
         }
+    }
+
+    /// <summary>
+    /// 统一发声入口（唯一）：构造 SoundEvent 并通过 SoundManager 广播。
+    /// 所有声音——单位移动声（SoundEmitter 实例）和一次性道具/环境声（钻机/发电机/投掷物/场景物品）——
+    /// 都经此发出，保证“发声”只有一条路径、SoundEvent 的构造只有一处。SoundManager 缺席时安全跳过。
+    /// </summary>
+    /// <param name="position">发声世界坐标</param>
+    /// <param name="soundType">声音类型</param>
+    /// <param name="radius">声音半径（米）</param>
+    /// <param name="source">发声者 GameObject（用于忽略自身声、判定阵营等）</param>
+    /// <param name="intensity">强度 0~1</param>
+    public static void Emit(Vector3 position, SoundType soundType, float radius, GameObject source, float intensity = 1f)
+    {
+        if (SoundManager.Instance == null) return;
+        SoundManager.Instance.BroadcastSound(
+            new SoundEvent(position, radius, source, soundType, intensity));
     }
 
     // ============ 调试可视化 ============

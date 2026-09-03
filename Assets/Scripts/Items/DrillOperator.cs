@@ -59,16 +59,11 @@ public class DrillOperator : SceneItemOperator
         currentProgress = Mathf.Min(currentProgress + progressPerTurn, totalTurnsRequired);
         Debug.Log($"[Drill:{name}] 进度 {currentProgress}/{totalTurnsRequired}");
 
-        // 广播噪音
-        if (runningNoiseLevel > 0 && SoundManager.Instance != null)
+        // 广播噪音（统一走 SoundEmitter.Emit）
+        if (runningNoiseLevel > 0)
         {
-            SoundManager.Instance.BroadcastSound(new SoundEvent(
-                transform.position,
-                runningNoiseLevel * 2f,
-                gameObject,
-                SoundType.Environmental,
-                runningNoiseLevel / 5f
-            ));
+            SoundEmitter.Emit(transform.position, SoundType.Environmental,
+                runningNoiseLevel * 2f, gameObject, runningNoiseLevel / 5f);
         }
 
         // 完成

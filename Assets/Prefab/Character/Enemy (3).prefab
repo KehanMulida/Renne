@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 1328180221469245895}
   - component: {fileID: 4560156779370022690}
   - component: {fileID: 9034098735196026746}
-  - component: {fileID: 2443653250784580391}
   - component: {fileID: 4496673561884099990}
   - component: {fileID: 6572957509246325037}
   - component: {fileID: 1412193481804053293}
@@ -100,26 +99,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   faction: 1
   selectionIndicator: {fileID: 0}
---- !u!114 &2443653250784580391
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1334029201825580747}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0e71e7a668741fe449861eb8b7e09f77, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableListening: 1
-  hearingRange: 12
-  hearingThreshold: 0.1
-  maxSoundMemory: 10
-  soundMemoryDuration: 5
-  showHearingRange: 1
-  hearingColor: {r: 0, g: 1, b: 1, a: 0}
-  enableDebugLog: 0
 --- !u!114 &4496673561884099990
 MonoBehaviour:
   m_ObjectHideFlags: 0

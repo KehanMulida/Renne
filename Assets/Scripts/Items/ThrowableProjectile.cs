@@ -248,9 +248,7 @@ public class ThrowableProjectile : MonoBehaviour
 
         while (elapsed < config.decoyDuration)
         {
-            if (SoundManager.Instance != null)
-                SoundManager.Instance.BroadcastSound(
-                    new SoundEvent(pos, radius, gameObject, SoundType.Environmental, intensity));
+            SoundEmitter.Emit(pos, SoundType.Environmental, radius, gameObject, intensity);
 
             yield return wait;
             elapsed += config.decoyInterval;

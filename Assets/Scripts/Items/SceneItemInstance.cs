@@ -1237,16 +1237,10 @@ public class SceneItemInstance : MonoBehaviour
     private void BroadcastNoise(int level)
     {
         if (level <= 0) return;
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.BroadcastSound(new SoundEvent(
-                transform.position,
-                level * 2f,       // 半径：与 DrillOperator 保持一致
-                gameObject,
-                SoundType.Environmental,
-                level / 5f        // 强度：0~1
-            ));
-        }
+        // 统一走 SoundEmitter.Emit（唯一发声入口）
+        SoundEmitter.Emit(transform.position, SoundType.Environmental,
+            level * 2f,          // 半径：与 DrillOperator 保持一致
+            gameObject, level / 5f);
         Debug.Log($"[SceneItem:{name}] 噪音等级 {level}，半径 {level * 2f}m");
     }
 

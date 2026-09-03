@@ -27,6 +27,9 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
     private bool isExecuting = false;
     public bool IsExecuting => isExecuting;
 
+    /// <summary>诊断开关：打印追击/搜索/放弃巡逻的状态流转（排查“追几回合就放弃”）。需要时置 true。</summary>
+    public static bool DebugChase = false;
+
     private int  searchConfidence = 0;
     // searchConfidence / soundInvestigateCountdown 每回合只应递减一次
     private bool _confidenceDecrementedThisTurn = false;
@@ -259,8 +262,11 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
         if (!_aimResolved) { _aimController = GetComponent<ProceduralAimController>(); _aimResolved = true; }
         if (_aimController == null || blackboard == null) return;
 
-        if (blackboard.TryGetValue("hasVisualContact", out var vc) && vc is bool seeing && seeing
-            && blackboard.TryGetValue("lastSeenPosition", out var p) && p is Vector3 pos)
+        // 只要黑板里还有 lastSeenPosition 就持续瞄准它：
+        //   · 正在看见玩家：lastSeenPosition 每帧刷新为玩家当前位置 → 跟踪瞄准。
+        //   · 玩家刚躲进掩体（视线被射线挡住、暂时看不见）：lastSeenPosition 冻结在最后已知点
+        //     → 敌人继续盯着那个掩体点，不回正到 center；直到 EvaluateState 放弃搜索清掉它才松枪。
+        if (blackboard.TryGetValue("lastSeenPosition", out var p) && p is Vector3 pos)
         {
             _aimController.AimAt(pos);
         }
@@ -397,16 +403,19 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
             // ── 到达搜索位置但玩家不在：停止追踪（修复来回折返 bug）──────────
             // 当敌人站在 lastSeenPosition 格子或相邻格时，说明已经搜索过该位置，
             // 玩家不在此处，应清除记忆而不是原地震荡
+            int manhattanDist = -1;
+            bool reachedLastSeen = false;
             if (GridManager.Instance != null)
             {
                 Vector3    searchPos  = (Vector3)blackboard["lastSeenPosition"];
                 Vector2Int searchGrid = GridManager.Instance.WorldToGrid(searchPos);
-                int manhattanDist = Mathf.Abs(searchGrid.x - unitMovement.CurrentGridPosition.x)
-                                  + Mathf.Abs(searchGrid.y - unitMovement.CurrentGridPosition.y);
+                manhattanDist = Mathf.Abs(searchGrid.x - unitMovement.CurrentGridPosition.x)
+                              + Mathf.Abs(searchGrid.y - unitMovement.CurrentGridPosition.y);
                 if (manhattanDist <= 1)
                 {
                     // 已到达/已相邻，强制归零让下面的清除逻辑触发
                     searchConfidence = 0;
+                    reachedLastSeen = true;
                 }
             }
 
@@ -419,6 +428,9 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
 
             if (searchConfidence <= 0)
             {
+                if (DebugChase)
+                    Debug.Log($"[追击:{gameObject.name}] 放弃追击→巡逻 | 原因={(reachedLastSeen ? "已到达上次见到点(≤1格)" : "searchConfidence 耗尽")} 距上次见到={manhattanDist}格", this);
+
                 blackboard.Remove("lastSeenPosition");
                 blackboard.Remove("lastSeenTarget");
                 blackboard.Remove("lastSeenFloor");
@@ -433,6 +445,8 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
                 return "Patrol";
             }
 
+            if (DebugChase)
+                Debug.Log($"[追击:{gameObject.name}] 搜索中(丢失视野) | searchConfidence={searchConfidence} 距上次见到={manhattanDist}格", this);
             return "Chase(searching)";
         }
 
@@ -687,6 +701,8 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
                 blackboard["lastHeardFloor"]           = evt.Floor;
                 // 重置调查倒计时（每次新声音都刷新）
                 blackboard["soundInvestigateCountdown"] = config.soundInvestigateRounds;
+                if (SoundPerception.DebugHearing)
+                    Debug.Log($"[听觉:{gameObject.name}] 写入黑板 lastHeardPosition={evt.Position} floor={evt.Floor} countdown={config.soundInvestigateRounds}（等我方回合调查）", this);
                 break;
         }
     }
@@ -701,7 +717,10 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
         vision.Initialize(transform, config);
         perception.RegisterModule(vision);
 
-        var sound = new SoundPerception();
+        // SoundPerception 现在是可编辑组件：优先用挂在敌人身上的（Inspector 可调）；
+        // 没挂则运行时补一个，保证 AI 听觉不因忘记挂组件而失效。
+        var sound = GetComponent<SoundPerception>();
+        if (sound == null) sound = gameObject.AddComponent<SoundPerception>();
         sound.Initialize(transform, config);
         perception.RegisterModule(sound);
 

@@ -31,7 +31,11 @@ public class VisionPerception : IPerceptionModule
 
     private int GetFloor(Transform t)
     {
-        return Mathf.FloorToInt(t.position.y / 4f);
+        // 与全局楼层系统一致（FloorManager.GetFloorFromWorldY），不能硬编码 y/4f，
+        // 否则 lastSeenFloor 与真实楼层不符，跨楼层追击/搜索会用错楼层。
+        return FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloorFromWorldY(t.position.y)
+            : 0;
     }
 
     public void UpdatePerception()
@@ -93,6 +97,16 @@ public class VisionPerception : IPerceptionModule
         else if (wasSeenLastFrame)
         {
             wasSeenLastFrame = false;
+
+            if (EnemyAIController.DebugChase)
+            {
+                float d = new Vector2(player.position.x - owner.position.x,
+                                      player.position.z - owner.position.z).magnitude;
+                float ang = Vector3.Angle(owner.forward, (player.position - owner.position).normalized);
+                Debug.Log($"[视野:{owner.name}] 丢失视野 | 距离={d:F1}(range={config.visionRange}) " +
+                          $"角度={ang:F0}°(锥半角={config.visionAngle / 2f:F0}°) " +
+                          $"我方层={GetFloor(owner)} 玩家层={currentPlayerFloor}", owner);
+            }
 
             OnPerceptionEvent?.Invoke(new PerceptionEvent
             {

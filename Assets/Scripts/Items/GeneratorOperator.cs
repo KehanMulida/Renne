@@ -56,16 +56,12 @@ public class GeneratorOperator : SceneItemOperator
 
     protected override void OnRunningTurnTick(TurnData turnData)
     {
-        // 每回合广播机械运转噪音（供 EnemyPerception 感知）
-        if (runningNoiseLevel > 0 && SoundManager.Instance != null)
+        // 每回合广播机械运转噪音（供 EnemyPerception 感知）——统一走 SoundEmitter.Emit
+        if (runningNoiseLevel > 0)
         {
-            SoundManager.Instance.BroadcastSound(new SoundEvent(
-                transform.position,
+            SoundEmitter.Emit(transform.position, SoundType.Environmental,
                 runningNoiseLevel * 2f, // 噪音等级转化为半径（米）
-                gameObject,
-                SoundType.Environmental,
-                runningNoiseLevel / 5f
-            ));
+                gameObject, runningNoiseLevel / 5f);
         }
     }
 }
