@@ -117,7 +117,12 @@ public class EnemyEquipment : MonoBehaviour
     // 发射 count 颗弹丸，扣 1 发弹药
     private void FirePellets(Vector3 origin, Transform target, int count, bool isPellet, float qteDur)
     {
-        Vector3 baseDir = (target.position - origin).normalized;
+        // 瞄准目标的姿态身体点（而非脚底 pivot），让高度型掩体/半掩体成立：
+        // 站立目标弹道高、越过低掩体；蹲下目标弹道低、被低掩体挡。
+        var detectable = target.GetComponent<IDetectable>();
+        Vector3 aimPoint = detectable != null ? detectable.DetectionPosition
+                                              : target.position + Vector3.up * 1.0f;
+        Vector3 baseDir = (aimPoint - origin).normalized;
 
         // QTE 在开枪瞬间由装备层触发，子弹不再耦合 CombatModeManager
         if (qteDur > 0f && CombatModeManager.Instance != null)

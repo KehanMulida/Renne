@@ -17,6 +17,8 @@ GameObject:
   - component: {fileID: 1412193481804053293}
   - component: {fileID: 3490035061775246140}
   - component: {fileID: 1545902831009981439}
+  - component: {fileID: 2571652820940176719}
+  - component: {fileID: 5594467378713630585}
   m_Layer: 8
   m_Name: Enemy (3)
   m_TagString: Untagged
@@ -168,7 +170,7 @@ MonoBehaviour:
   muzzlePoint: {fileID: 3762441861863271570}
   hitLayer:
     serializedVersion: 2
-    m_Bits: 8
+    m_Bits: 136
   enableDebugLog: 1
 --- !u!114 &1545902831009981439
 MonoBehaviour:
@@ -196,6 +198,57 @@ MonoBehaviour:
   pickupChance: 0.4
   pickupCooldownTurns: 3
   pickupDetectionRange: 3.5
+--- !u!114 &2571652820940176719
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1334029201825580747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2721cdd0e6b7ee47a376c3059553c6f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 7924414107395533620}
+  rootBone: {fileID: 7286673356691816944}
+  rootBoneName: Beiye_root
+  maxRootYaw: 40
+  trackTurnThreshold: 25
+  centerDeadzone: 8
+  bodyTurnSpeed: 360
+  turnSmoothTime: 0.2
+  rootSmoothTime: 0.08
+  movingAimBlend: 0.5
+  centerState: Beiye_root|Rifle_Aim_Cente
+  leftState: Beiye_root|Rifle_Aim_left
+  rightState: Beiye_root|Rifle_Aim_right
+  idleState: 
+  aimLayerName: Upper Body Layer
+  stateCrossfade: 0.15
+  driveLocomotion: 1
+  standState: Beiye_root|Stand
+  walkState: Beiye_root|Walk
+  runState: Beiye_root|Run
+  baseLayerName: Base Layer
+  locomotionCrossfade: 0.25
+  aimHoldTime: 0.4
+  enableDebugLog: 0
+--- !u!114 &5594467378713630585
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1334029201825580747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d212ca832a6a09346bd4e0a3b7edec3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hearingRange: 10
+  canHearAcrossFloors: 0
+  ignoreOtherEnemySound: 1
 --- !u!1 &7204205626371996121
 GameObject:
   m_ObjectHideFlags: 0
@@ -221,7 +274,7 @@ Transform:
   m_GameObject: {fileID: 7204205626371996121}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.2, y: 0, z: 0.687}
+  m_LocalPosition: {x: -0.672, y: 1.374, z: 0.572}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -241,7 +294,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7bb50322638d6d45b57d887e515e2d5, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.375
+      value: -0.394
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e7bb50322638d6d45b57d887e515e2d5, type: 3}
       propertyPath: m_LocalPosition.z
@@ -283,6 +336,10 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 48b4a4fe07dd0d644856ab62da506675, type: 2}
+    - target: {fileID: 5866666021909216657, guid: e7bb50322638d6d45b57d887e515e2d5, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -291,5 +348,15 @@ PrefabInstance:
 --- !u!4 &4258435410958119246 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e7bb50322638d6d45b57d887e515e2d5, type: 3}
+  m_PrefabInstance: {fileID: 4365035928526722725}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7286673356691816944 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6452760804491810645, guid: e7bb50322638d6d45b57d887e515e2d5, type: 3}
+  m_PrefabInstance: {fileID: 4365035928526722725}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &7924414107395533620 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: e7bb50322638d6d45b57d887e515e2d5, type: 3}
   m_PrefabInstance: {fileID: 4365035928526722725}
   m_PrefabAsset: {fileID: 0}
