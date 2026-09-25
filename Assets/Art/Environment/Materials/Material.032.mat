@@ -21,17 +21,19 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Material.032
-  m_Shader: {fileID: 4800000, guid: fc08154d6b6a19342ba6bd2c0ec27a30, type: 3}
-  m_Parent: {fileID: 2100000, guid: 43edd980abe122e4da20078ea3fd6ea6, type: 2}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Parent: {fileID: -876546973899608171, guid: f8a6dcaab6bc8594cb80d407b8277bc4, type: 3}
+  m_ModifiedSerializedProperties: 18
+  m_ValidKeywords:
+  - _EMISSION
   m_InvalidKeywords:
   - _FLIPX_ON
-  m_LightmapFlags: 4
+  m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 2000
+  stringTagMap:
+    RenderType: Opaque
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -39,11 +41,13 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.48636365
     - _GlossyReflections: 1
     - _Parallax: 0.02
     - _Smoothness: 0.48636365
+    - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}
     - _Color: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}
