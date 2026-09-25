@@ -99,6 +99,7 @@ public class ThrowableConfig
 public enum SceneInteractableBy { PlayerOnly, EnemyOnly, Both, None }
 public enum DebrisBlockMode     { NoBlock, BlockMovement }
 public enum HingeSide           { Left, Right, Center }
+public enum DoorWidthAxis       { Auto, X, Z }
 
 [System.Flags]
 public enum ToppleDirectionFlags
@@ -132,6 +133,15 @@ public class ToggleConfig
     public HingeSide hingeSide = HingeSide.Left;
     [Range(-180f, 180f)] public float openAngle = 0f;
     [Range(0.1f, 1f)] public float swingDuration = 0.28f;
+
+    [Tooltip("门板【宽度】在哪条本地轴上。\n" +
+             "Auto = 取碰撞盒水平方向较长的那条边（多数情况正确）。\n" +
+             "若门是沿 Z 方向摆放的，按 X 算铰链会把转轴放到门板前后方，门就会绕错位置转。")]
+    public DoorWidthAxis widthAxis = DoorWidthAxis.Auto;
+
+    [Tooltip("开门时朝【远离开门者】的一侧摆动。\n" +
+             "关掉的话门永远朝固定一侧开，玩家从另一侧开门时门会扫过自己。")]
+    public bool swingAwayFromInteractor = true;
 }
 
 [System.Serializable]

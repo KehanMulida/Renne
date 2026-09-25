@@ -48,6 +48,8 @@ public class SceneItemInstance : MonoBehaviour
 
     // 门旋转动画：铰链世界坐标（InitializeGrid 时由 HingeSide + Collider 计算一次，之后固定不变）
     private Vector3 _hingeWorldPos;
+    private bool    _doorWidthIsX = true;   // 门板宽度是否在本地 X 轴（由 ComputeHingeWorldPos 定）
+    private float   _appliedOpenAngle;      // 本次实际使用的开门角度（可能按开门者取了反）
 
     // ── 组件缓存 ─────────────────────────────────────────────────────
 
@@ -257,6 +259,42 @@ public class SceneItemInstance : MonoBehaviour
 
     private void RefreshGridBlocking() => SetCellsWalkable(!CurrentBlocksMovement());
 
+    /// <summary>
+    /// 重扫本物体相关格的「格边」。
+    /// 开关门 / 推动 / 滑行后**必须**调：门这类薄物体正是立在格边上的，
+    /// 只改 isWalkable 不改边数据的话——开了门那条边还记着"阻挡"（走不过去），
+    /// 物体被推走后原地也会永久残留一道看不见的墙。
+    /// extraCells 用来把「移动前占的旧格」一并刷新。
+    /// </summary>
+    private void RefreshGridEdges(IEnumerable<Vector2Int> extraCells = null)
+    {
+        var gm = GridManager.Instance;
+        if (gm == null) return;
+
+        if (_occupiedCells != null)
+            foreach (var c in _occupiedCells) gm.ScanCellEdges(c, _floor);
+
+        if (extraCells != null)
+            foreach (var c in extraCells) gm.ScanCellEdges(c, _floor);
+    }
+
+    /// <summary>
+    /// 等动画/物理稳定后再重扫一次格边。
+    /// 门是「转开」的、箱子是「滑到位」的，立刻重扫会读到动画中途的碰撞体位置。
+    /// </summary>
+    private System.Collections.IEnumerator RefreshEdgesWhenSettled(
+        List<Vector2Int> extraCells, float extraDelay)
+    {
+        yield return null;
+
+        float deadline = Time.time + 3f;                       // 防卡死
+        while (_isAnimating && Time.time < deadline) yield return null;
+
+        if (extraDelay > 0f) yield return new WaitForSeconds(extraDelay);
+
+        RefreshGridEdges(extraCells);
+    }
+
     private void SetCellsWalkable(bool walkable)
     {
         if (GridManager.Instance == null) return;
@@ -403,7 +441,7 @@ public class SceneItemInstance : MonoBehaviour
         switch (_resolvedKind)
         {
             case InteractionKind.Unlock:    return ExecuteUnlock(interactor);
-            case InteractionKind.Toggle:    return ExecuteToggle();
+            case InteractionKind.Toggle:    return ExecuteToggle(interactor);
             case InteractionKind.Push:      return ExecutePush(interactor);
             case InteractionKind.Topple:    return ExecuteTopple(interactor);
             case InteractionKind.Explosive: return TriggerExplosion(interactor);
@@ -491,22 +529,28 @@ public class SceneItemInstance : MonoBehaviour
         _isLocked = false;
         Debug.Log($"[SceneItem:{name}] 已解锁");
 
-        // 解锁后立即顺势开门（不额外消耗 AP）
+        // 解锁后立即顺势开门（不额外消耗 AP）——把解锁者传进去，门才能朝远离他的一侧开
         if (data.isToggleable)
-            ExecuteToggle();
+            ExecuteToggle(interactor);
 
         return true;
     }
 
     // ── 开/关切换 ─────────────────────────────────────────────────────
 
-    private bool ExecuteToggle()
+    private bool ExecuteToggle(GameObject interactor)
     {
         _isOpen = !_isOpen;
         var cfg = data.toggleConfig;
 
         // 格子阻挡立即生效（游戏逻辑即时）
         RefreshGridBlocking();
+        // 门通常就是立在格边上的薄物体：只改 isWalkable 不够，边数据也得跟着改，
+        // 否则门开了那条边还记着"阻挡"，人依然走不过去。
+        // 先立刻刷一次让逻辑生效，等门转到位后再校正一次（动画中途的碰撞体位置不可信）。
+        RefreshGridEdges();
+        StartCoroutine(RefreshEdgesWhenSettled(null, 0.35f));
+
         BroadcastNoise(_isOpen ? cfg.openNoiseLevel : cfg.closeNoiseLevel);
         PlayVFX(data.stateChangeVFXPrefab);
 
@@ -518,9 +562,27 @@ public class SceneItemInstance : MonoBehaviour
 
         // 旋转动画：openAngle != 0 时播门旋转，否则用 Animator Trigger
         if (Mathf.Abs(cfg.openAngle) > 0.01f)
+        {
+            if (_isOpen)
+            {
+                // ★ 开门方向：默认朝【远离开门者】的一侧摆，免得门板直接扫过开门的人。
+                //   关门时用的是 -_appliedOpenAngle，所以这里记下实际角度，
+                //   否则门会关到与开门时不同的一侧、回不到门框里。
+                float sign = 1f;
+                if (cfg.swingAwayFromInteractor && interactor != null)
+                {
+                    Vector3 toInteractor = interactor.transform.position - _hingeWorldPos;
+                    if (Vector3.Dot(DoorNormalWorld(), toInteractor) > 0f) sign = -1f;
+                }
+                _appliedOpenAngle = cfg.openAngle * sign;
+            }
+
             StartCoroutine(AnimateDoorSwing(_isOpen));
+        }
         else
+        {
             TriggerAnimator(_isOpen ? cfg.openAnimTrigger : cfg.closeAnimTrigger);
+        }
 
         // 打开且是容器 → 同时开箱
         if (_isOpen && data.isContainer && !_hasBeenLooted)
@@ -556,9 +618,12 @@ public class SceneItemInstance : MonoBehaviour
         }
 
         // 立即更新格子数据（游戏逻辑即时生效）
+        var oldCells   = new List<Vector2Int>(_occupiedCells);   // 旧格的边也要刷，否则原地残留一道墙
         _anchorCell    = newAnchor;
         _occupiedCells = newCells;
         RefreshGridBlocking();
+        RefreshGridEdges(oldCells);
+        StartCoroutine(RefreshEdgesWhenSettled(oldCells, 0f));
 
         // 目标世界坐标（新格子中心，保持原 Y）
         Vector3 wp     = GridManager.Instance.GridToWorld(newAnchor);
@@ -604,29 +669,44 @@ public class SceneItemInstance : MonoBehaviour
     /// </summary>
     private Vector3 ComputeHingeWorldPos(HingeSide side)
     {
-        float halfWidth;
+        Vector3 localCenter = Vector3.zero;
+        float   halfX, halfZ;
+
         var boxCol = GetComponentInChildren<BoxCollider>();
         if (boxCol != null)
         {
-            // BoxCollider.size.x 是本地空间的宽度，transform.TransformPoint 会正确处理任意旋转
-            halfWidth = boxCol.size.x * 0.5f;
+            // ★ 必须带上 collider.center：门的 pivot 常在门框处、碰撞盒却在门板上，
+            //   忽略 center 会把转轴算到门板之外，门就会绕着一个错误的点转。
+            localCenter = boxCol.center;
+            halfX = boxCol.size.x * 0.5f;
+            halfZ = boxCol.size.z * 0.5f;
         }
         else
         {
             float cellSize = GridManager.Instance != null ? GridManager.Instance.CellSize : 1f;
-            halfWidth = Mathf.Max(1, data.gridWidth) * cellSize * 0.5f;
+            halfX = Mathf.Max(1, data.gridWidth) * cellSize * 0.5f;
+            halfZ = Mathf.Max(1, data.gridDepth) * cellSize * 0.5f;
         }
 
-        float localOffsetX;
-        switch (side)
-        {
-            case HingeSide.Left:   localOffsetX = -halfWidth; break;
-            case HingeSide.Right:  localOffsetX = +halfWidth; break;
-            default:               localOffsetX = 0f;          break; // Center
-        }
+        // ★ 门板宽度不一定在本地 X 轴上。写死按 X 算的话，沿 Z 摆放的门会把转轴
+        //   放到门板【前后方】而不是侧边，看起来就是"绕错位置转"。
+        var cfg = data.toggleConfig;
+        _doorWidthIsX = cfg.widthAxis == DoorWidthAxis.X
+                     || (cfg.widthAxis == DoorWidthAxis.Auto && halfX >= halfZ);
 
-        return transform.TransformPoint(new Vector3(localOffsetX, 0f, 0f));
+        float half = _doorWidthIsX ? halfX : halfZ;
+        float sign = side == HingeSide.Left ? -1f : (side == HingeSide.Right ? +1f : 0f);
+
+        Vector3 local = localCenter + (_doorWidthIsX
+            ? new Vector3(sign * half, 0f, 0f)
+            : new Vector3(0f, 0f, sign * half));
+
+        return transform.TransformPoint(local);
     }
+
+    /// <summary>门板法线（垂直于门面的水平方向）——用来判断开门者站在哪一侧</summary>
+    private Vector3 DoorNormalWorld()
+        => _doorWidthIsX ? transform.forward : transform.right;
 
     /// <summary>
     /// 门开/关旋转动画：绕固定铰链轴（Y 轴）转到目标角度。
@@ -638,8 +718,12 @@ public class SceneItemInstance : MonoBehaviour
     {
         _isAnimating = true;
 
-        var cfg   = data.toggleConfig;
-        float angle = opening ? cfg.openAngle : -cfg.openAngle;
+        var cfg = data.toggleConfig;
+
+        // 用【实际开门角度】而不是配置值：开门方向可能按开门者取了反，
+        // 关门必须原路转回去，否则门会关到另一侧、回不进门框。
+        if (Mathf.Abs(_appliedOpenAngle) < 0.01f) _appliedOpenAngle = cfg.openAngle;
+        float angle = opening ? _appliedOpenAngle : -_appliedOpenAngle;
 
         Vector3    startPos = transform.position;
         Quaternion startRot = transform.rotation;
@@ -1021,8 +1105,9 @@ public class SceneItemInstance : MonoBehaviour
         // 一次性扣除 AP（滑行本身不再逐格计费）
         riderUnit?.ConsumeAP(data.UseCost);
 
-        // 广播噪音（购物车推出去会有声响）
-        BroadcastNoise(cfg.slideNoiseLevel);
+        // 注意：滑行噪音改为在下面的循环里【逐格】广播。
+        // 不能在这里发一次——那样用的是【起点】坐标，AI 只会听到出发点、
+        // 跑去调查你起步的位置，而骑手早已滑出好几格。
 
         TriggerAnimator(cfg.slideAnimTrigger);
 
@@ -1074,9 +1159,16 @@ public class SceneItemInstance : MonoBehaviour
             transform.position = cartEnd;
 
             // ── 更新格子数据 ────────────────────────────────────────────
+            var oldCells   = _occupiedCells;   // 旧格的边也要刷，否则车滑走后原地残留阻挡
             _anchorCell    = nextAnchor;
             _occupiedCells = newCells;
             RefreshGridBlocking();
+            // 此时 transform 已经落在 cartEnd（物理已就位），可以立刻重扫边
+            RefreshGridEdges(oldCells);
+
+            // 逐格广播噪音：滑行本就是持续响动，且必须用【当前】位置发——
+            // AI 的 lastHeardPosition 会被最新一次覆盖，于是它追的是车真正滑到的地方。
+            BroadcastNoise(cfg.slideNoiseLevel);
 
             // 更新骑手格子位置（处理占据标记），再覆盖 transform 到载具上
             if (riderMovement != null)

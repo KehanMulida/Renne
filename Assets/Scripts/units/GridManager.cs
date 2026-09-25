@@ -21,6 +21,14 @@ public class GridCell
     public int moveCost = 1;         // 移动消耗（用于不同地形）
     public int height = 0;           // 高度层级，用于2.5D地形
 
+    /// <summary>
+    /// 被薄障碍挡住的「格边」位掩码：bit0=上(0,1) bit1=右(1,0) bit2=下(0,-1) bit3=左(-1,0)。
+    /// 薄墙（如厕所隔板）立在两格之间、不占任何一格——格子级 isWalkable 表达不了这种阻挡：
+    /// 检测不到就会被穿过去，检测到又会把两侧格子一起标成不可走（连单间都站不进）。
+    /// 所以单独用「边」来表达：两侧格子都能站，但不能互相穿过。
+    /// </summary>
+    public byte blockedEdges = 0;
+
     public GridCell(Vector2Int gridPos, Vector3 worldPos, int floorNum)
     {
         gridPosition = gridPos;
@@ -67,8 +75,19 @@ public class GridManager : MonoBehaviour
     [Range(0f, 0.5f)]
     [SerializeField] private float overflowThreshold = 0.3f;
 
+    [Tooltip("薄障碍「格边」检测盒：垂直范围（相对该层地面）与厚度。\n" +
+             "厕所隔板这类薄墙不占格子、重叠面积达不到 overflowThreshold，格子级判定会整个忽略它，\n" +
+             "人就穿过去了。做法：贴着两格之间那条边放一个薄盒子做 OverlapBox。\n" +
+             "比「格心→格心射线」更稳——不受射线起点落在 collider 内、墙体略偏离格边等影响。\n" +
+             "当前策略：只要存在薄障碍就挡移动，不分高矮。")]
+    [SerializeField] private float edgeProbeMinHeight = 0.1f;
+    [SerializeField] private float edgeProbeMaxHeight = 2.0f;
+    [SerializeField] private float edgeProbeThickness = 0.08f;
+
     [Header("调试")]
     [SerializeField] private bool showOccupiedCells = true;   // Gizmos 显示被占据的格子
+    [Tooltip("Gizmos 把被薄障碍隔断的『格边』画成红线——排查穿墙时用")]
+    [SerializeField] private bool showBlockedEdges = true;
 
     // ============ 内部数据 ============
 
@@ -120,6 +139,13 @@ public class GridManager : MonoBehaviour
                 Debug.LogWarning("[GridManager] useFloorSystem=true but FloorManager.Instance is null! Falling back to single floor.");
             InitializeSingleFloorGrid();
         }
+
+        // 烘焙完「格子可走性」后，再扫一遍「格边」：
+        // 薄墙（厕所隔板等）不占格子、重叠面积达不到 overflowThreshold，格子级判定会整个忽略它，
+        // 人就穿过去了。只能靠格心→邻格心的射线检出。
+        int floorCount = (useFloorSystem && FloorManager.Instance != null)
+            ? FloorManager.Instance.NumberOfFloors : 1;
+        for (int f = 0; f < floorCount; f++) ScanFloorEdges(f);
     }
 
     private void InitializeMultiFloorGrid()
@@ -405,7 +431,8 @@ public class GridManager : MonoBehaviour
         foreach (var dir in directions)
         {
             Vector2Int neighborPos = gridPos + dir;
-            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor, ignoreOccupied: false))
+            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor, ignoreOccupied: false)
+                && CanCross(gridPos, neighborPos, floor))          // 薄墙：两格都能站但不能互穿
             {
                 neighbors.Add(neighborPos);
             }
@@ -431,13 +458,187 @@ public class GridManager : MonoBehaviour
         foreach (var dir in directions)
         {
             Vector2Int neighborPos = gridPos + dir;
-            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor, ignoreOccupied: true))
+            if (IsValid(neighborPos) && IsWalkable(neighborPos, floor, ignoreOccupied: true)
+                && CanCross(gridPos, neighborPos, floor))          // 薄墙：两格都能站但不能互穿
             {
                 neighbors.Add(neighborPos);
             }
         }
 
         return neighbors;
+    }
+
+    // ============ 薄障碍：格边阻挡 ============
+
+    /// <summary>格边方向表，顺序必须与 GridCell.blockedEdges 的 bit 一一对应</summary>
+    private static readonly Vector2Int[] EdgeDirs =
+    {
+        new Vector2Int(0, 1),   // bit0 上
+        new Vector2Int(1, 0),   // bit1 右
+        new Vector2Int(0, -1),  // bit2 下
+        new Vector2Int(-1, 0)   // bit3 左
+    };
+
+    private static int EdgeBitOf(Vector2Int dir)
+    {
+        for (int i = 0; i < 4; i++) if (EdgeDirs[i] == dir) return i;
+        return -1;
+    }
+
+    /// <summary>
+    /// 相邻两格之间能否通过（薄墙判定）。非相邻格返回 true——跨格移动请逐步校验。
+    /// </summary>
+    public bool CanCross(Vector2Int from, Vector2Int to, int floor = 0)
+    {
+        int bit = EdgeBitOf(to - from);
+        if (bit < 0) return true;                     // 不相邻：不由本函数负责
+
+        var a = GetCell(from, floor);
+        if (a != null && (a.blockedEdges & (1 << bit)) != 0) return false;
+
+        // 同一条边在对侧也记了一份（建表时对称写入），双向确认更稳
+        var b = GetCell(to, floor);
+        if (b != null && (b.blockedEdges & (1 << ((bit + 2) % 4))) != 0) return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// 扫描某格的四条边：格心→邻格心 射线打到 Obstacle 即视为被薄墙隔断。
+    /// 对称写入两侧，保证 CanCross 双向一致。
+    /// </summary>
+    public void ScanCellEdges(Vector2Int gridPos, int floor = 0)
+    {
+        for (int i = 0; i < 4; i++) ScanOneEdge(gridPos, i, floor);
+    }
+
+    private static readonly Collider[] EdgeProbeBuf = new Collider[1];
+
+    /// <summary>
+    /// 扫描某格第 i 条边：贴着这条边放一个薄盒子，碰到 Obstacle 即视为隔断。
+    /// 结果对称写入两侧，保证 CanCross 双向一致。
+    /// </summary>
+    private void ScanOneEdge(Vector2Int gridPos, int i, int floor)
+    {
+        var cell = GetCell(gridPos, floor);
+        if (cell == null) return;
+        var nCell = GetCell(gridPos + EdgeDirs[i], floor);
+        if (nCell == null) return;
+
+        Vector2Int d      = EdgeDirs[i];
+        float      floorY = cell.worldPosition.y;
+
+        // 盒子中心 = 两格中点（即那条边），高度取该层的探测区间
+        Vector3 mid = (cell.worldPosition + nCell.worldPosition) * 0.5f;
+        mid.y = floorY + (edgeProbeMinHeight + edgeProbeMaxHeight) * 0.5f;
+
+        // 沿跨越方向很薄、沿边方向铺满一格
+        Vector3 half = new Vector3(
+            d.x != 0 ? edgeProbeThickness : cellSize * 0.45f,
+            Mathf.Max(0.05f, (edgeProbeMaxHeight - edgeProbeMinHeight) * 0.5f),
+            d.y != 0 ? edgeProbeThickness : cellSize * 0.45f);
+
+        bool blocked = Physics.OverlapBoxNonAlloc(
+            mid, half, EdgeProbeBuf, Quaternion.identity, obstacleLayer) > 0;
+
+        // ★ 关键：OverlapBox 检测不到「非凸 MeshCollider」（Unity 已知限制），而射线可以。
+        //   美术模型自带的 Mesh Collider 正属此类，所以必须再补射线兜底。
+        //   高低各打一条，兼顾不同高度的薄墙。
+        if (!blocked) blocked = LinecastEdge(cell.worldPosition, nCell.worldPosition, floorY);
+
+        SetEdge(cell,  i,           blocked);
+        SetEdge(nCell, (i + 2) % 4, blocked);   // 对侧同一条边
+    }
+
+    /// <summary>格心→邻格心 打两条不同高度的射线（能命中非凸 MeshCollider）</summary>
+    private bool LinecastEdge(Vector3 a, Vector3 b, float floorY)
+    {
+        float hLow  = floorY + edgeProbeMinHeight + 0.3f;
+        float hHigh = floorY + Mathf.Max(edgeProbeMinHeight + 0.4f, edgeProbeMaxHeight * 0.6f);
+
+        return Physics.Linecast(new Vector3(a.x, hLow,  a.z), new Vector3(b.x, hLow,  b.z), obstacleLayer)
+            || Physics.Linecast(new Vector3(a.x, hHigh, a.z), new Vector3(b.x, hHigh, b.z), obstacleLayer);
+    }
+
+    private static readonly Collider[] EdgeDiagBuf = new Collider[8];
+
+    /// <summary>
+    /// 诊断：列出某条格边上的**所有**碰撞体（不限 Layer），用来排查"看着有墙却没挡住"。
+    /// 返回 null = 这条边上确实什么都没有。
+    /// </summary>
+    public string DescribeEdge(Vector2Int from, Vector2Int to, int floor = 0)
+    {
+        int i = EdgeBitOf(to - from);
+        if (i < 0) return null;
+
+        var cell  = GetCell(from, floor);
+        var nCell = GetCell(to, floor);
+        if (cell == null || nCell == null) return null;
+
+        Vector2Int d = EdgeDirs[i];
+        Vector3 mid = (cell.worldPosition + nCell.worldPosition) * 0.5f;
+        mid.y = cell.worldPosition.y + (edgeProbeMinHeight + edgeProbeMaxHeight) * 0.5f;
+        Vector3 half = new Vector3(
+            d.x != 0 ? edgeProbeThickness : cellSize * 0.45f,
+            Mathf.Max(0.05f, (edgeProbeMaxHeight - edgeProbeMinHeight) * 0.5f),
+            d.y != 0 ? edgeProbeThickness : cellSize * 0.45f);
+
+        var sb = new System.Text.StringBuilder();
+
+        int n = Physics.OverlapBoxNonAlloc(mid, half, EdgeDiagBuf, Quaternion.identity, ~0);
+        for (int k = 0; k < n; k++)
+        {
+            var c = EdgeDiagBuf[k];
+            if (c == null) continue;
+            sb.Append($"[Box:{c.name} layer={LayerMask.LayerToName(c.gameObject.layer)}({c.gameObject.layer})" +
+                      $"{(c.isTrigger ? " Trigger" : "")}] ");
+        }
+
+        // 射线能命中非凸 MeshCollider（OverlapBox 不行），单独再报一次
+        float floorY = cell.worldPosition.y;
+        Vector3 a = cell.worldPosition, b = nCell.worldPosition;
+        float hLow  = floorY + edgeProbeMinHeight + 0.3f;
+        float hHigh = floorY + Mathf.Max(edgeProbeMinHeight + 0.4f, edgeProbeMaxHeight * 0.6f);
+        foreach (float h in new[] { hLow, hHigh })
+        {
+            if (Physics.Linecast(new Vector3(a.x, h, a.z), new Vector3(b.x, h, b.z), out RaycastHit hit, ~0))
+                sb.Append($"[Ray@{h - floorY:F1}:{hit.collider.name} " +
+                          $"layer={LayerMask.LayerToName(hit.collider.gameObject.layer)}({hit.collider.gameObject.layer})] ");
+        }
+
+        return sb.Length > 0 ? sb.ToString() : null;
+    }
+
+    private static void SetEdge(GridCell cell, int bit, bool blocked)
+    {
+        if (blocked) cell.blockedEdges |= (byte)(1 << bit);
+        else         cell.blockedEdges &= unchecked((byte)~(1 << bit));
+    }
+
+    /// <summary>重扫整层所有格边（网格烘焙后、或地形大变动后调用）</summary>
+    public void ScanFloorEdges(int floor = 0)
+    {
+        // 每条内部边只扫一次：只扫「上」「右」，对侧由 ScanOneEdge 对称写入（开销减半）
+        for (int x = 0; x < gridWidth; x++)
+            for (int y = 0; y < gridHeight; y++)
+            {
+                ScanOneEdge(new Vector2Int(x, y), 0, floor);   // 上
+                ScanOneEdge(new Vector2Int(x, y), 1, floor);   // 右
+            }
+
+        // 诊断：统计被隔断的边。每条边在两侧各记一次，所以 /2。
+        int bits = 0;
+        for (int x = 0; x < gridWidth; x++)
+            for (int y = 0; y < gridHeight; y++)
+            {
+                var c = GetCell(new Vector2Int(x, y), floor);
+                if (c == null) continue;
+                for (int i = 0; i < 4; i++)
+                    if ((c.blockedEdges & (1 << i)) != 0) bits++;
+            }
+
+        Debug.Log($"[GridManager] 楼层 {floor} 格边扫描：{bits / 2} 条边被阻挡" +
+                  (bits == 0 ? "  ← 0 条！薄墙多半不在 obstacleLayer(Obstacle) 上，检查它的 Layer" : ""));
     }
 
     // ============ 动态障碍物管理 ============
@@ -504,6 +705,10 @@ public class GridManager : MonoBehaviour
         }
 
         cell.isWalkable = !hasObstacle;
+
+        // 同步重扫这一格的四条边：门开关 / 物体被推走都可能改变薄障碍
+        ScanCellEdges(gridPos, floor);
+
         Debug.Log($"[GridManager] Rescanned {gridPos} floor {floor}: walkable={cell.isWalkable}");
     }
 
@@ -580,6 +785,8 @@ public class GridManager : MonoBehaviour
             }
         }
 
+        ScanFloorEdges(floor);   // 格子重扫完，格边也要跟着重扫
+
         Debug.Log($"[GridManager] Rescanned floor {floor}: {markedCount} grid cells marked as obstacles");
     }
 
@@ -587,6 +794,26 @@ public class GridManager : MonoBehaviour
 
     void OnDrawGizmos()
     {
+        // 薄障碍「格边」可视化：被隔断的边画成红色线段。
+        // 排查穿墙：如果隔板处**没有红线**，说明边扫描没检出它（多半是 Layer 不对）。
+        if (showBlockedEdges && gridCells != null)
+        {
+            Gizmos.color = new Color(1f, 0.25f, 0f, 0.95f);
+            foreach (var cell in gridCells.Values)
+            {
+                if (cell.blockedEdges == 0) continue;
+                for (int i = 0; i < 4; i++)
+                {
+                    if ((cell.blockedEdges & (1 << i)) == 0) continue;
+                    Vector2Int d = EdgeDirs[i];
+                    Vector3 dir  = new Vector3(d.x, 0, d.y);
+                    Vector3 perp = new Vector3(-d.y, 0, d.x);
+                    Vector3 mid  = cell.worldPosition + dir * (cellSize * 0.5f) + Vector3.up * 0.05f;
+                    Gizmos.DrawLine(mid - perp * (cellSize * 0.5f), mid + perp * (cellSize * 0.5f));
+                }
+            }
+        }
+
         if (useFloorSystem && gridCells != null)
         {
             foreach (var cell in gridCells.Values)

@@ -179,6 +179,9 @@ public class UnitMovement : MonoBehaviour
     /// apCost：调用方预算的 AP 消耗（≥0 时使用该值，-1 = 默认用实际路径长度）
     /// AI 执行器预先算好 stepsToTake 后传入，防止内部 re-pathfind 路径不同导致 AP 超耗
     /// </summary>
+    /// <summary>诊断开关：打印移动路径并检查是否跨越被薄墙隔断的格边。排查完置 false。</summary>
+    public static bool DebugPathCross = true;
+
     public void MoveToGrid(Vector2Int targetGridPos, int targetFloor = -1, int apCost = -1)
     {
         if (isMoving)
@@ -227,6 +230,36 @@ public class UnitMovement : MonoBehaviour
         {
             Debug.LogWarning($"[{gameObject.name}] No valid path to {targetGridPos}");
             return;
+        }
+
+        // ── 诊断：逐段验证路径有没有跨越被薄墙隔断的格边 ──────────────────
+        // 报错 = GetNeighbors 的 CanCross 过滤没生效（或楼层对不上）；
+        // 不报错 = 路径是干净的，"穿墙"另有原因。排查完把 DebugPathCross 关掉。
+        if (DebugPathCross)
+        {
+            Vector2Int prev = currentGridPosition;
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"[Move:{gameObject.name}] floor={currentFloor} 路径 {currentGridPosition}");
+            foreach (var step in path)
+            {
+                bool ok = GridManager.Instance.CanCross(prev, step, currentFloor);
+                sb.Append(ok ? $" → {step}" : $" →✖{step}");
+                if (!ok)
+                {
+                    Debug.LogError($"[Move:{gameObject.name}] 路径穿墙！{prev} → {step} (floor {currentFloor}) " +
+                                   $"——CanCross=false 却仍被寻路选中");
+                }
+                else
+                {
+                    // 这条边判定为「可通过」——那就查查它上面到底有没有碰撞体（不限 Layer）。
+                    // 若列出了墙，看它的 layer：不是 Obstacle 就说明层没设对。
+                    string what = GridManager.Instance.DescribeEdge(prev, step, currentFloor);
+                    if (!string.IsNullOrEmpty(what))
+                        Debug.LogWarning($"[Move:{gameObject.name}] 边 {prev}→{step} 未阻挡，但边上有碰撞体：{what}");
+                }
+                prev = step;
+            }
+            Debug.Log(sb.ToString());
         }
 
         StartCoroutine(MoveAlongPathCoroutine(path, apCost));
@@ -381,6 +414,8 @@ public class UnitMovement : MonoBehaviour
             Vector2Int next = currentGridPosition + pushDir * i;
             if (!GridManager.Instance.IsValid(next)) break;
             if (!GridManager.Instance.IsWalkable(next, currentFloor, ignoreOccupied: true)) break;
+            // 薄墙（厕所隔板等）立在格边上、不占格子，击退不能把人推穿过去
+            if (!GridManager.Instance.CanCross(destination, next, currentFloor)) break;
             destination = next;
         }
 
