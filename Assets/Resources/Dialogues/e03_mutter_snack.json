@@ -1,0 +1,22 @@
+{
+  "id": "e03_mutter_snack",
+  "trigger": "ambient",
+  "topic": "吃饭",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E03"],
+  "lines": [
+    { "speaker": "E03", "text": "抽屉里还有半包饼干……" },
+    { "speaker": "E03", "text": "留着，留着下半夜吃。" }
+  ]
+}

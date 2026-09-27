@@ -1,0 +1,22 @@
+{
+  "id": "e03_mutter_sleepy",
+  "trigger": "ambient",
+  "topic": "抱怨",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E03"],
+  "lines": [
+    { "speaker": "E03", "text": "我是真不想上夜班了。" },
+    { "speaker": "E03", "text": "困……" }
+  ]
+}

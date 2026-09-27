@@ -1,0 +1,23 @@
+{
+  "id": "idle_smoke",
+  "trigger": "ambient",
+  "topic": "抽烟",
+  "weight": 0.8,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 4,
+  "speakers": ["A", "B"],
+  "lines": [
+    { "speaker": "A", "text": "{B}，借个火。", "keyword": "{B}" },
+    { "speaker": "B", "text": "少抽点，上头查得紧。" },
+    { "speaker": "A", "text": "查得紧的又不止这个。" }
+  ]
+}

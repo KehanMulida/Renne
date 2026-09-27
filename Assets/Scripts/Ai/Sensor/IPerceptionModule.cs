@@ -18,6 +18,10 @@ public class PerceptionEvent
     public float Confidence;
     public int Floor;
 
+    // SoundHeard 专用：SoundEvent.tag 的原样透传，用于认出“听到的是哪一条具体内容”。
+    // 对话系统用它取回台词（"对话id#行号"）；其它声音为 null。
+    public string Tag;
+
     // PlayerChangedFloor 专用
     // 玩家从哪层去了哪层，以及最近的楼层连接点位置
     public int FromFloor;

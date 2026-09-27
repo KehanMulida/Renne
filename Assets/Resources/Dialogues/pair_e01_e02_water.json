@@ -1,0 +1,23 @@
+{
+  "id": "pair_e01_e02_water",
+  "trigger": "ambient",
+  "topic": "同事",
+  "weight": 1.5,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 6,
+  "speakers": ["E01", "E02"],
+  "lines": [
+    { "speaker": "E01", "text": "{E02}，给我倒杯热水。", "keyword": "{E02}" },
+    { "speaker": "E02", "text": "您自己倒吧，我这儿走不开。" },
+    { "speaker": "E01", "text": "现在的年轻人啊……" }
+  ]
+}

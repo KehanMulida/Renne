@@ -1,0 +1,21 @@
+{
+  "id": "e03_mutter_hungry",
+  "trigger": "ambient",
+  "topic": "吃饭",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E03"],
+  "lines": [
+    { "speaker": "E03", "text": "饿死了……食堂几点开来着？" }
+  ]
+}

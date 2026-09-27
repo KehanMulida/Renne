@@ -1,0 +1,21 @@
+{
+  "id": "e01_mutter_zhou",
+  "trigger": "ambient",
+  "topic": "老周",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E01"],
+  "lines": [
+    { "speaker": "E01", "text": "老周那事儿……谁也别再提了。", "keyword": "老周", "hint": "老周是谁？为什么不能提？", "flag": "intel_zhou" }
+  ]
+}

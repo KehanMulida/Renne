@@ -14,13 +14,21 @@ public class SoundEvent
     public float timestamp;
     public int floor; // 添加这一行
 
-    public SoundEvent(Vector3 pos, float rad, GameObject src, SoundType type, float intense = 1f)
+    /// <summary>
+    /// 可选标签：让监听方认出“这是哪一条具体内容”。
+    /// 目前用于对话——DialogueManager 发声时填入 "对话id#行号"，
+    /// 玩家侧 EavesdropListener 凭它取回台词。与可听性判定无关，只是透传的身份标记。
+    /// </summary>
+    public string tag;
+
+    public SoundEvent(Vector3 pos, float rad, GameObject src, SoundType type, float intense = 1f, string tag = null)
     {
         position = pos;
         radius = rad;
         source = src;
         soundType = type;
         intensity = intense;
+        this.tag = tag;
         timestamp = Time.time;
         // 楼层必须用 FloorManager 的真实分层（floorHeight 可配置，默认 3m），
         // 不能硬编码 y/4f —— 否则声音楼层与敌人 CurrentFloor / 网格寻路的楼层不一致，
@@ -40,7 +48,8 @@ public enum SoundType
     Attack,         // 攻击声音
     Skill,          // 技能声音
     Environmental,  // 环境声音
-    Alert           // 警报声音
+    Alert,          // 警报声音
+    Voice           // 说话声（敌人对话；敌人之间互不惊动，但玩家能偷听）
 }
 
 /// <summary>
@@ -174,11 +183,13 @@ public class SoundEmitter : MonoBehaviour
     /// <param name="radius">声音半径（米）</param>
     /// <param name="source">发声者 GameObject（用于忽略自身声、判定阵营等）</param>
     /// <param name="intensity">强度 0~1</param>
-    public static void Emit(Vector3 position, SoundType soundType, float radius, GameObject source, float intensity = 1f)
+    /// <param name="tag">可选身份标记，原样透传给监听方（对话用 "对话id#行号"）</param>
+    public static void Emit(Vector3 position, SoundType soundType, float radius, GameObject source,
+                            float intensity = 1f, string tag = null)
     {
         if (SoundManager.Instance == null) return;
         SoundManager.Instance.BroadcastSound(
-            new SoundEvent(position, radius, source, soundType, intensity));
+            new SoundEvent(position, radius, source, soundType, intensity, tag));
     }
 
     // ============ 调试可视化 ============

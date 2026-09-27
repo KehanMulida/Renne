@@ -1,0 +1,25 @@
+{
+  "id": "guard_shift_talk",
+  "trigger": "ambient",
+  "topic": "换班",
+  "weight": 3,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 2,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 10,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 10,
+  "speakers": ["E01", "E02"],
+  "lines": [
+    { "speaker": "E01", "text": "{E02}，换班还有多久？", "keyword": "{E02}" },
+    { "speaker": "E02", "text": "两点。地下室今晚归你。", "blurred": "……地下室……归你", "keyword": "地下室", "hint": "这栋楼……有地下室？", "flag": "intel_basement_shift" },
+    { "speaker": "E01", "text": "又是我。钥匙呢？" },
+    { "speaker": "E02", "text": "老张拿着。别去烦他，他这两天脾气不好。", "blurred": "老张……别去烦他", "keyword": "老张", "hint": "脾气不好……这两天出什么事了？", "flag": "intel_key_holder" },
+    { "speaker": "E01", "text": "行吧。" }
+  ]
+}

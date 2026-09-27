@@ -1,0 +1,21 @@
+{
+  "id": "e03_mutter_car",
+  "trigger": "ambient",
+  "topic": "车",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E03"],
+  "lines": [
+    { "speaker": "E03", "text": "昨晚楼下，好像有辆车开进来。", "keyword": "车", "hint": "这么晚，谁会把车开进来？", "flag": "intel_night_car" }
+  ]
+}

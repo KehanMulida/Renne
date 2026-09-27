@@ -1,0 +1,21 @@
+{
+  "id": "e02_mutter_twoclock",
+  "trigger": "ambient",
+  "topic": "换班",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E02"],
+  "lines": [
+    { "speaker": "E02", "text": "两点……两点。可千万别睡过去。", "keyword": "两点", "hint": "两点有什么事，值得他这么惦记？", "flag": "intel_two_oclock" }
+  ]
+}

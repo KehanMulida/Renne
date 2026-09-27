@@ -1,0 +1,21 @@
+{
+  "id": "e03_mutter_chen",
+  "trigger": "ambient",
+  "topic": "同事",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E03"],
+  "lines": [
+    { "speaker": "E03", "text": "{E04}又在那儿神神叨叨的。", "keyword": "{E04}" }
+  ]
+}

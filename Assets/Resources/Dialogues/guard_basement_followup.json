@@ -1,0 +1,26 @@
+{
+  "id": "guard_basement_followup",
+  "trigger": "ambient",
+  "topic": "地下室",
+  "weight": 3,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 2,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2,
+  "keywordRadius": 4,
+  "audibleRadius": 8,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": false,
+  "cooldownTurns": 0,
+  "conditions": [
+    { "target": "StoryFlag", "check": "FlagValue", "op": "Equals", "flagKey": "intel_basement_shift", "boolValue": true }
+  ],
+  "speakers": ["E01", "E02"],
+  "lines": [
+    { "speaker": "E02", "text": "下面那扇门，你别自己开。" },
+    { "speaker": "E01", "text": "为什么？刘队。", "keyword": "刘队", "nameOf": "E02" },
+    { "speaker": "E02", "text": "上回老周开了一次，第二天就调走了。", "blurred": "老周……第二天就……", "keyword": "老周", "hint": "调走了。是真的调走了吗？", "flag": "intel_zhou_transferred" }
+  ]
+}

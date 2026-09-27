@@ -1,0 +1,21 @@
+{
+  "id": "e04_mutter_voice",
+  "trigger": "ambient",
+  "topic": "对讲机",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E04"],
+  "lines": [
+    { "speaker": "E04", "text": "对讲机里刚才那一声……不是我们的人。", "keyword": "对讲机", "hint": "不是自己人……那是谁在用这个频道？", "flag": "intel_radio_voice" }
+  ]
+}

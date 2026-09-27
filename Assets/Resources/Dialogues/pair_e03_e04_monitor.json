@@ -1,0 +1,23 @@
+{
+  "id": "pair_e03_e04_monitor",
+  "trigger": "ambient",
+  "topic": "监控",
+  "weight": 2,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 6,
+  "speakers": ["E03", "E04"],
+  "lines": [
+    { "speaker": "E04", "text": "你说，监控室到底有没有人？", "keyword": "监控室", "hint": "没人看的监控，为什么一直开着？", "flag": "intel_monitor_room" },
+    { "speaker": "E03", "text": "谁知道，反正我没见过。" },
+    { "speaker": "E04", "text": "那它一直亮着红灯，是给谁看的？" }
+  ]
+}

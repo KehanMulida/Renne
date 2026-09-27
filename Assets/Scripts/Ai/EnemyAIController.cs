@@ -27,6 +27,17 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
     private bool isExecuting = false;
     public bool IsExecuting => isExecuting;
 
+    /// <summary>当前是否有玩家视野接触（战斗中）。</summary>
+    public bool IsInCombat =>
+        blackboard != null && blackboard.TryGetValue("hasVisualContact", out var v) && v is bool b && b;
+
+    /// <summary>
+    /// 是否处于警觉：看到玩家，或正在调查听到的动静（lastHeardPosition 未过期）。
+    /// 闲聊系统用它判断这个人能不能站着扯淡——警觉的人不聊天。
+    /// </summary>
+    public bool IsAlerted =>
+        IsInCombat || (blackboard != null && blackboard.ContainsKey("lastHeardPosition"));
+
     /// <summary>诊断开关：打印追击/搜索/放弃巡逻的状态流转（排查“追几回合就放弃”）。需要时置 true。</summary>
     public static bool DebugChase = false;
 

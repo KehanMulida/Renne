@@ -1,0 +1,22 @@
+{
+  "id": "e04_mutter_building",
+  "trigger": "ambient",
+  "topic": "怪事",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E04"],
+  "lines": [
+    { "speaker": "E04", "text": "我跟你说，这楼不对劲。" },
+    { "speaker": "E04", "text": "一到晚上就有动静。" }
+  ]
+}

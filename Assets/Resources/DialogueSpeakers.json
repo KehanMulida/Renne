@@ -1,0 +1,8 @@
+{
+  "speakers": [
+    { "id": "E01", "displayName": "老王" },
+    { "id": "E02", "displayName": "小刘" },
+    { "id": "E03", "displayName": "阿强" },
+    { "id": "E04", "displayName": "大陈" }
+  ]
+}

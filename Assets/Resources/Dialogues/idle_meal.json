@@ -1,0 +1,23 @@
+{
+  "id": "idle_meal",
+  "trigger": "ambient",
+  "topic": "吃饭",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 4,
+  "speakers": ["A", "B"],
+  "lines": [
+    { "speaker": "A", "text": "你晚上吃了没？" },
+    { "speaker": "B", "text": "食堂那个卤蛋又没了。" },
+    { "speaker": "A", "text": "每次都这样。" }
+  ]
+}

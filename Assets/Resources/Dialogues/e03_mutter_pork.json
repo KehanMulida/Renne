@@ -1,0 +1,22 @@
+{
+  "id": "e03_mutter_pork",
+  "trigger": "ambient",
+  "topic": "吃饭",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E03"],
+  "lines": [
+    { "speaker": "E03", "text": "昨天那红烧肉，咸得能齁死人。" },
+    { "speaker": "E03", "text": "今天可别再是红烧肉了。" }
+  ]
+}

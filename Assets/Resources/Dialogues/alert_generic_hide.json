@@ -1,0 +1,21 @@
+{
+  "id": "alert_generic_hide",
+  "trigger": "ambient",
+  "topic": "警觉",
+  "weight": 1,
+  "state": "alerted",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 3,
+  "keywordRadius": 6,
+  "audibleRadius": 10,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 3,
+  "speakers": ["A"],
+  "lines": [
+    { "speaker": "A", "text": "有人吗？……别躲了。" }
+  ]
+}

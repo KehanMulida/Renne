@@ -1,0 +1,21 @@
+{
+  "id": "e04_mutter_window",
+  "trigger": "ambient",
+  "topic": "窗",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E04"],
+  "lines": [
+    { "speaker": "E04", "text": "二楼那扇窗，昨晚明明是开着的。", "keyword": "窗", "hint": "谁会半夜去开那扇窗？", "flag": "intel_open_window" }
+  ]
+}

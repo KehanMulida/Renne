@@ -1,0 +1,21 @@
+{
+  "id": "e01_mutter_xiaoliu",
+  "trigger": "ambient",
+  "topic": "同事",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E01"],
+  "lines": [
+    { "speaker": "E01", "text": "{E02}那孩子，最近魂不守舍的。", "keyword": "{E02}" }
+  ]
+}

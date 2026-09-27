@@ -1,0 +1,24 @@
+{
+  "id": "pair_e03_e04_food",
+  "trigger": "ambient",
+  "topic": "吃饭",
+  "weight": 1.5,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 6,
+  "speakers": ["E03", "E04"],
+  "lines": [
+    { "speaker": "E03", "text": "你吃了没？" },
+    { "speaker": "E04", "text": "没胃口。" },
+    { "speaker": "E03", "text": "那你那份给我？" },
+    { "speaker": "E04", "text": "……拿去。" }
+  ]
+}

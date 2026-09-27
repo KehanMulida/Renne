@@ -1,0 +1,23 @@
+{
+  "id": "idle_weather",
+  "trigger": "ambient",
+  "topic": "天气",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 4,
+  "speakers": ["A", "B"],
+  "lines": [
+    { "speaker": "A", "text": "外面下雨了？" },
+    { "speaker": "B", "text": "听着像。" },
+    { "speaker": "A", "text": "又得湿着回去。" }
+  ]
+}

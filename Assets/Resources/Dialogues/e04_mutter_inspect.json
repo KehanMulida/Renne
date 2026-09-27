@@ -1,0 +1,22 @@
+{
+  "id": "e04_mutter_inspect",
+  "trigger": "ambient",
+  "topic": "查岗",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E04"],
+  "lines": [
+    { "speaker": "E04", "text": "上头这周肯定要来查岗。" },
+    { "speaker": "E04", "text": "肯定。" }
+  ]
+}

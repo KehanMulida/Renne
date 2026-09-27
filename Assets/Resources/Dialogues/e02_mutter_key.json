@@ -1,0 +1,21 @@
+{
+  "id": "e02_mutter_key",
+  "trigger": "ambient",
+  "topic": "钥匙",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E02"],
+  "lines": [
+    { "speaker": "E02", "text": "钥匙到底还回来没有……老张也真是。", "keyword": "钥匙", "hint": "什么钥匙，让他这么放不下？", "flag": "intel_key_mentioned" }
+  ]
+}

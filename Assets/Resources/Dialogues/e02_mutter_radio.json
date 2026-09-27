@@ -1,0 +1,22 @@
+{
+  "id": "e02_mutter_radio",
+  "trigger": "ambient",
+  "topic": "对讲机",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E02"],
+  "lines": [
+    { "speaker": "E02", "text": "{E01}，你那边正常吧？……喂？", "keyword": "{E01}" },
+    { "speaker": "E02", "text": "这破对讲机，又没信号。" }
+  ]
+}

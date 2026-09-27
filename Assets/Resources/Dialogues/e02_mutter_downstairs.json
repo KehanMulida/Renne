@@ -1,0 +1,22 @@
+{
+  "id": "e02_mutter_downstairs",
+  "trigger": "ambient",
+  "topic": "地下",
+  "weight": 1,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 2.5,
+  "keywordRadius": 5,
+  "audibleRadius": 9,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 5,
+  "speakers": ["E02"],
+  "lines": [
+    { "speaker": "E02", "text": "下面的事，跟你没关系。", "keyword": "下面", "hint": "下面……是说楼下，还是更下面？" },
+    { "speaker": "E02", "text": "……别想了，别想了。" }
+  ]
+}

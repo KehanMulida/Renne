@@ -225,6 +225,7 @@ public class SoundManager : MonoBehaviour
             case SoundType.Skill: return Color.magenta;
             case SoundType.Environmental: return Color.green;
             case SoundType.Alert: return Color.cyan;
+            case SoundType.Voice: return new Color(1f, 0.6f, 0.9f);
             default: return Color.white;
         }
     }

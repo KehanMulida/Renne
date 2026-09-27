@@ -21,7 +21,9 @@ public class SoundPerception : MonoBehaviour, IPerceptionModule
     [Min(0f)] [SerializeField] private float hearingRange = 10f;
     [Tooltip("勾选=能听到其它楼层的声音；不勾=只听同层")]
     [SerializeField] private bool canHearAcrossFloors = false;
-    [Tooltip("忽略其它 Enemy 单位发出的移动声（敌人之间不被彼此脚步惊动）")]
+    [Tooltip("忽略其它 Enemy 单位发出的移动声/说话声（敌人之间不被彼此脚步和闲聊惊动）\n" +
+             "只在“听者自己也是敌人”时生效；Alert（警戒喊话）始终放行。\n" +
+             "玩家身上的本组件不受其影响，否则就偷听不到敌人对话了。")]
     [SerializeField] private bool ignoreOtherEnemySound = true;
 
     /// <summary>听力范围（世界单位）。运行时可读写。</summary>
@@ -36,6 +38,21 @@ public class SoundPerception : MonoBehaviour, IPerceptionModule
     public event Action<PerceptionEvent> OnPerceptionEvent;
 
     private bool _subscribed;
+    private EnemyAIController _selfEnemy;   // 听者自己是不是敌人（决定同阵营过滤是否生效）
+    private bool _selfEnemyResolved;
+
+    private bool ListenerIsEnemy
+    {
+        get
+        {
+            if (!_selfEnemyResolved)
+            {
+                _selfEnemy = GetComponent<EnemyAIController>();
+                _selfEnemyResolved = true;
+            }
+            return _selfEnemy != null;
+        }
+    }
 
     // IPerceptionModule：EnemyAIController 初始化感知时调用（owner 即本物体）。
     // 组件化后以组件字段为准，不用 config 覆盖，保证 Inspector / 运行时可编辑。
@@ -80,23 +97,6 @@ public class SoundPerception : MonoBehaviour, IPerceptionModule
                 Debug.Log($"[听觉:{name}] 忽略：太远 dist={distance:F1} > range={hearingRange}");
             return;
         }
-        if (!canHearAcrossFloors && GetFloor(transform) != soundEvent.floor)
-        {
-            if (DebugHearing)
-                Debug.Log($"[听觉:{name}] 忽略：楼层不符 我={GetFloor(transform)}(y={transform.position.y:F2}) 声音={soundEvent.floor}(y={soundEvent.position.y:F2})");
-            return;
-        }
-
-        // 忽略自己发出的声音
-        if (soundEvent.source != null && soundEvent.source == gameObject) return;
-
-        // 忽略同阵营 Enemy 发出的声音（可关）
-        if (ignoreOtherEnemySound && soundEvent.source != null &&
-            soundEvent.source.GetComponent<EnemyAIController>() != null) return;
-
-        if (DebugHearing)
-            Debug.Log($"[听觉:{name}] 听到声音！pos={soundEvent.position} floor={soundEvent.floor} → 上报 lastHeardPosition", this);
-
 
         // 声音自己也有传播半径——必须同时满足“我听得到这么远”和“它传得到这么远”。
         // 下蹲 ×0.3、匍匐 ×0.1 的降噪，以及钻机/发电机/诱饵的噪音等级，全靠这个半径生效。
@@ -108,13 +108,36 @@ public class SoundPerception : MonoBehaviour, IPerceptionModule
                 Debug.Log($"[听觉:{name}] 忽略：声音传不到 dist={distance:F1} > 声音半径={soundEvent.radius:F1}（{soundEvent.soundType}）");
             return;
         }
+        if (!canHearAcrossFloors && GetFloor(transform) != soundEvent.floor)
+        {
+            if (DebugHearing)
+                Debug.Log($"[听觉:{name}] 忽略：楼层不符 我={GetFloor(transform)}(y={transform.position.y:F2}) 声音={soundEvent.floor}(y={soundEvent.position.y:F2})");
+            return;
+        }
+
+        // 忽略自己发出的声音
+        if (soundEvent.source != null && soundEvent.source == gameObject) return;
+
+        // 同阵营过滤：只在“敌人听敌人”时生效。
+        // 玩家身上的本组件必须放行敌人的 Voice，否则潜行偷听无从谈起。
+        // 放行 Alert：警戒喊话本就是要把同伴引过来的。
+        if (ignoreOtherEnemySound && ListenerIsEnemy &&
+            soundEvent.source != null &&
+            soundEvent.source.GetComponent<EnemyAIController>() != null &&
+            (soundEvent.soundType == SoundType.Movement || soundEvent.soundType == SoundType.Voice))
+            return;
+
+        if (DebugHearing)
+            Debug.Log($"[听觉:{name}] 听到声音！pos={soundEvent.position} floor={soundEvent.floor} → 上报 lastHeardPosition", this);
+
         // 听觉只负责“判断位置”：上报供控制层在自己回合调查；不在此转身/瞄准。
         OnPerceptionEvent?.Invoke(new PerceptionEvent
         {
             Type       = PerceptionType.SoundHeard,
             Position   = soundEvent.position,
             Confidence = hearingRange > 0f ? 1f - (distance / hearingRange) : 1f,
-            Floor      = soundEvent.floor
+            Floor      = soundEvent.floor,
+            Tag        = soundEvent.tag
         });
     }
 
