@@ -97,6 +97,17 @@ public class SoundPerception : MonoBehaviour, IPerceptionModule
         if (DebugHearing)
             Debug.Log($"[听觉:{name}] 听到声音！pos={soundEvent.position} floor={soundEvent.floor} → 上报 lastHeardPosition", this);
 
+
+        // 声音自己也有传播半径——必须同时满足“我听得到这么远”和“它传得到这么远”。
+        // 下蹲 ×0.3、匍匐 ×0.1 的降噪，以及钻机/发电机/诱饵的噪音等级，全靠这个半径生效。
+        // 旧的 SoundListener 两项都查，改写成本组件时漏了这一项，
+        // 结果 10 米内无论什么姿态、什么噪音等级，敌人一律听得见。
+        if (distance > soundEvent.radius)
+        {
+            if (DebugHearing)
+                Debug.Log($"[听觉:{name}] 忽略：声音传不到 dist={distance:F1} > 声音半径={soundEvent.radius:F1}（{soundEvent.soundType}）");
+            return;
+        }
         // 听觉只负责“判断位置”：上报供控制层在自己回合调查；不在此转身/瞄准。
         OnPerceptionEvent?.Invoke(new PerceptionEvent
         {
