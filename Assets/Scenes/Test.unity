@@ -2996,6 +2996,7 @@ GameObject:
   - component: {fileID: 591964607}
   - component: {fileID: 591964606}
   - component: {fileID: 591964618}
+  - component: {fileID: 591964619}
   m_Layer: 8
   m_Name: Enemy (4)
   m_TagString: Untagged
@@ -3229,6 +3230,22 @@ MonoBehaviour:
   hearingRange: 10
   canHearAcrossFloors: 0
   ignoreOtherEnemySound: 1
+--- !u!114 &591964619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 591964605}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09250a4db2a85b146bdc9dd7f8cf8b05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speakerId: E04
+  displayName: 
+  turnToListener: 1
+  mouthOffset: {x: 0, y: 1.6, z: 0}
 --- !u!1 &592159299
 GameObject:
   m_ObjectHideFlags: 0
@@ -7004,6 +7021,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1406847354 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1334029201825580747, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+  m_PrefabInstance: {fileID: 8562423025039684369}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1406847366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1406847354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09250a4db2a85b146bdc9dd7f8cf8b05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speakerId: E02
+  displayName: cen
+  turnToListener: 1
+  mouthOffset: {x: 0, y: 1.6, z: 0}
 --- !u!1 &1409600236
 GameObject:
   m_ObjectHideFlags: 0
@@ -7259,6 +7297,7 @@ GameObject:
   - component: {fileID: 1438794193}
   - component: {fileID: 1438794192}
   - component: {fileID: 1438794204}
+  - component: {fileID: 1438794205}
   m_Layer: 8
   m_Name: Enemy (5)
   m_TagString: Untagged
@@ -7492,6 +7531,22 @@ MonoBehaviour:
   hearingRange: 10
   canHearAcrossFloors: 0
   ignoreOtherEnemySound: 1
+--- !u!114 &1438794205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438794191}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09250a4db2a85b146bdc9dd7f8cf8b05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speakerId: E03
+  displayName: 
+  turnToListener: 1
+  mouthOffset: {x: 0, y: 1.6, z: 0}
 --- !u!114 &1445221568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7621,6 +7676,7 @@ GameObject:
   - component: {fileID: 1478537031}
   - component: {fileID: 1478537033}
   - component: {fileID: 1478537034}
+  - component: {fileID: 1478537035}
   m_Layer: 8
   m_Name: Enemy (2)
   m_TagString: Untagged
@@ -7878,6 +7934,22 @@ MonoBehaviour:
   hearingRange: 10
   canHearAcrossFloors: 0
   ignoreOtherEnemySound: 1
+--- !u!114 &1478537035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1478537020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09250a4db2a85b146bdc9dd7f8cf8b05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speakerId: E01
+  displayName: 
+  turnToListener: 1
+  mouthOffset: {x: 0, y: 1.6, z: 0}
 --- !u!1 &1490020619
 GameObject:
   m_ObjectHideFlags: 0
@@ -8128,6 +8200,8 @@ Transform:
   - {fileID: 847780399}
   - {fileID: 1873310363}
   - {fileID: 806244740}
+  - {fileID: 1789632505}
+  - {fileID: 1795594250}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1553178353
@@ -9465,6 +9539,51 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   configTemplate: {fileID: 11400000, guid: 0578952dc06b20a42bdcd4906fb7b525, type: 2}
   runtimeConfig: {fileID: 11400000, guid: 0578952dc06b20a42bdcd4906fb7b525, type: 2}
+--- !u!1 &1789632504
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1789632505}
+  - component: {fileID: 1789632506}
+  m_Layer: 0
+  m_Name: StoryManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1789632505
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1789632504}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1540507144}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1789632506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1789632504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0fa73b688f09c9f428566000c67be324, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableDebugLog: 1
 --- !u!1 &1793489338
 GameObject:
   m_ObjectHideFlags: 0
@@ -9570,6 +9689,136 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1793489338}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1795594249
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1795594250}
+  - component: {fileID: 1795594253}
+  - component: {fileID: 1795594252}
+  - component: {fileID: 1795594251}
+  m_Layer: 0
+  m_Name: DialogueSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1795594250
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795594249}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1540507144}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1795594251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795594249}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3aa2aa4d610c82a41ab995dc044f9ce6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  evaluateOnFaction: 1
+  chancePerTurn: 1
+  globalCooldownTurns: 0
+  maxConcurrent: 4
+  requireSameFloor: 1
+  alertCheckInterval: 0.25
+  enableDebugLog: 1
+--- !u!114 &1795594252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795594249}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33f0963bb6ab421498525ec8b0cfd4fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  listener: {fileID: 0}
+  canvas: {fileID: 0}
+  sortingOrder: 5
+  referenceResolution: {x: 1920, y: 1080}
+  font: {fileID: 0}
+  systemFontFallbacks:
+  - Microsoft YaHei
+  - PingFang SC
+  - Noto Sans CJK SC
+  - SimHei
+  unknownSpeakerName: "\uFF1F"
+  clearFormat: "{name}\uFF1A{text}"
+  autoBlurFormat: "\u2026\u2026{keyword}\u2026\u2026"
+  blurNoKeyword: "\u2026\u2026"
+  faintFormat: "\uFF08{direction}\u6709\u4EBA\u5728\u4F4E\u58F0\u4EA4\u8C08\uFF09"
+  directionWords:
+  - "\u6B63\u524D\u65B9"
+  - "\u53F3\u524D\u65B9"
+  - "\u53F3\u4FA7"
+  - "\u53F3\u540E\u65B9"
+  - "\u6B63\u540E\u65B9"
+  - "\u5DE6\u540E\u65B9"
+  - "\u5DE6\u4FA7"
+  - "\u5DE6\u524D\u65B9"
+  nearWord: "\u8FD1\u5904"
+  thoughtFormat: "\uFF08{thought}\uFF09"
+  clearColor: {r: 1, g: 1, b: 1, a: 1}
+  blurredColor: {r: 0.78, g: 0.78, b: 0.72, a: 1}
+  faintColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
+  floaterBackground: {r: 0, g: 0, b: 0, a: 0.5}
+  floaterDuration: 4
+  floaterWorldOffset: {x: 0, y: 0.6, z: 0}
+  floaterRise: 60
+  floaterMaxWidth: 420
+  floaterFontSize: 24
+  floaterPadding: {x: 12, y: 6}
+  faintAnchorOffset: 1.5
+  thoughtDuration: 5
+  thoughtFontSize: 15
+  thoughtColor: {r: 0.72, g: 0.88, b: 0.95, a: 1}
+  thoughtBottomMargin: 120
+  thoughtMaxWidth: 1000
+  thoughtSpacing: 8
+  thoughtMaxShown: 3
+--- !u!114 &1795594253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795594249}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 694b7a11e8255434198ebe0ec255fb7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  resourceFolder: Dialogues
+  dialogueFiles:
+  - {fileID: 4900000, guid: 64759a2a57e80f94291698a68b6d12be, type: 3}
+  - {fileID: 4900000, guid: cb5f81d9cf79d2446b0aa644742c910c, type: 3}
+  - {fileID: 4900000, guid: a23dba31b106eb84cabbfef05357b479, type: 3}
+  - {fileID: 4900000, guid: cadd9fff382b46a4bba34b41c11bbaba, type: 3}
+  - {fileID: 4900000, guid: 072451428bb4e0c4bbe46c334efc864f, type: 3}
+  advanceOnFaction: 1
+  enableDebugLog: 1
 --- !u!1 &1809228399 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5252682845850649624, guid: 21b7147e573a4d048965af35b73a4f0f, type: 3}
@@ -11748,7 +11997,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1334029201825580747, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1406847366}
   m_SourcePrefab: {fileID: 100100000, guid: b0fdf403f52f591429e43154e3eee659, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
