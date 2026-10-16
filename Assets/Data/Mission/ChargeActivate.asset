@@ -37,6 +37,6 @@ MonoBehaviour:
   speedMultiplier: 1
   defaultActionWeights: []
   enemyActionProfiles: []
-  dialogueOnStart: 
-  dialogueOnSuccess: 
-  dialogueOnFail: 
+  dialogueOnStart: mission_objectActivate_01_start
+  dialogueOnSuccess: mission_objectActivate_01_success
+  dialogueOnFail: mission_objectActivate_01_fail

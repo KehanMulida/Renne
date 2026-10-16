@@ -1,0 +1,34 @@
+{
+  "id": "mission_patrol_test_01_mutter",
+  "trigger": "ambient",
+  "topic": "酒水区单人巡逻",
+  "priority": 0,
+  "weight": 3,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 8,
+  "speakers": [
+    "E02"
+  ],
+  "lines": [
+    {
+      "speaker": "E02",
+      "text": "这瓶口还是湿的。谁刚在值班时喝过？"
+    },
+    {
+      "speaker": "E02",
+      "text": "别又算在我头上，我今天可一直醒着。"
+    }
+  ],
+  "missionIds": [
+    "patrol_test_01"
+  ]
+}

@@ -50,6 +50,6 @@ MonoBehaviour:
   - actionKey: patrol
     weight: 0.857
   enemyActionProfiles: []
-  dialogueOnStart: 
-  dialogueOnSuccess: 
-  dialogueOnFail: 
+  dialogueOnStart: mission_patrol_test_05_start
+  dialogueOnSuccess: mission_patrol_test_05_success
+  dialogueOnFail: mission_patrol_test_05_fail

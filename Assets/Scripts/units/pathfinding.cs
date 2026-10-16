@@ -12,6 +12,9 @@ public class PathNode
     public int hCost;
     public int fCost => gCost + hCost;
 
+    /// <summary>从 parent 走到本节点的方向。用于判断「这一步是不是拐了弯」</summary>
+    public Vector2Int dirFromParent;
+
     public PathNode(Vector2Int pos)
     {
         position = pos;
@@ -28,6 +31,30 @@ public class PathNode
 /// </summary>
 public static class PathfindingService
 {
+    // ══════════════════════════════════════════════════════════════════════
+    // 直线偏好（转向惩罚）
+    //
+    // 问题：4 向均匀网格上，两点之间的最短路径有非常多条（任意单调阶梯都一样长）。
+    // 原来选中哪条纯粹取决于 GetNeighbors 的遍历顺序（上→下→左→右），
+    // 结果必然走成阶梯，表现为敌人一回合内左拐右拐。
+    //
+    // 解法：每拐一次弯加一点点代价，让 A* 在等长路径里挑拐弯最少的那条。
+    //
+    // ⚠ 惩罚必须「小到不足以改变路径长度」，否则敌人会为了少拐弯而多走格子、
+    //   白白多耗 AP。所以把每步代价放大 StepCost 倍，转向惩罚固定为 1：
+    //   只要一条路径上的拐弯数 < StepCost，就绝不可能压过"多走一格"的代价。
+    //   换句话说，路径长度永远优先，拐弯数只在长度打平时才起作用。
+    //
+    // 放大只发生在 A* 内部（gCost/hCost 都放大，保持启发函数可采纳）。
+    // FindPath 返回的是坐标列表，不含代价，所以 AP 计算完全不受影响。
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// <summary>每格移动代价的内部放大倍数。必须大于单条路径上可能出现的最大拐弯数</summary>
+    private const int StepCost = 64;
+
+    /// <summary>每拐一次弯的附加代价。相对 StepCost 极小，只用于等长路径之间的取舍</summary>
+    public static int TurnPenalty = 1;
+
     /// <summary>
     /// A*寻路算法（支持楼层）
     /// 注意：
@@ -51,44 +78,62 @@ public static class PathfindingService
             return null;
         }
 
-        Dictionary<Vector2Int, PathNode> allNodes = new Dictionary<Vector2Int, PathNode>();
-        List<PathNode> openSet = new List<PathNode>();
-        HashSet<Vector2Int> closedSet = new HashSet<Vector2Int>();
+        // ⚠ 搜索状态是「坐标 + 进入方向」，不是单纯的坐标。
+        // 因为转向代价取决于"从哪个方向走进这个格子"：同一个格子从北边进来、
+        // 还是从西边进来，后续能不能直着走下去完全不同。
+        // 只按坐标存的话，格子第一次被弯弯绕绕地到达就被关闭了，
+        // 后来更直的路线再也进不来，转向惩罚只能部分生效。
+        // 代价是节点数最多 ×5（4 个方向 + 起点的"无方向"），路径都很短，可以忽略。
+        var allNodes  = new Dictionary<(Vector2Int pos, int dir), PathNode>();
+        var openSet   = new List<PathNode>();
+        var closedSet = new HashSet<(Vector2Int pos, int dir)>();
 
-        PathNode startNode = GetOrCreateNode(start, allNodes);
-        PathNode endNode = GetOrCreateNode(end, allNodes);
+        PathNode startNode = GetOrCreateNode(start, DirNone, allNodes);
 
         startNode.gCost = 0;
-        startNode.hCost = CalculateDistance(start, end);
+        startNode.hCost = CalculateDistance(start, end) * StepCost;
+        startNode.dirFromParent = Vector2Int.zero;   // 起点没有"来的方向"，第一步不算拐弯
         openSet.Add(startNode);
 
         while (openSet.Count > 0)
         {
             PathNode currentNode = GetLowestFCostNode(openSet);
 
+            // 第一次弹出落在终点的状态就是最优解（启发可采纳，代价非负）
             if (currentNode.position == end)
             {
                 return ReconstructPath(currentNode);
             }
 
             openSet.Remove(currentNode);
-            closedSet.Add(currentNode.position);
+            int currentDir = DirIndex(currentNode.dirFromParent);
+            closedSet.Add((currentNode.position, currentDir));
 
             // GetNeighbors 默认 ignoreOccupied=false，路径会绕开其他单位
             foreach (Vector2Int neighborPos in GridManager.Instance.GetNeighbors(currentNode.position, floor))
             {
-                if (closedSet.Contains(neighborPos)) continue;
+                // 这一步朝哪个方向走；和上一步方向不同就是拐了个弯
+                Vector2Int stepDir  = neighborPos - currentNode.position;
+                int        stepDirI = DirIndex(stepDir);
 
-                PathNode neighborNode = GetOrCreateNode(neighborPos, allNodes);
+                if (closedSet.Contains((neighborPos, stepDirI))) continue;
+
+                PathNode neighborNode = GetOrCreateNode(neighborPos, stepDirI, allNodes);
                 GridCell cell = GridManager.Instance.GetCell(neighborPos, floor);
 
-                int tentativeGCost = currentNode.gCost + cell.moveCost;
+                bool turned = currentNode.dirFromParent != Vector2Int.zero &&
+                              stepDir != currentNode.dirFromParent;
+
+                int tentativeGCost = currentNode.gCost
+                                   + cell.moveCost * StepCost
+                                   + (turned ? TurnPenalty : 0);
 
                 if (tentativeGCost < neighborNode.gCost)
                 {
-                    neighborNode.parent = currentNode;
-                    neighborNode.gCost = tentativeGCost;
-                    neighborNode.hCost = CalculateDistance(neighborPos, end);
+                    neighborNode.parent        = currentNode;
+                    neighborNode.dirFromParent = stepDir;
+                    neighborNode.gCost         = tentativeGCost;
+                    neighborNode.hCost         = CalculateDistance(neighborPos, end) * StepCost;
 
                     if (!openSet.Contains(neighborNode))
                     {
@@ -99,6 +144,18 @@ public static class PathfindingService
         }
 
         return null;
+    }
+
+    private const int DirNone = 0;
+
+    /// <summary>方向 → 0~4 的编号，用作搜索状态的一部分。(0,0) = 起点的"无方向"</summary>
+    private static int DirIndex(Vector2Int d)
+    {
+        if (d == Vector2Int.up)    return 1;
+        if (d == Vector2Int.down)  return 2;
+        if (d == Vector2Int.left)  return 3;
+        if (d == Vector2Int.right) return 4;
+        return DirNone;
     }
 
     /// <summary>
@@ -146,13 +203,16 @@ public static class PathfindingService
 
     // ============ 私有辅助方法 ============
 
-    private static PathNode GetOrCreateNode(Vector2Int pos, Dictionary<Vector2Int, PathNode> nodes)
+    private static PathNode GetOrCreateNode(
+        Vector2Int pos, int dir, Dictionary<(Vector2Int pos, int dir), PathNode> nodes)
     {
-        if (!nodes.ContainsKey(pos))
+        var key = (pos, dir);
+        if (!nodes.TryGetValue(key, out var node))
         {
-            nodes[pos] = new PathNode(pos);
+            node = new PathNode(pos);
+            nodes[key] = node;
         }
-        return nodes[pos];
+        return node;
     }
 
     private static PathNode GetLowestFCostNode(List<PathNode> nodes)

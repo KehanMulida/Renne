@@ -1,0 +1,31 @@
+{
+  "id": "mission_patrol_test_01_start",
+  "trigger": "manual",
+  "topic": "酒水区单人巡逻",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E02"
+  ],
+  "lines": [
+    {
+      "speaker": "E02",
+      "text": "酒水区交给我。我先把货架后面转一遍。"
+    },
+    {
+      "speaker": "E02",
+      "text": "老王说少碰那些瓶子……我可没那么馋。"
+    }
+  ]
+}

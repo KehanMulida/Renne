@@ -232,6 +232,7 @@ public class SoundManager : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         if (!enableDebugLog) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box);

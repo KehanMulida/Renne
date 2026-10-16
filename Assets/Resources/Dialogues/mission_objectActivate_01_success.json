@@ -1,0 +1,31 @@
+{
+  "id": "mission_objectActivate_01_success",
+  "trigger": "manual",
+  "topic": "启动目标设备 3004",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E03"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "设备已经启动了，声音听着还算平稳。"
+    },
+    {
+      "speaker": "E03",
+      "text": "先让它转着，有异常再叫我。"
+    }
+  ]
+}

@@ -1,0 +1,3365 @@
+[
+  {
+    "category": "系统/测试",
+    "path": "Assets/Resources/Dialogues/_speaker_lost.json",
+    "data": {
+      "id": "_speaker_lost",
+      "trigger": "manual",
+      "topic": "走散",
+      "weight": 0,
+      "state": "any",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 0,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "A"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "人呢？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "系统/测试",
+    "path": "Assets/Resources/Dialogues/_test_highpri.json",
+    "data": {
+      "id": "_test_highpri",
+      "trigger": "manual",
+      "weight": 0,
+      "priority": 100,
+      "state": "any",
+      "mode": "realtime",
+      "secondsPerLine": 99,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 99,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "A"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "【测试】高优先级任务演出"
+        }
+      ]
+    }
+  },
+  {
+    "category": "系统/测试",
+    "path": "Assets/Resources/Dialogues/_test_lowpri.json",
+    "data": {
+      "id": "_test_lowpri",
+      "trigger": "manual",
+      "weight": 0,
+      "priority": 0,
+      "state": "any",
+      "mode": "realtime",
+      "secondsPerLine": 99,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 99,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "A",
+        "B"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "【测试】低优先级占位第一句"
+        },
+        {
+          "speaker": "B",
+          "text": "【测试】低优先级占位第二句"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/alert_generic_hide.json",
+    "data": {
+      "id": "alert_generic_hide",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "A"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "有人吗？……别躲了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/alert_generic_sound.json",
+    "data": {
+      "id": "alert_generic_sound",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "A"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "什么声音？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_alert_bluff.json",
+    "data": {
+      "id": "e01_alert_bluff",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "出来吧，我看见你了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_alert_ears.json",
+    "data": {
+      "id": "e01_alert_ears",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "谁？……老了，耳朵也不中用了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_mutter_back.json",
+    "data": {
+      "id": "e01_mutter_back",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "哎哟，这腰……"
+        },
+        {
+          "speaker": "E01",
+          "text": "早晚得断在这儿。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_mutter_retire.json",
+    "data": {
+      "id": "e01_mutter_retire",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "明年就退了。"
+        },
+        {
+          "speaker": "E01",
+          "text": "退了就清净了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_mutter_smell.json",
+    "data": {
+      "id": "e01_mutter_smell",
+      "trigger": "ambient",
+      "topic": "地下室",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "地下室那股味儿，洗三遍澡都洗不掉。",
+          "keyword": "地下室",
+          "hint": "什么味儿，会洗不掉？",
+          "flag": "intel_basement_smell"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_mutter_thirty.json",
+    "data": {
+      "id": "e01_mutter_thirty",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "三十年了，还在这儿看大门。"
+        },
+        {
+          "speaker": "E01",
+          "text": "图什么呢。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_mutter_xiaoliu.json",
+    "data": {
+      "id": "e01_mutter_xiaoliu",
+      "trigger": "ambient",
+      "topic": "同事",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "{E02}那孩子，最近魂不守舍的。",
+          "keyword": "{E02}"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e01_mutter_zhou.json",
+    "data": {
+      "id": "e01_mutter_zhou",
+      "trigger": "ambient",
+      "topic": "老周",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "老周那事儿……谁也别再提了。",
+          "keyword": "老周",
+          "hint": "老周是谁？为什么不能提？",
+          "flag": "intel_zhou"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_alert_cat.json",
+    "data": {
+      "id": "e02_alert_cat",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "是猫吧……肯定是猫。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_alert_scared.json",
+    "data": {
+      "id": "e02_alert_scared",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "别、别吓我啊……出来！"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_alert_who.json",
+    "data": {
+      "id": "e02_alert_who",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "嗯？……谁在那儿？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_mutter_downstairs.json",
+    "data": {
+      "id": "e02_mutter_downstairs",
+      "trigger": "ambient",
+      "topic": "地下",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "下面的事，跟你没关系。",
+          "keyword": "下面",
+          "hint": "下面……是说楼下，还是更下面？"
+        },
+        {
+          "speaker": "E02",
+          "text": "……别想了，别想了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_mutter_key.json",
+    "data": {
+      "id": "e02_mutter_key",
+      "trigger": "ambient",
+      "topic": "钥匙",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "钥匙到底还回来没有……老张也真是。",
+          "keyword": "钥匙",
+          "hint": "什么钥匙，让他这么放不下？",
+          "flag": "intel_key_mentioned"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_mutter_legs.json",
+    "data": {
+      "id": "e02_mutter_legs",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "腿都站麻了。"
+        },
+        {
+          "speaker": "E02",
+          "text": "再熬几个钟头就好了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_mutter_radio.json",
+    "data": {
+      "id": "e02_mutter_radio",
+      "trigger": "ambient",
+      "topic": "对讲机",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "{E01}，你那边正常吧？……喂？",
+          "keyword": "{E01}"
+        },
+        {
+          "speaker": "E02",
+          "text": "这破对讲机，又没信号。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_mutter_title.json",
+    "data": {
+      "id": "e02_mutter_title",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "刘队刘队，叫得倒是好听……",
+          "keyword": "刘队",
+          "nameOf": "E02"
+        },
+        {
+          "speaker": "E02",
+          "text": "活儿全是我的。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e02_mutter_twoclock.json",
+    "data": {
+      "id": "e02_mutter_twoclock",
+      "trigger": "ambient",
+      "topic": "换班",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "两点……两点。可千万别睡过去。",
+          "keyword": "两点",
+          "hint": "两点有什么事，值得他这么惦记？",
+          "flag": "intel_two_oclock"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_alert_lazy.json",
+    "data": {
+      "id": "e03_alert_lazy",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "谁啊……让我歇会儿行不行。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_alert_rat.json",
+    "data": {
+      "id": "e03_alert_rat",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "啥动静？……不会是耗子吧。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_mutter_car.json",
+    "data": {
+      "id": "e03_mutter_car",
+      "trigger": "ambient",
+      "topic": "车",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "昨晚楼下，好像有辆车开进来。",
+          "keyword": "车",
+          "hint": "这么晚，谁会把车开进来？",
+          "flag": "intel_night_car"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_mutter_chen.json",
+    "data": {
+      "id": "e03_mutter_chen",
+      "trigger": "ambient",
+      "topic": "同事",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "{E04}又在那儿神神叨叨的。",
+          "keyword": "{E04}"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_mutter_hungry.json",
+    "data": {
+      "id": "e03_mutter_hungry",
+      "trigger": "ambient",
+      "topic": "吃饭",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "饿死了……食堂几点开来着？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_mutter_pork.json",
+    "data": {
+      "id": "e03_mutter_pork",
+      "trigger": "ambient",
+      "topic": "吃饭",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "昨天那红烧肉，咸得能齁死人。"
+        },
+        {
+          "speaker": "E03",
+          "text": "今天可别再是红烧肉了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_mutter_sleepy.json",
+    "data": {
+      "id": "e03_mutter_sleepy",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "我是真不想上夜班了。"
+        },
+        {
+          "speaker": "E03",
+          "text": "困……"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e03_mutter_snack.json",
+    "data": {
+      "id": "e03_mutter_snack",
+      "trigger": "ambient",
+      "topic": "吃饭",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "抽屉里还有半包饼干……"
+        },
+        {
+          "speaker": "E03",
+          "text": "留着，留着下半夜吃。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_alert_knew.json",
+    "data": {
+      "id": "e04_alert_knew",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "我就说有东西！……谁？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_alert_shadow.json",
+    "data": {
+      "id": "e04_alert_shadow",
+      "trigger": "ambient",
+      "topic": "警觉",
+      "weight": 1,
+      "state": "alerted",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 3,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "刚才那边……是不是有个人影？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_mutter_building.json",
+    "data": {
+      "id": "e04_mutter_building",
+      "trigger": "ambient",
+      "topic": "怪事",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "我跟你说，这楼不对劲。"
+        },
+        {
+          "speaker": "E04",
+          "text": "一到晚上就有动静。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_mutter_camera.json",
+    "data": {
+      "id": "e04_mutter_camera",
+      "trigger": "ambient",
+      "topic": "监控",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "这摄像头……是不是一直对着我？"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_mutter_inspect.json",
+    "data": {
+      "id": "e04_mutter_inspect",
+      "trigger": "ambient",
+      "topic": "查岗",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "上头这周肯定要来查岗。"
+        },
+        {
+          "speaker": "E04",
+          "text": "肯定。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_mutter_radio.json",
+    "data": {
+      "id": "e04_mutter_radio",
+      "trigger": "ambient",
+      "topic": "对讲机",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "{E03}，别睡了，醒醒！",
+          "keyword": "{E03}"
+        },
+        {
+          "speaker": "E04",
+          "text": "……又没人回。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_mutter_voice.json",
+    "data": {
+      "id": "e04_mutter_voice",
+      "trigger": "ambient",
+      "topic": "对讲机",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "对讲机里刚才那一声……不是我们的人。",
+          "keyword": "对讲机",
+          "hint": "不是自己人……那是谁在用这个频道？",
+          "flag": "intel_radio_voice"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/e04_mutter_window.json",
+    "data": {
+      "id": "e04_mutter_window",
+      "trigger": "ambient",
+      "topic": "窗",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 5,
+      "speakers": [
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "二楼那扇窗，昨晚明明是开着的。",
+          "keyword": "窗",
+          "hint": "谁会半夜去开那扇窗？",
+          "flag": "intel_open_window"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/guard_basement_followup.json",
+    "data": {
+      "id": "guard_basement_followup",
+      "trigger": "ambient",
+      "topic": "地下室",
+      "weight": 3,
+      "priority": 100,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 2,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": false,
+      "cooldownTurns": 0,
+      "conditions": [
+        {
+          "target": "StoryFlag",
+          "check": "FlagValue",
+          "op": "Equals",
+          "flagKey": "intel_basement_shift",
+          "boolValue": true
+        }
+      ],
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "下面那扇门，你别自己开。"
+        },
+        {
+          "speaker": "E01",
+          "text": "为什么？刘队。",
+          "keyword": "刘队",
+          "nameOf": "E02"
+        },
+        {
+          "speaker": "E02",
+          "text": "上回老周开了一次，第二天就调走了。",
+          "blurred": "老周……第二天就……",
+          "keyword": "老周",
+          "hint": "调走了。是真的调走了吗？",
+          "flag": "intel_zhou_transferred"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/guard_shift_talk.json",
+    "data": {
+      "id": "guard_shift_talk",
+      "trigger": "ambient",
+      "topic": "换班",
+      "weight": 3,
+      "priority": 100,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 2,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 10,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "{E02}，换班还有多久？",
+          "keyword": "{E02}"
+        },
+        {
+          "speaker": "E02",
+          "text": "两点。地下室今晚归你。",
+          "blurred": "……地下室……归你",
+          "keyword": "地下室",
+          "hint": "这栋楼……有地下室？",
+          "flag": "intel_basement_shift"
+        },
+        {
+          "speaker": "E01",
+          "text": "又是我。钥匙呢？"
+        },
+        {
+          "speaker": "E02",
+          "text": "老张拿着。别去烦他，他这两天脾气不好。",
+          "blurred": "老张……别去烦他",
+          "keyword": "老张",
+          "hint": "脾气不好……这两天出什么事了？",
+          "flag": "intel_key_holder"
+        },
+        {
+          "speaker": "E01",
+          "text": "行吧。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/idle_complain_shift.json",
+    "data": {
+      "id": "idle_complain_shift",
+      "trigger": "ambient",
+      "topic": "抱怨",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 4,
+      "speakers": [
+        "A",
+        "B"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "这鞋穿一晚上，脚都肿了。"
+        },
+        {
+          "speaker": "B",
+          "text": "忍着吧。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/idle_meal.json",
+    "data": {
+      "id": "idle_meal",
+      "trigger": "ambient",
+      "topic": "吃饭",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 4,
+      "speakers": [
+        "A",
+        "B"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "你晚上吃了没？"
+        },
+        {
+          "speaker": "B",
+          "text": "食堂那个卤蛋又没了。"
+        },
+        {
+          "speaker": "A",
+          "text": "每次都这样。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/idle_salary.json",
+    "data": {
+      "id": "idle_salary",
+      "trigger": "ambient",
+      "topic": "工资",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 4,
+      "speakers": [
+        "A",
+        "B"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "这个月工资发了没？"
+        },
+        {
+          "speaker": "B",
+          "text": "发了，又扣了。"
+        },
+        {
+          "speaker": "A",
+          "text": "扣啥？"
+        },
+        {
+          "speaker": "B",
+          "text": "谁知道。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/idle_smoke.json",
+    "data": {
+      "id": "idle_smoke",
+      "trigger": "ambient",
+      "topic": "抽烟",
+      "weight": 0.8,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 4,
+      "speakers": [
+        "A",
+        "B"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "{B}，借个火。",
+          "keyword": "{B}"
+        },
+        {
+          "speaker": "B",
+          "text": "少抽点，上头查得紧。"
+        },
+        {
+          "speaker": "A",
+          "text": "查得紧的又不止这个。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/idle_weather.json",
+    "data": {
+      "id": "idle_weather",
+      "trigger": "ambient",
+      "topic": "天气",
+      "weight": 1,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 4,
+      "speakers": [
+        "A",
+        "B"
+      ],
+      "lines": [
+        {
+          "speaker": "A",
+          "text": "外面下雨了？"
+        },
+        {
+          "speaker": "B",
+          "text": "听着像。"
+        },
+        {
+          "speaker": "A",
+          "text": "又得湿着回去。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_alert_search_02_detail.json",
+    "data": {
+      "id": "mission_alert_search_02_detail",
+      "trigger": "ambient",
+      "topic": "走廊搜索",
+      "priority": 0,
+      "weight": 3,
+      "state": "any",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "门后是空的。你那边呢？"
+        },
+        {
+          "speaker": "E04",
+          "text": "还在看。别急着说没人，转角那边我还没查。"
+        }
+      ],
+      "missionIds": [
+        "alert_search_02"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_alert_search_02_fail.json",
+    "data": {
+      "id": "mission_alert_search_02_fail",
+      "trigger": "manual",
+      "topic": "走廊搜索",
+      "priority": 100,
+      "weight": 0,
+      "state": "any",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "搜了这一阵，还是没摸着可靠的线索。"
+        },
+        {
+          "speaker": "E04",
+          "text": "别再围着同一个角落转，把漏掉的地方补上。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_alert_search_02_mutter.json",
+    "data": {
+      "id": "mission_alert_search_02_mutter",
+      "trigger": "ambient",
+      "topic": "走廊搜索",
+      "priority": 0,
+      "weight": 3,
+      "state": "any",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "刚才那声像是从这一头传过来的。"
+        },
+        {
+          "speaker": "E04",
+          "text": "回声也能绕人。先看地上有没有新痕迹。"
+        }
+      ],
+      "missionIds": [
+        "alert_search_02"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_alert_search_02_start.json",
+    "data": {
+      "id": "mission_alert_search_02_start",
+      "trigger": "manual",
+      "topic": "走廊搜索",
+      "priority": 100,
+      "weight": 0,
+      "state": "any",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "走廊那边得重新搜，别光朝有灯的地方看。"
+        },
+        {
+          "speaker": "E04",
+          "text": "你看门后，我盯转角。先别把人堵在一条线上。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_alert_search_02_success.json",
+    "data": {
+      "id": "mission_alert_search_02_success",
+      "trigger": "manual",
+      "topic": "走廊搜索",
+      "priority": 100,
+      "weight": 0,
+      "state": "any",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "目标已经倒下，先确认周围还有没有别人。"
+        },
+        {
+          "speaker": "E04",
+          "text": "别急着散开，把走廊再看一遍。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_defend_zone_01_detail.json",
+    "data": {
+      "id": "mission_defend_zone_01_detail",
+      "trigger": "ambient",
+      "topic": "仓储区守卫",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "箱子后面别站人，我从这儿看不到那一角。"
+        },
+        {
+          "speaker": "E04",
+          "text": "知道。我往旁边挪，你把通道留出来。"
+        }
+      ],
+      "missionIds": [
+        "defend_zone_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_defend_zone_01_fail.json",
+    "data": {
+      "id": "mission_defend_zone_01_fail",
+      "trigger": "manual",
+      "topic": "仓储区守卫",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "仓储区守不住了，先把情况报清楚！"
+        },
+        {
+          "speaker": "E04",
+          "text": "别再说一切正常了，先确认还有谁能应声。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_defend_zone_01_mutter.json",
+    "data": {
+      "id": "mission_defend_zone_01_mutter",
+      "trigger": "ambient",
+      "topic": "仓储区守卫",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "外面刚才有声音，要不要过去看看？"
+        },
+        {
+          "speaker": "E04",
+          "text": "先别动。咱们一走，这里就没人了。"
+        }
+      ],
+      "missionIds": [
+        "defend_zone_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_defend_zone_01_start.json",
+    "data": {
+      "id": "mission_defend_zone_01_start",
+      "trigger": "manual",
+      "topic": "仓储区守卫",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "仓储区这边守住，别一有响动就都往外跑。"
+        },
+        {
+          "speaker": "E04",
+          "text": "我看里侧。你要挪位置，先跟我说一声。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_defend_zone_01_success.json",
+    "data": {
+      "id": "mission_defend_zone_01_success",
+      "trigger": "manual",
+      "topic": "仓储区守卫",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "这段时间仓储区没丢，里外也都接得上。"
+        },
+        {
+          "speaker": "E04",
+          "text": "交接前再看一眼，别最后一会儿出事。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectActivate_01_detail.json",
+    "data": {
+      "id": "mission_objectActivate_01_detail",
+      "trigger": "ambient",
+      "topic": "启动目标设备 3004",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "这动静不太对……先别急着下结论。"
+        },
+        {
+          "speaker": "E03",
+          "text": "等我把该看的地方都确认完。"
+        }
+      ],
+      "missionIds": [
+        "objectActivate_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectActivate_01_fail.json",
+    "data": {
+      "id": "mission_objectActivate_01_fail",
+      "trigger": "manual",
+      "topic": "启动目标设备 3004",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "设备这边没办成，先别当它已经开了。"
+        },
+        {
+          "speaker": "E03",
+          "text": "得重新确认一下，不能只看那盏灯。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectActivate_01_mutter.json",
+    "data": {
+      "id": "mission_objectActivate_01_mutter",
+      "trigger": "ambient",
+      "topic": "启动目标设备 3004",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "每次都让我来开，出了毛病倒是谁都不认。"
+        },
+        {
+          "speaker": "E03",
+          "text": "先看一眼再动手，免得回头又说我乱碰。"
+        }
+      ],
+      "missionIds": [
+        "objectActivate_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectActivate_01_start.json",
+    "data": {
+      "id": "mission_objectActivate_01_start",
+      "trigger": "manual",
+      "topic": "启动目标设备 3004",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "我去把那台设备开起来，先别碰它旁边的东西。"
+        },
+        {
+          "speaker": "E03",
+          "text": "开关老是发涩，别又卡在半截。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectActivate_01_success.json",
+    "data": {
+      "id": "mission_objectActivate_01_success",
+      "trigger": "manual",
+      "topic": "启动目标设备 3004",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "设备已经启动了，声音听着还算平稳。"
+        },
+        {
+          "speaker": "E03",
+          "text": "先让它转着，有异常再叫我。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectdefend_01_detail.json",
+    "data": {
+      "id": "mission_objectdefend_01_detail",
+      "trigger": "ambient",
+      "topic": "设备 3004 看护与巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "你离那台东西远一点，挡着我看外侧了。"
+        },
+        {
+          "speaker": "E04",
+          "text": "行。我沿边上巡，你听见声音变了就叫我。"
+        }
+      ],
+      "missionIds": [
+        "objectdefend_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectdefend_01_fail.json",
+    "data": {
+      "id": "mission_objectdefend_01_fail",
+      "trigger": "manual",
+      "topic": "设备 3004 看护与巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "设备看护出了问题，先确认是哪一处断了。"
+        },
+        {
+          "speaker": "E04",
+          "text": "我盯着周围。你别一边修，一边把背后空着。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectdefend_01_mutter.json",
+    "data": {
+      "id": "mission_objectdefend_01_mutter",
+      "trigger": "ambient",
+      "topic": "设备 3004 看护与巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "刚才转得好好的，别又有人碰了什么。"
+        },
+        {
+          "speaker": "E04",
+          "text": "我先看周围。真有问题，也别两个人都扑上去。"
+        }
+      ],
+      "missionIds": [
+        "objectdefend_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectdefend_01_start.json",
+    "data": {
+      "id": "mission_objectdefend_01_start",
+      "trigger": "manual",
+      "topic": "设备 3004 看护与巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "设备转起来以后更得看着，别让人靠过去乱碰。"
+        },
+        {
+          "speaker": "E04",
+          "text": "你巡里面，我照看外侧。有问题先喊一声。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_objectdefend_01_success.json",
+    "data": {
+      "id": "mission_objectdefend_01_success",
+      "trigger": "manual",
+      "topic": "设备 3004 看护与巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "设备这阵子一直在转，没再断过。"
+        },
+        {
+          "speaker": "E04",
+          "text": "交接时把情况说清楚，别换个人就又从头折腾。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_01_detail.json",
+    "data": {
+      "id": "mission_patrol_test_01_detail",
+      "trigger": "ambient",
+      "topic": "酒水区单人巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "货架后头最容易落东西，光看过道有什么用。"
+        },
+        {
+          "speaker": "E02",
+          "text": "唉，蹲一趟起来，膝盖都响。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_01_fail.json",
+    "data": {
+      "id": "mission_patrol_test_01_fail",
+      "trigger": "manual",
+      "topic": "酒水区单人巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "酒水区还没查完，这边已经不对劲了。"
+        },
+        {
+          "speaker": "E02",
+          "text": "先别放人进来，少了什么等会儿再数。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_01_mutter.json",
+    "data": {
+      "id": "mission_patrol_test_01_mutter",
+      "trigger": "ambient",
+      "topic": "酒水区单人巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "这瓶口还是湿的。谁刚在值班时喝过？"
+        },
+        {
+          "speaker": "E02",
+          "text": "别又算在我头上，我今天可一直醒着。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_01"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_01_start.json",
+    "data": {
+      "id": "mission_patrol_test_01_start",
+      "trigger": "manual",
+      "topic": "酒水区单人巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "酒水区交给我。我先把货架后面转一遍。"
+        },
+        {
+          "speaker": "E02",
+          "text": "老王说少碰那些瓶子……我可没那么馋。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_01_success.json",
+    "data": {
+      "id": "mission_patrol_test_01_success",
+      "trigger": "manual",
+      "topic": "酒水区单人巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E02",
+          "text": "这边看过了，货架和过道都没什么异样。"
+        },
+        {
+          "speaker": "E02",
+          "text": "地上那几个空瓶子，等清洁的人来收吧。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_02_detail.json",
+    "data": {
+      "id": "mission_patrol_test_02_detail",
+      "trigger": "ambient",
+      "topic": "水果区单人巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "巡逻单上只写了水果区，连个具体位置都懒得标。"
+        },
+        {
+          "speaker": "E01",
+          "text": "我多转半圈，总比回头挨问强。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_02"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_02_fail.json",
+    "data": {
+      "id": "mission_patrol_test_02_fail",
+      "trigger": "manual",
+      "topic": "水果区单人巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "水果区这边出了岔子，先别急着交班。"
+        },
+        {
+          "speaker": "E01",
+          "text": "少一箱货还能查，混进个人就麻烦了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_02_mutter.json",
+    "data": {
+      "id": "mission_patrol_test_02_mutter",
+      "trigger": "ambient",
+      "topic": "水果区单人巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这味道……也不知道是水果烂了，还是排水又堵了。"
+        },
+        {
+          "speaker": "E01",
+          "text": "回头得让人把墙边那摊水擦了。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_02"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_02_start.json",
+    "data": {
+      "id": "mission_patrol_test_02_start",
+      "trigger": "manual",
+      "topic": "水果区单人巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "我去水果区走一圈，别把后面的过道堵上。"
+        },
+        {
+          "speaker": "E01",
+          "text": "东西堆得这么高，进个人都不一定看得见。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_02_success.json",
+    "data": {
+      "id": "mission_patrol_test_02_success",
+      "trigger": "manual",
+      "topic": "水果区单人巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这一圈走完了，暂时没见着生面孔。"
+        },
+        {
+          "speaker": "E01",
+          "text": "烂掉的那箱还在，味道倒是一天比一天冲。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_03_detail.json",
+    "data": {
+      "id": "mission_patrol_test_03_detail",
+      "trigger": "ambient",
+      "topic": "水果区双人复查",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "{E01}，你听见没有，里面像是碰了一下。"
+        },
+        {
+          "speaker": "E02",
+          "text": "先看清楚。别一听响，就把整排货都翻了。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_03"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_03_fail.json",
+    "data": {
+      "id": "mission_patrol_test_03_fail",
+      "trigger": "manual",
+      "topic": "水果区双人复查",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "刚才那一段没接上，不能算查完。"
+        },
+        {
+          "speaker": "E02",
+          "text": "别各走各的，先把漏下的位置对清楚。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_03_mutter.json",
+    "data": {
+      "id": "mission_patrol_test_03_mutter",
+      "trigger": "ambient",
+      "topic": "水果区双人复查",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "你刚才查过这一排没有？"
+        },
+        {
+          "speaker": "E02",
+          "text": "查过。你别一转身又把我那边重走一遍。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_03"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_03_start.json",
+    "data": {
+      "id": "mission_patrol_test_03_start",
+      "trigger": "manual",
+      "topic": "水果区双人复查",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "{E02}，跟我把水果区再过一遍。"
+        },
+        {
+          "speaker": "E02",
+          "text": "知道了。我看货架后面，你看通道。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_03_success.json",
+    "data": {
+      "id": "mission_patrol_test_03_success",
+      "trigger": "manual",
+      "topic": "水果区双人复查",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "前后都看过了，没发现新动静。"
+        },
+        {
+          "speaker": "E02",
+          "text": "记上吧，省得又说咱们只在门口站着。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_04_detail.json",
+    "data": {
+      "id": "mission_patrol_test_04_detail",
+      "trigger": "ambient",
+      "topic": "第二水果区接续巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "两片地方长得一个样，转多了真会记岔。"
+        },
+        {
+          "speaker": "E02",
+          "text": "记人别光记货架。有人来过，东西未必会动。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_04"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_04_fail.json",
+    "data": {
+      "id": "mission_patrol_test_04_fail",
+      "trigger": "manual",
+      "topic": "第二水果区接续巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这片还没核完，先别在本子上打勾。"
+        },
+        {
+          "speaker": "E02",
+          "text": "知道了，我从刚才停下的地方接着看。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_04_mutter.json",
+    "data": {
+      "id": "mission_patrol_test_04_mutter",
+      "trigger": "ambient",
+      "topic": "第二水果区接续巡逻",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这一片怎么比刚才那边还暗？"
+        },
+        {
+          "speaker": "E02",
+          "text": "灯坏了几天了。你脚下慢点，别踢着箱子。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_04"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_04_start.json",
+    "data": {
+      "id": "mission_patrol_test_04_start",
+      "trigger": "manual",
+      "topic": "第二水果区接续巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这边查完了，接着去另一片水果区。"
+        },
+        {
+          "speaker": "E02",
+          "text": "我跟着。上回漏看的边角，这次也算上。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_04_success.json",
+    "data": {
+      "id": "mission_patrol_test_04_success",
+      "trigger": "manual",
+      "topic": "第二水果区接续巡逻",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这片也走过了，能交差了吧？"
+        },
+        {
+          "speaker": "E02",
+          "text": "先记清楚是哪一片，别又把两处写成一处。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_05_detail.json",
+    "data": {
+      "id": "mission_patrol_test_05_detail",
+      "trigger": "ambient",
+      "topic": "第二水果区持续巡查",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "你别老跟着我走同一边，另一头会空出来。"
+        },
+        {
+          "speaker": "E02",
+          "text": "知道，我去外侧。听见我喊再靠过来。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_05"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_05_fail.json",
+    "data": {
+      "id": "mission_patrol_test_05_fail",
+      "trigger": "manual",
+      "topic": "第二水果区持续巡查",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这回巡查没接住，时间全耗在别的动静上了。"
+        },
+        {
+          "speaker": "E02",
+          "text": "先把眼前这段稳住，别再漏第二次。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_05_mutter.json",
+    "data": {
+      "id": "mission_patrol_test_05_mutter",
+      "trigger": "ambient",
+      "topic": "第二水果区持续巡查",
+      "priority": 0,
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 8,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "又绕回这儿了，我连地上哪块砖松都记住了。"
+        },
+        {
+          "speaker": "E02",
+          "text": "记住就好，真多出点什么，你也该看得出来。"
+        }
+      ],
+      "missionIds": [
+        "patrol_test_05"
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_05_start.json",
+    "data": {
+      "id": "mission_patrol_test_05_start",
+      "trigger": "manual",
+      "topic": "第二水果区持续巡查",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这片还得继续巡，别以为走过一遍就算完。"
+        },
+        {
+          "speaker": "E02",
+          "text": "行，我把外侧的通道也带上。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "本次新增",
+    "path": "Assets/Resources/Dialogues/mission_patrol_test_05_success.json",
+    "data": {
+      "id": "mission_patrol_test_05_success",
+      "trigger": "manual",
+      "topic": "第二水果区持续巡查",
+      "priority": 100,
+      "weight": 0,
+      "state": "idle",
+      "mode": "realtime",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 0,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "这阵子一直在转，没见谁往里面钻。"
+        },
+        {
+          "speaker": "E02",
+          "text": "那就先按平常的路线走，别一下全松了。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/pair_e01_e02_water.json",
+    "data": {
+      "id": "pair_e01_e02_water",
+      "trigger": "ambient",
+      "topic": "同事",
+      "weight": 1.5,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 6,
+      "speakers": [
+        "E01",
+        "E02"
+      ],
+      "lines": [
+        {
+          "speaker": "E01",
+          "text": "{E02}，给我倒杯热水。",
+          "keyword": "{E02}"
+        },
+        {
+          "speaker": "E02",
+          "text": "您自己倒吧，我这儿走不开。"
+        },
+        {
+          "speaker": "E01",
+          "text": "现在的年轻人啊……"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/pair_e03_e04_car.json",
+    "data": {
+      "id": "pair_e03_e04_car",
+      "trigger": "ambient",
+      "topic": "车",
+      "weight": 3,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 2,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 6,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "昨晚那辆车，你看见没？",
+          "keyword": "车",
+          "hint": "又是那辆车……",
+          "flag": "intel_night_car"
+        },
+        {
+          "speaker": "E04",
+          "text": "别看。看见了也当没看见。"
+        },
+        {
+          "speaker": "E03",
+          "text": "为啥？"
+        },
+        {
+          "speaker": "E04",
+          "text": "上回老周就多看了一眼。",
+          "keyword": "老周",
+          "hint": "老周……又是他？",
+          "flag": "intel_zhou"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/pair_e03_e04_food.json",
+    "data": {
+      "id": "pair_e03_e04_food",
+      "trigger": "ambient",
+      "topic": "吃饭",
+      "weight": 1.5,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 6,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E03",
+          "text": "你吃了没？"
+        },
+        {
+          "speaker": "E04",
+          "text": "没胃口。"
+        },
+        {
+          "speaker": "E03",
+          "text": "那你那份给我？"
+        },
+        {
+          "speaker": "E04",
+          "text": "……拿去。"
+        }
+      ]
+    }
+  },
+  {
+    "category": "已有",
+    "path": "Assets/Resources/Dialogues/pair_e03_e04_monitor.json",
+    "data": {
+      "id": "pair_e03_e04_monitor",
+      "trigger": "ambient",
+      "topic": "监控",
+      "weight": 2,
+      "state": "idle",
+      "mode": "turn",
+      "linesPerTurn": 0,
+      "secondsPerLine": 2.5,
+      "clearRadius": 6,
+      "keywordRadius": 10,
+      "audibleRadius": 15,
+      "maxSpeakerDistance": 5,
+      "alertsOthers": false,
+      "repeatable": true,
+      "cooldownTurns": 6,
+      "speakers": [
+        "E03",
+        "E04"
+      ],
+      "lines": [
+        {
+          "speaker": "E04",
+          "text": "你说，监控室到底有没有人？",
+          "keyword": "监控室",
+          "hint": "没人看的监控，为什么一直开着？",
+          "flag": "intel_monitor_room"
+        },
+        {
+          "speaker": "E03",
+          "text": "谁知道，反正我没见过。"
+        },
+        {
+          "speaker": "E04",
+          "text": "那它一直亮着红灯，是给谁看的？"
+        }
+      ]
+    }
+  }
+]

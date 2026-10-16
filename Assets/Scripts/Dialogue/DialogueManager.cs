@@ -23,6 +23,8 @@ public class DialogueManager : MonoBehaviour
     [Header("资源")]
     [Tooltip("对话 JSON 所在的 Resources 子目录。往这个目录里放 .json 就自动生效，不用拖进来")]
     [SerializeField] private string resourceFolder = "Dialogues";
+    [Tooltip("最远可察觉距离倍率，默认 1。只扩展远处模糊声音，不扩大清晰台词范围。")]
+    [Min(1f)] [SerializeField] private float audibleRangeMultiplier = 1f;
 
     [Tooltip("【只读预览】上面目录里扫到的全部对话文件，编辑器里自动同步，双击可以打开。\n" +
              "不用手动往这里拖——运行时始终以目录为准，这里只是让你看得到")]
@@ -43,9 +45,17 @@ public class DialogueManager : MonoBehaviour
     public event Action<DialogueData> OnDialogueFinished;
 
     // ── 运行时状态 ──────────────────────────────────────────────
-    private readonly Dictionary<string, DialogueData> _cache = new();
+    // ⚠ 键必须带语言：同一个 key 在中英下是两份不同的数据。
+    //   只按 key 缓存的话，中文模式加载过的对话在切到英文后仍会命中旧缓存，
+    //   表现为"切了语言但部分台词还是中文"，且只影响切换前播过的那几段，
+    //   看起来就像随机时中时英。
+    private readonly Dictionary<(string key, GameLanguage lang), DialogueData> _cache = new();
     private readonly Dictionary<string, int> _lastPlayedTurn = new();
     private readonly List<Session> _active = new();
+
+    // 排队中的对话：现在播不了（人被占着），等空出来再播。
+    // 按优先级降序，每回合开始推一次
+    private readonly List<PendingDialogue> _pending = new();
     private readonly List<DialogueData> _all = new();
     private bool _allLoaded;
 
@@ -218,6 +228,10 @@ public class DialogueManager : MonoBehaviour
     {
         if (turn == null || turn.currentFaction != advanceOnFaction) return;
 
+        // 先推队列再发额度：排队中的高优先级对话可能抢占掉正在进行的闲聊，
+        // 顺序反过来的话会先给即将被掐掉的会话白发一轮额度
+        PumpPending();
+
         foreach (var s in _active)
             if (!s.data.IsRealtime) StartBurst(s);
     }
@@ -251,8 +265,20 @@ public class DialogueManager : MonoBehaviour
 
         int turn = CurrentTurn;
         var session = new Session { data = data, nextLine = 0 };
+
+        // ── 抢占 ────────────────────────────────────────────────────
+        // 场上就几个敌人，闲聊占用率实测 72.5%，任务/剧情对话十有八九
+        // 撞上有人在聊。不抢占的话 ResolveCast 直接判定不开播，演出静默消失。
+        // 所以：本段优先级更高时，把挡路的低优先级对话掐掉再试一次。
         if (!ResolveCast(data, session, cast))
-            return false;
+        {
+            if (!PreemptBlockers(data, cast))
+                return false;
+
+            session = new Session { data = data, nextLine = 0 };
+            if (!ResolveCast(data, session, cast))
+                return false;
+        }
 
         foreach (var p in session.participants) p.IsBusy = true;
 
@@ -274,6 +300,187 @@ public class DialogueManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// 取这段对话最后开口的人。
+    /// 走散中止时用它决定谁说那句「人呢？」——刚说完话却没人应的那个，由他发问最自然。
+    ///
+    /// ⚠ 必须在 Stop() 之前调用：Stop 会把会话移出 _active，之后就查不到了。
+    /// </summary>
+    public bool TryGetLastSpeaker(string dialogueId, out DialogueSpeaker speaker)
+    {
+        speaker = null;
+        for (int i = 0; i < _active.Count; i++)
+        {
+            var s = _active[i];
+            if (s.data == null || s.data.id != dialogueId) continue;
+
+            // nextLine 指向"下一句要说的"，所以刚说完的是它前面那句
+            int idx = s.nextLine - 1;
+            if (s.data.lines == null || idx < 0 || idx >= s.data.lines.Count) return false;
+
+            string role = s.data.lines[idx].speaker;
+            if (string.IsNullOrEmpty(role)) return false;
+            return s.cast.TryGetValue(role, out speaker) && speaker != null;
+        }
+        return false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 抢占 / 排队 / 打断
+    // ══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 把挡住这段对话的、优先级更低的会话掐掉。
+    /// 只要有一个挡路的优先级 ≥ 本段，就整体放弃——不能把半段高优先级演出打散。
+    /// </summary>
+    /// <returns>是否真的腾出了人</returns>
+    private bool PreemptBlockers(DialogueData data, IList<DialogueSpeaker> cast)
+    {
+        // 先确定这段需要哪些人
+        var needed = new List<DialogueSpeaker>();
+        if (cast != null)
+        {
+            foreach (var sp in cast) if (sp != null) needed.Add(sp);
+        }
+        else
+        {
+            foreach (var role in GetRoles(data))
+                if (DialogueSpeaker.TryGet(role, out var sp) && sp != null)
+                    needed.Add(sp);
+        }
+        if (needed.Count == 0) return false;
+
+        // 找出占着这些人的会话
+        var blockers = new List<Session>();
+        foreach (var s in _active)
+            foreach (var p in s.participants)
+                if (needed.Contains(p) && !blockers.Contains(s))
+                    blockers.Add(s);
+
+        if (blockers.Count == 0) return false;
+
+        foreach (var b in blockers)
+        {
+            if (b.data.priority >= data.priority)
+            {
+                DebugLog($"「{data.id}」(P{data.priority}) 想抢占，但「{b.data.id}」" +
+                         $"(P{b.data.priority}) 优先级不低于它，放弃");
+                return false;
+            }
+        }
+
+        foreach (var b in blockers)
+        {
+            DebugLog($"「{data.id}」(P{data.priority}) 抢占「{b.data.id}」(P{b.data.priority})");
+            int idx = _active.IndexOf(b);
+            if (idx >= 0) FinishSession(idx);
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// 排队：现在播不了就挂起，等人空出来再播。
+    ///
+    /// 和 Play 的区别是「播不了」的处理：Play 直接返回 false 丢弃，
+    /// 这个会留在队列里重试，直到成功或超时。任务/剧情演出应该用这个。
+    /// </summary>
+    /// <param name="expireTurns">最多等几个回合。过时的剧情对话突然冒出来比不播更糟</param>
+    public bool Enqueue(string key, int expireTurns = 3, string reason = "")
+    {
+        if (string.IsNullOrEmpty(key)) return false;
+
+        var data = Load(key);
+        if (data == null) return false;
+
+        // 能立刻播就别排队
+        if (PlayInternal(key, null)) return true;
+
+        if (_pending.Exists(p => p.key == key))
+        {
+            DebugLog($"「{key}」已在队列里，不重复入队");
+            return false;
+        }
+
+        _pending.Add(new PendingDialogue
+        {
+            key          = key,
+            priority     = data.priority,
+            cast         = null,
+            enqueuedTurn = CurrentTurn,
+            expireTurns  = Mathf.Max(0, expireTurns),
+            reason       = reason,
+        });
+        // 高优先级排前面
+        _pending.Sort((a, b) => b.priority.CompareTo(a.priority));
+
+        DebugLog($"「{key}」(P{data.priority}) 现在播不了，已入队" +
+                 $"（最多等 {expireTurns} 回合）{(string.IsNullOrEmpty(reason) ? "" : $"：{reason}")}");
+        return false;
+    }
+
+    /// <summary>
+    /// 打断所有优先级低于 threshold 的对话。
+    /// 遭遇袭击、进入战斗这类事件调用它，先清场再插自己的台词。
+    /// </summary>
+    /// <returns>掐掉了几段</returns>
+    public int InterruptBelow(int threshold, string reason)
+    {
+        int n = 0;
+        for (int i = _active.Count - 1; i >= 0; i--)
+        {
+            if (_active[i].data.priority >= threshold) continue;
+            DebugLog($"「{_active[i].data.id}」被打断：{reason}");
+            FinishSession(i);
+            n++;
+        }
+
+        // 队列里低于阈值的也一并清掉——事件已经改变了情境，
+        // 那些排着队的闲聊再播出来就不合时宜了
+        int dropped = _pending.RemoveAll(p => p.priority < threshold);
+        if (dropped > 0) DebugLog($"队列里清掉 {dropped} 段低优先级对话：{reason}");
+
+        return n;
+    }
+
+    /// <summary>
+    /// 队列里是否有优先级 ≥ threshold 的在等。
+    /// 闲聊导演用它避让：有剧情等着开口时，别再开新的闲聊去占人。
+    /// </summary>
+    public bool HasPendingAtLeast(int threshold)
+    {
+        foreach (var p in _pending)
+            if (p.priority >= threshold) return true;
+        return false;
+    }
+
+    /// <summary>每回合推一次队列：能播的播掉，过期的丢掉。</summary>
+    private void PumpPending()
+    {
+        if (_pending.Count == 0) return;
+
+        int turn = CurrentTurn;
+
+        for (int i = _pending.Count - 1; i >= 0; i--)
+        {
+            var p = _pending[i];
+
+            if (p.IsExpired(turn))
+            {
+                _pending.RemoveAt(i);
+                Debug.LogWarning($"[对话] 「{p.key}」(P{p.priority}) 等了 {p.expireTurns} 回合仍无法播放，放弃。" +
+                                 $"{(string.IsNullOrEmpty(p.reason) ? "" : $"原因：{p.reason}。")}" +
+                                 "多半是指定的说话人一直忙或不在场。");
+                continue;
+            }
+
+            if (PlayInternal(p.key, p.cast))
+            {
+                DebugLog($"「{p.key}」从队列里出队并开播");
+                _pending.RemoveAt(i);
+            }
+        }
     }
 
     /// <summary>这段对话当前是否在播。</summary>
@@ -336,17 +543,46 @@ public class DialogueManager : MonoBehaviour
         => _resolvedByTag.TryGetValue(tag ?? "", out resolved) && resolved != null;
 
     /// <summary>加载并缓存一段对话（找不到返回 null）。</summary>
+    /// <summary>拼 Resources 路径：&lt;folder&gt;/&lt;lang&gt;/&lt;key&gt;，空的段自动略过。</summary>
+    private static string BuildPath(string folder, string subfolder, string key)
+    {
+        if (!string.IsNullOrEmpty(folder) && !string.IsNullOrEmpty(subfolder))
+            return $"{folder}/{subfolder}/{key}";
+        if (!string.IsNullOrEmpty(folder))    return $"{folder}/{key}";
+        if (!string.IsNullOrEmpty(subfolder)) return $"{subfolder}/{key}";
+        return key;
+    }
+
     public DialogueData Load(string key)
     {
         if (string.IsNullOrEmpty(key)) return null;
-        if (_cache.TryGetValue(key, out var cached)) return cached;
+        var cacheKey = (key, Localization.Current);
+        if (_cache.TryGetValue(cacheKey, out var cached)) return cached;
 
-        string path = string.IsNullOrEmpty(resourceFolder) ? key : $"{resourceFolder}/{key}";
-        var asset = Resources.Load<TextAsset>(path);
+        // ── 按语言查找，缺翻译时回退到基准语言 ──────────────────────────
+        // 中文（基准语言）直接放 Resources/Dialogues/ 下，其他语言放子目录，
+        // 例如 Resources/Dialogues/en/guard_shift_talk.json。
+        // 回退是刻意的：翻译可以增量做，没翻的那几段照常用中文播，
+        // 而不是整段消失——对话断掉比语言不一致严重得多。
+        string baseFolder = resourceFolder ?? "";
+        string subfolder  = Localization.DialogueSubfolder(Localization.Current);
+
+        string path  = BuildPath(baseFolder, subfolder, key);
+        var    asset = Resources.Load<TextAsset>(path);
+
+        if (asset == null && !string.IsNullOrEmpty(subfolder))
+        {
+            string fallbackPath = BuildPath(baseFolder, "", key);
+            asset = Resources.Load<TextAsset>(fallbackPath);
+            if (asset != null)
+                DebugLog($"「{key}」没有 {subfolder} 翻译，回退到基准语言");
+            path = fallbackPath;
+        }
+
         if (asset == null)
         {
             Debug.LogWarning($"[对话] 找不到资源 Resources/{path}.json");
-            _cache[key] = null;      // 记下缺失，避免每次触发都走一遍 Resources.Load
+            _cache[cacheKey] = null;      // 记下缺失，避免每次触发都走一遍 Resources.Load
             return null;
         }
 
@@ -358,14 +594,14 @@ public class DialogueManager : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"[对话] 解析 {path}.json 失败：{e.Message}（注意 JsonUtility 不支持 // 注释）");
-            _cache[key] = null;
+            _cache[cacheKey] = null;
             return null;
         }
 
         if (data == null || data.lines == null || data.lines.Count == 0)
         {
             Debug.LogWarning($"[对话] {path}.json 解析结果为空或没有 lines");
-            _cache[key] = null;
+            _cache[cacheKey] = null;
             return null;
         }
 
@@ -377,7 +613,8 @@ public class DialogueManager : MonoBehaviour
             data.id = key;
         }
 
-        _cache[key] = data;
+        data.audibleRadius = Mathf.Max(data.keywordRadius, data.audibleRadius * Mathf.Max(1f,audibleRangeMultiplier));
+        _cache[cacheKey] = data;
         return data;
     }
 
@@ -657,7 +894,13 @@ public class DialogueManager : MonoBehaviour
 
         var s = _active[index];
         foreach (var p in s.participants)
-            if (p != null) p.IsBusy = false;
+        {
+            if (p == null) continue;
+            p.IsBusy = false;
+            // 对话期间转向了同伴，这里转回去——不还原的话原地不动的敌人
+            // 会永久盯着同伴站过的方向，视野盲区固定下来（详见 RestoreFacing 注释）
+            p.RestoreFacing();
+        }
 
         _active.RemoveAt(index);
         DebugLog($"「{s.data.id}」播放结束");

@@ -193,6 +193,8 @@ public class WorldItem : MonoBehaviour
     public bool Pickup(GameObject picker)
     {
         if (isPickedUp) return false;
+        if (picker != null && picker.GetComponent<PlayerController>() != null &&
+            !PlayerSceneVisibility.CanReveal(this)) return false;
 
         if (itemData == null)
         {
@@ -238,6 +240,8 @@ public class WorldItem : MonoBehaviour
     /// </summary>
     public void ShowHighlight(bool show)
     {
+        // Nearby pickup markers now provide feedback without repeatedly cloning/brightening materials.
+        if (PlayerSceneVisibility.Instance != null) return;
         if (itemRenderer == null) return;
 
         // 简单的颜色变化

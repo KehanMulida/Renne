@@ -1,0 +1,35 @@
+{
+  "id": "mission_objectdefend_01_detail",
+  "trigger": "ambient",
+  "topic": "设备 3004 看护与巡逻",
+  "priority": 0,
+  "weight": 3,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 8,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "你离那台东西远一点，挡着我看外侧了。"
+    },
+    {
+      "speaker": "E04",
+      "text": "行。我沿边上巡，你听见声音变了就叫我。"
+    }
+  ],
+  "missionIds": [
+    "objectdefend_01"
+  ]
+}

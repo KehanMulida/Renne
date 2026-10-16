@@ -353,8 +353,11 @@ public class GameManager : MonoBehaviour
 
         if (!string.IsNullOrEmpty(onEnter.dialogue))
         {
-            DebugLog($"[onEnter] 触发对话：{onEnter.dialogue}（DialogueManager 待接入）");
-            // TODO: DialogueManager.Instance.Play(onEnter.dialogue, context);
+            // 键值对应 Resources/Dialogues/<key>.json（可带子目录，如 events/phase01_start）。
+            // Play 内部找不到文件会自己打 warning，这里不重复判断
+            bool ok = DialogueManager.Instance != null &&
+                      DialogueManager.Instance.Play(onEnter.dialogue);
+            DebugLog($"[onEnter] 触发对话：{onEnter.dialogue} → {(ok ? "已播放" : "未播放")}");
         }
 
         if (!string.IsNullOrEmpty(onEnter.music))
@@ -382,6 +385,7 @@ public class GameManager : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         if (!showDebugGUI || !isInitialized) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box);

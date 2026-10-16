@@ -194,6 +194,9 @@ public class DialogueData
     [Tooltip("turn = 每回合一句（潜行偷听用）；realtime = 按秒播完（任务/阶段演出用）")]
     public string mode = "turn";
 
+    // 注：priority 的常量档位定义在 DialoguePriority（DialogueQueue.cs），
+    // 这里只是字段本身；用常量而不是枚举，是为了让 JSON 里能填任意中间值微调
+
     // ══ 发起方式 ══════════════════════════════════════════════
 
     [Tooltip("manual = 只能被显式 Play（任务/阶段演出）；\n" +
@@ -202,6 +205,16 @@ public class DialogueData
 
     [Tooltip("随机抽取的权重（只对 ambient 有意义）。越大越常被选中")]
     public float weight = 1f;
+
+    [Tooltip("优先级。高优先级可以抢占正在进行的低优先级对话（把人从闲聊里拽出来）。\n" +
+             "不填默认 0，建议档位见 DialoguePriority：\n" +
+             "  0   Ambient  闲聊，随便被打断\n" +
+             "  50  Bark     遭遇袭击/发现尸体这类即时反应，能打断闲聊\n" +
+             "  100 Mission  任务开始/结算演出\n" +
+             "  200 Story    剧情阶段，几乎不该被任何东西挡住\n\n" +
+             "⚠ 不配这个字段的话，任务对话会被闲聊挡住——场上就几个敌人，\n" +
+             "  闲聊占着人不放，ResolveCast 直接判定不开播，剧情静默丢失")]
+    public int priority = DialoguePriority.Ambient;
 
     [Tooltip("话题标签，纯给编剧看的分类，如 吃饭 / 抱怨 / 换班。系统不解读它")]
     public string topic;
@@ -273,6 +286,13 @@ public class DialogueData
     public float secondsPerLine = 2.5f;
 
     public List<DialogueCondition> conditions;
+
+    [Tooltip("任务闲聊限定：参与者当前实际执行的任务 ID 必须在列表中。留空不限制；不用于开始/结算演出。")]
+    public List<string> missionIds;
+
+    public bool MatchesMission(string currentMissionId) =>
+        missionIds == null || missionIds.Count == 0 ||
+        (!string.IsNullOrEmpty(currentMissionId) && missionIds.Contains(currentMissionId));
 
     [Tooltip("参与者 id 列表，用于占用检查（同一个敌人不会同时参与两段对话）")]
     public List<string> speakers;

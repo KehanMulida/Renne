@@ -63,3 +63,8 @@ sysinfo.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local assistant state and verification output
+**/.claude/
+/Artifacts/
+/Artifacts-*.log

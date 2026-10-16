@@ -1,0 +1,33 @@
+{
+  "entries": [
+    { "key": "menu.title",            "value": "Renne" },
+    { "key": "menu.start",            "value": "开始游戏" },
+    { "key": "menu.settings",         "value": "设置" },
+    { "key": "menu.quit",             "value": "退出" },
+    { "key": "menu.back",             "value": "返回" },
+
+    { "key": "settings.title",        "value": "设置" },
+    { "key": "settings.language",     "value": "语言" },
+    { "key": "settings.language.hint","value": "语言只能在主菜单修改，进入游戏后不可切换" },
+
+    { "key": "lang.zh",               "value": "简体中文" },
+    { "key": "lang.en",               "value": "English" },
+
+    { "key": "dialogue.unknownSpeaker",  "value": "？" },
+    { "key": "dialogue.clearFormat",     "value": "{0}：{1}" },
+    { "key": "dialogue.autoBlurFormat",  "value": "……{0}……" },
+    { "key": "dialogue.blurNoKeyword",   "value": "……" },
+    { "key": "dialogue.faintFormat",     "value": "（{0}有人在低声交谈）" },
+    { "key": "dialogue.thoughtFormat",   "value": "（{0}）" },
+
+    { "key": "dir.front",      "value": "正前方" },
+    { "key": "dir.frontRight", "value": "右前方" },
+    { "key": "dir.right",      "value": "右侧" },
+    { "key": "dir.backRight",  "value": "右后方" },
+    { "key": "dir.back",       "value": "正后方" },
+    { "key": "dir.backLeft",   "value": "左后方" },
+    { "key": "dir.left",       "value": "左侧" },
+    { "key": "dir.frontLeft",  "value": "左前方" },
+    { "key": "dir.near",       "value": "近处" }
+  ]
+}

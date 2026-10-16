@@ -1,0 +1,35 @@
+{
+  "id": "mission_alert_search_02_detail",
+  "trigger": "ambient",
+  "topic": "走廊搜索",
+  "priority": 0,
+  "weight": 3,
+  "state": "any",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 8,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "门后是空的。你那边呢？"
+    },
+    {
+      "speaker": "E04",
+      "text": "还在看。别急着说没人，转角那边我还没查。"
+    }
+  ],
+  "missionIds": [
+    "alert_search_02"
+  ]
+}

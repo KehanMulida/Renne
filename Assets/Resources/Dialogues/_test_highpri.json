@@ -1,0 +1,16 @@
+{
+  "id": "_test_highpri",
+  "trigger": "manual",
+  "weight": 0,
+  "priority": 100,
+  "state": "any",
+  "mode": "realtime",
+  "secondsPerLine": 99,
+  "clearRadius": 6, "keywordRadius": 10, "audibleRadius": 15,
+  "maxSpeakerDistance": 99,
+  "repeatable": true, "cooldownTurns": 0,
+  "speakers": ["A"],
+  "lines": [
+    { "speaker": "A", "text": "【测试】高优先级任务演出" }
+  ]
+}

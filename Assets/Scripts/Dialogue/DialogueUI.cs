@@ -34,29 +34,40 @@ public class DialogueUI : MonoBehaviour
     [SerializeField] private Vector2 referenceResolution = new Vector2(1920f, 1080f);
 
     [Header("字体")]
-    [Tooltip("留空则按下面的顺序找系统里第一个装了的字体")]
+    [Tooltip("直接指定字体，优先级最高。\n" +
+             "留空则走 Resources/DialogueFontSet 按当前语言查；再没有就用内置的系统字体回退")]
     [SerializeField] private Font font;
-    [Tooltip("中文版 Windows 可能把字体名报成本地化名字（微软雅黑），所以两种写法都列上")]
-    [SerializeField] private string[] systemFontFallbacks =
-        { "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", "SimHei", "黑体" };
 
-    [Header("固定文字（{占位} 会被替换）")]
-    [Tooltip("还不知道说话人叫什么时显示的名字。留空则清晰档不显示名字前缀")]
-    [SerializeField] private string unknownSpeakerName = "？";
-    [Tooltip("清晰档。{name} = 说话人名字（不知道时是上面那个「？」），{text} = 完整台词")]
-    [SerializeField] private string clearFormat = "{name}：{text}";
-    [Tooltip("模糊档、台词没手写 blurred 时的自动遮蔽。{keyword} = 关键词")]
-    [SerializeField] private string autoBlurFormat = "……{keyword}……";
-    [Tooltip("模糊档、这句既没手写 blurred 也没有关键词时显示的")]
-    [SerializeField] private string blurNoKeyword = "……";
-    [Tooltip("极模糊档。{direction} = 下面的方位词")]
-    [SerializeField] private string faintFormat = "（{direction}有人在低声交谈）";
-    [Tooltip("相对玩家朝向的 8 个方位，从正前方开始顺时针")]
-    [SerializeField] private string[] directionWords = { "正前方", "右前方", "右侧", "右后方", "正后方", "左后方", "左侧", "左前方" };
-    [Tooltip("声源几乎就在玩家脚下时的方位词")]
-    [SerializeField] private string nearWord = "近处";
-    [Tooltip("内心独白。{thought} = 台词里配的 hint")]
-    [SerializeField] private string thoughtFormat = "（{thought}）";
+    [Tooltip("按语言配字体的资产（Resources/DialogueFontSet）。\n" +
+             "留空会自动加载同名资产；资产也没有时退回内置默认，开箱仍能显示中文")]
+    [SerializeField] private DialogueFontSet fontSet;
+
+    [Tooltip("跟随 Localization.Current 自动换字体。\n" +
+             "关掉则只在启动时取一次，之后切语言不影响已经显示的文字")]
+    [SerializeField] private bool followLanguageChanges = true;
+
+    // ══════════════════════════════════════════════════════════════════
+    // 固定文字
+    //
+    // 这些曾经是 Inspector 里的字符串字段，现在搬进了本地化字符串表
+    // （Resources/Localization/<lang>.json），因为它们是玩家可见文本、必须跟着语言走。
+    // 改措辞去改 json，不用进 Unity；key 一律在下面这几个常量里，别散写字面量。
+    // ══════════════════════════════════════════════════════════════════
+
+    private const string KeyUnknownSpeaker = "dialogue.unknownSpeaker";  // 不知道名字时的「？」
+    private const string KeyClearFormat    = "dialogue.clearFormat";     // {0}=名字 {1}=台词
+    private const string KeyAutoBlur       = "dialogue.autoBlurFormat";  // {0}=关键词
+    private const string KeyBlurNoKeyword  = "dialogue.blurNoKeyword";
+    private const string KeyFaintFormat    = "dialogue.faintFormat";     // {0}=方位词
+    private const string KeyThoughtFormat  = "dialogue.thoughtFormat";   // {0}=hint
+
+    /// <summary>相对玩家朝向的 8 个方位，从正前方开始顺时针。索引对应 DirectionIndex 的返回值</summary>
+    private static readonly string[] DirectionKeys =
+    {
+        "dir.front", "dir.frontRight", "dir.right", "dir.backRight",
+        "dir.back",  "dir.backLeft",   "dir.left",  "dir.frontLeft",
+    };
+    private const string KeyNearWord = "dir.near";   // 声源几乎就在脚下
 
     [Header("档位颜色")]
     [SerializeField] private Color clearColor   = Color.white;
@@ -93,6 +104,13 @@ public class DialogueUI : MonoBehaviour
     private Camera _cam;
     private RectTransform _canvasRT;
     private Font _font;
+
+    // 当前语言的字号缩放。不同文字字面大小差很多，统一在这里乘
+    private float _fontSizeScale = 1f;
+
+    // 所有建出来的 Text（含在池子里待复用的）。切语言时要把它们全部换一遍字体，
+    // 只换新建的会导致屏幕上已有的飘字还是旧字体，看起来像没生效
+    private readonly List<Text> _allTexts = new();
 
     private class FloaterView
     {
@@ -144,20 +162,26 @@ public class DialogueUI : MonoBehaviour
 
     private void Awake()
     {
-        _cam  = Camera.main;
-        _font = ResolveFont();
+        _cam = Camera.main;
+        ApplyLanguageFont(Localization.Current);
         EnsureCanvas();
     }
 
     private bool _bound;
 
-    private void OnEnable() => BindListener(warnIfMissing: false);
+    private void OnEnable()
+    {
+        BindListener(warnIfMissing: false);
+        if (followLanguageChanges) Localization.OnChanged += ApplyLanguageFont;
+    }
 
     // 兜底：自动装配时组件的添加顺序、或场景里的初始化顺序，都可能让 OnEnable 时玩家还没挂上偷听组件
     private void Start() => BindListener(warnIfMissing: true);
 
     private void OnDisable()
     {
+        Localization.OnChanged -= ApplyLanguageFont;
+
         if (!_bound || listener == null) return;
         listener.OnLineHeard    -= HandleLineHeard;
         listener.OnInnerThought -= HandleInnerThought;
@@ -221,6 +245,27 @@ public class DialogueUI : MonoBehaviour
                   (listener == null ? "⚠ 场景里没有 EavesdropListener，真正的对话不会显示" : ""));
     }
 
+    /// <summary>
+    /// Play 模式下在组件标题栏右键用：轮换语言，当场看字体有没有换过去。
+    /// 屏幕上已有的飘字也应该一起变——没变就说明 _allTexts 的登记漏了。
+    /// </summary>
+    [ContextMenu("切换语言（测试）")]
+    private void CycleLanguageForTest()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[对话UI] 请在 Play 模式下使用「切换语言（测试）」");
+            return;
+        }
+
+        Localization.Set(Localization.Current == GameLanguage.ChineseSimplified
+            ? GameLanguage.English
+            : GameLanguage.ChineseSimplified);
+
+        Debug.Log($"[对话UI] 当前语言 {Localization.Current}，" +
+                  $"字体 {(_font != null ? _font.name : "（无）")}，字号缩放 {_fontSizeScale:F2}");
+    }
+
     // ── 事件 ────────────────────────────────────────────────────
 
     private void HandleLineHeard(HeardLine entry)
@@ -269,7 +314,7 @@ public class DialogueUI : MonoBehaviour
             until = Time.time + thoughtDuration,
             view  = RentThoughtView()
         };
-        t.view.text.text  = thoughtFormat.Replace("{thought}", hint);
+        t.view.text.text  = Localization.Format(KeyThoughtFormat, hint);
         t.view.text.color = thoughtColor;
         t.height = LayoutText(t.view.text, t.view.root, thoughtMaxWidth).y;
         _thoughts.Add(t);
@@ -286,23 +331,23 @@ public class DialogueUI : MonoBehaviour
             case ClarityTier.Clear:
             {
                 nameUsed = listener != null ? listener.GetKnownName(e.speakerId) : null;
-                string nm = string.IsNullOrEmpty(nameUsed) ? unknownSpeakerName : nameUsed;
+                string nm = string.IsNullOrEmpty(nameUsed) ? Localization.Get(KeyUnknownSpeaker) : nameUsed;
                 if (string.IsNullOrEmpty(nm)) return e.text ?? "";
-                return clearFormat.Replace("{name}", nm).Replace("{text}", e.text ?? "");
+                return Localization.Format(KeyClearFormat, nm, e.text ?? "");
             }
 
             case ClarityTier.Blurred:
                 if (!string.IsNullOrEmpty(e.blurred)) return e.blurred;
-                if (!string.IsNullOrEmpty(e.keyword)) return autoBlurFormat.Replace("{keyword}", e.keyword);
-                return blurNoKeyword;
+                if (!string.IsNullOrEmpty(e.keyword)) return Localization.Format(KeyAutoBlur, e.keyword);
+                return Localization.Get(KeyBlurNoKeyword);
 
             default:
             {
                 // 极模糊：只知道有人在低声交谈 + 方位。**不泄露任何内容**
-                string dir = directionWords != null && e.direction >= 0 && e.direction < directionWords.Length
-                    ? directionWords[e.direction]
-                    : nearWord;
-                return faintFormat.Replace("{direction}", dir);
+                string dirKey = e.direction >= 0 && e.direction < DirectionKeys.Length
+                    ? DirectionKeys[e.direction]
+                    : KeyNearWord;
+                return Localization.Format(KeyFaintFormat, Localization.Get(dirKey));
             }
         }
     }
@@ -323,7 +368,8 @@ public class DialogueUI : MonoBehaviour
     /// </summary>
     private Vector3 AnchorFor(HeardLine entry)
     {
-        if (entry.tier != ClarityTier.Faint || listener == null) return entry.position;
+        bool concealed = entry.speaker != null && !PlayerSceneVisibility.CanReveal(entry.speaker);
+        if ((!concealed && entry.tier != ClarityTier.Faint) || listener == null) return entry.position;
 
         Vector3 self = listener.transform.position;
         Vector3 to = entry.position - self;
@@ -353,7 +399,8 @@ public class DialogueUI : MonoBehaviour
                 listener.GetKnownName(f.entry.speakerId) != f.shownName)
                 LayoutFloater(f);
 
-            Vector3 sp = _cam.WorldToScreenPoint(f.Anchor + floaterWorldOffset);
+            bool concealed = f.entry.speaker != null && !PlayerSceneVisibility.CanReveal(f.entry.speaker);
+            Vector3 sp = _cam.WorldToScreenPoint((concealed ? AnchorFor(f.entry) : f.Anchor) + floaterWorldOffset);
             if (sp.z < 0f) { f.view.group.alpha = 0f; continue; }   // 在摄像机背后
 
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_canvasRT, sp, uiCam, out Vector2 local);
@@ -501,8 +548,11 @@ public class DialogueUI : MonoBehaviour
 
     private void SetupText(Text text, int size, TextAnchor align, FontStyle style)
     {
+        // 登记进来，切语言时才能把已经建出来的文字一起换掉
+        if (!_allTexts.Contains(text)) _allTexts.Add(text);
+
         text.font               = _font;
-        text.fontSize           = size;
+        text.fontSize           = ScaledSize(size);
         text.fontStyle          = style;
         text.alignment          = align;
         text.supportRichText    = false;               // 台词里的 < > 不该被当成标签
@@ -535,21 +585,69 @@ public class DialogueUI : MonoBehaviour
         _canvasRT = (RectTransform)canvas.transform;
     }
 
-    private Font ResolveFont()
+    /// <summary>
+    /// 按语言取字体并应用到所有已建出来的文字（含池子里待复用的）。
+    /// 切语言时当场生效，不用等下一条飘字。
+    /// </summary>
+    private void ApplyLanguageFont(GameLanguage language)
     {
-        if (font != null) return font;
+        var entry = ResolveEntry(language);
+        _font          = ResolveFont(entry);
+        _fontSizeScale = entry != null ? Mathf.Max(0.1f, entry.sizeScale) : 1f;
 
-        if (systemFontFallbacks != null && systemFontFallbacks.Length > 0)
+        // 已经在屏幕上的、以及池子里待复用的，全部换掉。
+        // 字号要重算：各语言的 sizeScale 不同
+        foreach (var t in _allTexts)
+        {
+            if (t == null) continue;
+            t.font = _font;
+            // 独白字号比飘字大，用父物体名区分（两类视图建出来时名字不同）
+            bool isThought = t.gameObject.name == "DialogueThought";
+            t.fontSize = ScaledSize(isThought ? thoughtFontSize : floaterFontSize);
+        }
+
+        // 换了字体字形宽高都变了，屏幕上现有的飘字要重排，否则背景框对不上文字
+        foreach (var f in _floaters) LayoutFloater(f);
+        foreach (var th in _thoughts)
+            if (th.view != null)
+                th.height = LayoutText(th.view.text, th.view.root, thoughtMaxWidth).y;
+    }
+
+    private int ScaledSize(int baseSize) => Mathf.Max(1, Mathf.RoundToInt(baseSize * _fontSizeScale));
+
+    private DialogueFontSet.Entry ResolveEntry(GameLanguage language)
+    {
+        if (fontSet == null) fontSet = DialogueFontSet.LoadOrNull();
+        return fontSet != null ? fontSet.Resolve(language)
+                               : DialogueFontSet.BuiltinDefault(language);
+    }
+
+    /// <summary>
+    /// 字体优先级：Inspector 直接指定 &gt; 语言配置里的字体文件 &gt; 该语言的系统字体 &gt; Unity 内置。
+    /// 只有最后一级会显示成方块（内置字体没有中日韩字形），所以到那一步要明确报错。
+    /// </summary>
+    private Font ResolveFont(DialogueFontSet.Entry entry)
+    {
+        if (font != null) return font;                 // Inspector 指定的最优先
+        if (entry != null && entry.font != null) return entry.font;
+
+        var names = entry?.osFontFallbacks;
+        if (names != null && names.Length > 0)
         {
             var installed = new HashSet<string>(Font.GetOSInstalledFontNames());
-            foreach (var n in systemFontFallbacks)
+            foreach (var n in names)
                 if (!string.IsNullOrEmpty(n) && installed.Contains(n))
                 {
                     var f = Font.CreateDynamicFontFromOSFont(n, 32);
                     if (f != null) return f;
                 }
 
-            Debug.LogWarning("[对话UI] 系统里没找到列表里的中文字体，退回 Unity 内置字体（中文靠系统字体回退）", this);
+            Debug.LogWarning(
+                $"[对话UI] 语言 {entry.language} 既没配字体文件，系统里也找不到 " +
+                $"[{string.Join(", ", names)}] 中的任何一个。\n" +
+                "退回 Unity 内置字体——它只有拉丁字形，中日韩会显示成方块。\n" +
+                "修法：把字体文件放进项目，拖到 DialogueUI 的 font 栏，" +
+                "或配进 Resources/DialogueFontSet 对应语言那一条。", this);
         }
 
         var builtin = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

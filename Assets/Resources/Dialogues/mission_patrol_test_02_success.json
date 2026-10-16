@@ -1,0 +1,31 @@
+{
+  "id": "mission_patrol_test_02_success",
+  "trigger": "manual",
+  "topic": "水果区单人巡逻",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E01"
+  ],
+  "lines": [
+    {
+      "speaker": "E01",
+      "text": "这一圈走完了，暂时没见着生面孔。"
+    },
+    {
+      "speaker": "E01",
+      "text": "烂掉的那箱还在，味道倒是一天比一天冲。"
+    }
+  ]
+}

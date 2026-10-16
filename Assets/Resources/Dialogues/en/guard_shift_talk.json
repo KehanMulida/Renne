@@ -1,0 +1,40 @@
+{
+  "id": "guard_shift_talk",
+  "trigger": "ambient",
+  "topic": "shift",
+  "weight": 1.2,
+  "priority": 100,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 2,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 10,
+  "speakers": ["E01", "E02"],
+  "lines": [
+    { "speaker": "E01", "text": "{E02}, how long until the shift change?", "keyword": "{E02}" },
+
+    { "speaker": "E02",
+      "text":    "Two o'clock. The basement is yours tonight.",
+      "blurred": "...basement...yours",
+      "keyword": "basement",
+      "hint":    "This building... has a basement?",
+      "flag":    "intel_basement_shift" },
+
+    { "speaker": "E01", "text": "Me again. Where's the key?" },
+
+    { "speaker": "E02",
+      "text":    "Old Zhang has it. Don't bother him, he's been in a mood.",
+      "blurred": "Old Zhang...don't bother him",
+      "keyword": "Old Zhang",
+      "hint":    "In a mood... what happened these past few days?",
+      "flag":    "intel_key_holder" },
+
+    { "speaker": "E01", "text": "Fine." }
+  ]
+}

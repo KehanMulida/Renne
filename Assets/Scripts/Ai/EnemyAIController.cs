@@ -44,6 +44,8 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
     private int  searchConfidence = 0;
     // searchConfidence / soundInvestigateCountdown 每回合只应递减一次
     private bool _confidenceDecrementedThisTurn = false;
+    // 掩体筛选每回合只跑一次（EvaluateState 每个 action 都会调用）
+    private bool _coverEvaluatedThisTurn = false;
     // 本次 action 开始时的格子位置（判断是否真的移动了，决定是否等待 ActionInterval）
     private Vector2Int _lastActionStartGrid;
 
@@ -88,6 +90,12 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
             searchConfidence               = config.searchConfidenceMax;
 
             Debug.Log($"[Enemy:{gameObject.name}] Attacked by {attacker.name}, heading to {attacker.transform.position}");
+
+            // 挨打了就别聊天了：掐掉所有低于 Bark 的对话（闲聊、排队中的闲聊）。
+            // 不掐的话，敌人会一边中弹一边继续讨论卤蛋——而且闲聊占着人，
+            // 后面想插的警戒喊话还播不出来
+            DialogueManager.Instance?.InterruptBelow(
+                DialoguePriority.Bark, $"{enemyId} 遭到攻击");
 
             // 通知进入战斗模式
             if (CombatModeManager.Instance != null)
@@ -296,6 +304,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
             currentTurnVisitedCells.Add(unitMovement.CurrentGridPosition);
             blackboard["hasAttackedThisTurn"]   = false;
             _confidenceDecrementedThisTurn      = false; // 每回合开始重置，允许本回合减一次
+            _coverEvaluatedThisTurn             = false; // 掩体筛选本回合尚未跑
 
             // ── 战况评估：每回合开始时写入 Blackboard ──
             // HP 百分比
@@ -389,6 +398,14 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
                 blackboard["inCombatRange"] = inRange && canShoot;
             }
 
+            // ── 掩体评估：只有「交战中」的 AI 才跑，且每回合一次 ──────────────
+            // 巡逻/待机/仅调查声音的敌人完全不会进到这里，零开销。
+            if (!_coverEvaluatedThisTurn)
+            {
+                _coverEvaluatedThisTurn = true;
+                UpdateCoverTarget();
+            }
+
             searchConfidence = config.searchConfidenceMax;
             bool combatReady = blackboard.ContainsKey("inCombatRange") && (bool)blackboard["inCombatRange"];
 
@@ -447,6 +464,9 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
                 blackboard.Remove("lastSeenFloor");
                 blackboard.Remove("inCombatRange");
                 blackboard.Remove("hasVisualContact");
+                blackboard.Remove("coverTarget");        // 脱战：清掉掩体走位残留
+                blackboard.Remove("coverTargetFloor");
+                blackboard.Remove("inCombatCover");
                 searchConfidence = 0;
 
                 if (CombatModeManager.Instance != null)
@@ -515,6 +535,77 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
         }
 
         return "Patrol";
+    }
+
+    /// <summary>
+    /// 交战中的掩体评估（每回合一次，由 EvaluateState 在有视觉接触时调用）：
+    ///   · inCombatCover —— 当前格是否已在掩体旁（便宜的四邻网格查询）
+    ///   · coverTarget   —— 不在掩体旁且附近找得到更好的射击位时写入世界坐标，否则移除
+    ///
+    /// 把筛选放在这里（而不是执行器里）是为了让 BT 能用「coverTarget 是否存在」当条件：
+    /// 附近没掩体时该分支直接 Failure、干净落到开火分支，而不是空跑一个 Action 浪费整回合。
+    /// </summary>
+    private void UpdateCoverTarget()
+    {
+        var gm = GridManager.Instance;
+        if (gm == null || unitMovement == null ||
+            !blackboard.TryGetValue("lastSeenPosition", out var lspObj) || !(lspObj is Vector3 playerWorld))
+        {
+            blackboard.Remove("coverTarget");
+            blackboard.Remove("coverTargetFloor");
+            return;
+        }
+
+        Vector2Int aiCell     = unitMovement.CurrentGridPosition;
+        Vector2Int playerCell = gm.WorldToGrid(playerWorld);
+        int        floor      = unitMovement.CurrentFloor;
+
+        int attackRangeCells = enemyEquipment != null && enemyEquipment.HasWeapon
+            ? Mathf.Max(1, Mathf.RoundToInt(enemyEquipment.GetAttackRange(config)))
+            : Mathf.Max(1, config.attackRange);
+
+        // 「已就位」= 贴着掩体 **且** 已进入攻击距离。
+        // 少了距离这一半，AI 只要碰巧站在某面墙边就会自认到位、再也不推进。
+        int  dPlayer = Mathf.Abs(aiCell.x - playerCell.x) + Mathf.Abs(aiCell.y - playerCell.y);
+        bool inPlace = dPlayer <= attackRangeCells
+                       && CombatCover.IsBesideCover(aiCell, playerCell, floor);
+        blackboard["inCombatCover"] = inPlace;
+
+        if (inPlace)   // 已在掩体旁且够得着，本回合不用挪位
+        {
+            blackboard.Remove("coverTarget");
+            blackboard.Remove("coverTargetFloor");
+            return;
+        }
+
+        // 瞄准点用身体点，与开火保持一致
+        Vector3 playerAim = playerWorld + Vector3.up * 1.0f;
+        if (blackboard.TryGetValue("lastSeenTarget", out var tObj) && tObj is Transform t)
+        {
+            var d = t.GetComponent<IDetectable>();
+            if (d != null) playerAim = d.DetectionPosition;
+        }
+
+        string tactic = blackboard.TryGetValue("combat_tactic", out var tc) && tc is string ts ? ts : "Engage";
+
+        // 允许跨越的最大距离：掩体位是围着玩家找的，AI 可能要走几回合过去，
+        // 给得宽松些，真正的远近偏好交给评分里的 -dAI 项。
+        int maxTravel = Mathf.Clamp(
+            Mathf.RoundToInt(config.visionRange / Mathf.Max(0.01f, gm.CellSize)) * 2, 6, 20);
+
+        if (CombatCover.SelectBestCover(aiCell, playerCell, playerAim, floor, tactic,
+                                        maxTravel, attackRangeCells, out var pick) && pick.cell != aiCell)
+        {
+            blackboard["coverTarget"] = FloorManager.Instance != null
+                ? FloorManager.Instance.GridToWorld(pick.cell, floor)
+                : gm.GridToWorld(pick.cell);
+            blackboard["coverTargetFloor"] = floor;
+        }
+        else
+        {
+            blackboard.Remove("coverTarget");
+            blackboard.Remove("coverTargetFloor");
+        }
     }
 
     // ============ 执行 ============
@@ -744,6 +835,7 @@ public class EnemyAIController : MonoBehaviour, IDamageable, ITurnControllable
         {
             ["move"]              = new MovementExecutor(),
             ["combat"]            = new CombatExecutor(),
+            ["combatMove"]        = new CombatMoveExecutor(),
             ["investigate"]       = new InvestigationExecutor(),
             ["floorChase"]        = new FloorChaseExecutor(),
             ["moveToZone"]        = new MoveToZoneExecutor(),

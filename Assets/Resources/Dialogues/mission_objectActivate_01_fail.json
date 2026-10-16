@@ -1,0 +1,31 @@
+{
+  "id": "mission_objectActivate_01_fail",
+  "trigger": "manual",
+  "topic": "启动目标设备 3004",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E03"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "设备这边没办成，先别当它已经开了。"
+    },
+    {
+      "speaker": "E03",
+      "text": "得重新确认一下，不能只看那盏灯。"
+    }
+  ]
+}

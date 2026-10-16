@@ -318,6 +318,7 @@ public class ZoneManager : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         if (!showDebugGUI) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box);

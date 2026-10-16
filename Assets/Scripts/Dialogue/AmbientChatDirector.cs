@@ -38,6 +38,16 @@ public class AmbientChatDirector : MonoBehaviour
     [Tooltip("要求参与者在同一楼层")]
     [SerializeField] private bool requireSameFloor = true;
 
+    [Header("走散")]
+    [Tooltip("说话不占用行动，敌人是边聊边巡逻的，开聊后可能各走各的。\n" +
+             "参与者相距超过本段对话 maxSpeakerDistance × 此倍数时中止。\n" +
+             "1 = 刚超出开聊距离就断；1.5 = 给一点余量，允许边走边聊")]
+    [Min(1f)] [SerializeField] private float driftAbortFactor = 1.5f;
+
+    [Tooltip("走散中止前，让最后开口的人补说这段对话（留空 = 直接中止，不说话）。\n" +
+             "对应 Resources/Dialogues/<此值>.json，应当是单角色位、trigger=manual、weight=0 的一句话")]
+    [SerializeField] private string driftLostDialogueId = "_speaker_lost";
+
     [Header("中止")]
     [Tooltip("每隔几秒检查一次参与者是否进入警觉。\n" +
              "对话是在回合内按秒连说的，只在回合开始时查的话，被发现后还会接着聊完")]
@@ -46,7 +56,10 @@ public class AmbientChatDirector : MonoBehaviour
     [Header("调试")]
     [SerializeField] private bool enableDebugLog = true;
 
-    private int   _lastStartTurn = int.MinValue;
+    /// <summary>_lastStartTurn 的「从没开聊过」哨兵。不能用 int.MinValue：会在减法里溢出</summary>
+    private const int NeverStarted = int.MinValue;
+
+    private int   _lastStartTurn = NeverStarted;
     private bool  _subscribed;
     private float _nextAlertCheck;
 
@@ -56,6 +69,7 @@ public class AmbientChatDirector : MonoBehaviour
         public string id;
         public ChatState state;
         public List<DialogueSpeaker> cast;
+        public DialogueData data;    // 走散判定要读 maxSpeakerDistance
     }
     private readonly List<Running> _running = new();
 
@@ -141,16 +155,70 @@ public class AmbientChatDirector : MonoBehaviour
                 if (!ai.IsAlive)   { why = $"{sp.SpeakerId} 阵亡"; break; }
                 if (ai.IsInCombat) { why = $"{sp.SpeakerId} 进入战斗"; break; }
                 if (r.state == ChatState.Idle && ai.IsAlerted) { why = $"{sp.SpeakerId} 听到动静"; break; }
+                if (r.data != null && !r.data.MatchesMission(ai.CurrentMission?.missionId))
+                { why = $"{sp.SpeakerId} 已切换任务"; break; }
+            }
+
+            // ── 走散 ────────────────────────────────────────────────
+            // 说话不占用行动，所以开聊后两人各自巡逻、越走越远是常态。
+            // maxSpeakerDistance 只在开聊那一刻判过一次，这里补上运行中的检查，
+            // 否则相距 20 米还在一句一句对答，玩家只能听到半截情报。
+            bool drifted = false;
+            if (why == null && TooFarApart(r, out float apart, out float allowed))
+            {
+                drifted = true;
+                why = $"走散了（相距 {apart:F1} 米 > 允许 {allowed:F1} 米）";
             }
 
             if (why == null) continue;
+
+            // 走散时让最后开口的人补一句「人呢？」。
+            // ⚠ 必须在 Stop 之前取：Stop 会把会话移出 _active，之后查不到最后说话的人
+            DialogueSpeaker lost = null;
+            if (drifted && !string.IsNullOrEmpty(driftLostDialogueId) && DialogueManager.Instance != null)
+                DialogueManager.Instance.TryGetLastSpeaker(r.id, out lost);
 
             DebugLog($"「{r.id}」中止：{why}");
             // 先移出列表再停：Stop 会同步触发 OnDialogueFinished → HandleFinished 按 id 再删一遍，
             // 顺序反过来的话这里的 RemoveAt(i) 会删错一条，或在末尾越界
             _running.RemoveAt(i);
             DialogueManager.Instance?.Stop(r.id);
+
+            // Stop 已经把参与者的 IsBusy 放开，这时才能让他开新的一句
+            if (lost != null)
+            {
+                var solo = new List<DialogueSpeaker> { lost };
+                if (DialogueManager.Instance.PlayWithCast(driftLostDialogueId, solo))
+                    DebugLog($"{lost.SpeakerId} 发现同伴走了 → 「{driftLostDialogueId}」");
+            }
         }
+    }
+
+    /// <summary>
+    /// 参与者是不是已经走散。返回最远的一对相距多少、以及本段对话允许多少。
+    /// 单人对话（自言自语）永远返回 false。
+    /// </summary>
+    private bool TooFarApart(Running r, out float apart, out float allowed)
+    {
+        apart   = 0f;
+        allowed = 0f;
+        if (r.cast == null || r.cast.Count < 2 || r.data == null) return false;
+
+        allowed = Mathf.Max(0.1f, r.data.maxSpeakerDistance) * driftAbortFactor;
+
+        for (int i = 0; i < r.cast.Count; i++)
+        {
+            for (int j = i + 1; j < r.cast.Count; j++)
+            {
+                var a = r.cast[i];
+                var b = r.cast[j];
+                if (a == null || b == null) continue;
+
+                float d = Vector3.Distance(a.transform.position, b.transform.position);
+                if (d > apart) apart = d;
+            }
+        }
+        return apart > allowed;
     }
 
     // ── 开聊 ────────────────────────────────────────────────────
@@ -165,7 +233,26 @@ public class AmbientChatDirector : MonoBehaviour
         string reason = null;
         while (_running.Count < maxConcurrent)
         {
-            if (turn - _lastStartTurn < globalCooldownTurns) { reason ??= $"全局冷却中（globalCooldownTurns={globalCooldownTurns}）"; break; }
+            // 有任务/剧情对话排着队等人，就别再开新闲聊去占人了。
+            // 抢占机制能把人拽出来，但那样会出现"聊一半被打断"的突兀感；
+            // 主动避让一回合更自然，代价只是少几句闲聊
+            if (mgr.HasPendingAtLeast(DialoguePriority.Bark))
+            {
+                reason ??= "有更高优先级的对话在排队，本回合让路";
+                break;
+            }
+
+            // ⚠ 两个短路缺一不可：
+            //   · globalCooldownTurns <= 0 表示不冷却，根本不该进这个判断
+            //   · _lastStartTurn 还是哨兵值（从没开聊过）时，turn - int.MinValue 会整数溢出
+            //     回绕成负数，于是「冷却中」恒成立 → 永远开不了聊 → _lastStartTurn 永远
+            //     停在哨兵值，死锁且无法自愈。必须先排除哨兵，不能让它参与减法
+            if (globalCooldownTurns > 0 && _lastStartTurn != NeverStarted &&
+                turn - _lastStartTurn < globalCooldownTurns)
+            {
+                reason ??= $"全局冷却中（还差 {globalCooldownTurns - (turn - _lastStartTurn)} 回合）";
+                break;
+            }
             if (Random.value > chancePerTurn) { reason ??= $"这回合没掷中（chancePerTurn={chancePerTurn:F2}）"; break; }
             if (!TryStartOne(mgr, turn, out reason)) break;
             startedAny = true;
@@ -208,7 +295,13 @@ public class AmbientChatDirector : MonoBehaviour
         if (!mgr.PlayWithCast(pick.data.id, pick.cast)) return false;
 
         _lastStartTurn = turn;
-        _running.Add(new Running { id = pick.data.id, state = pick.data.StateKind, cast = pick.cast });
+        _running.Add(new Running
+        {
+            id    = pick.data.id,
+            state = pick.data.StateKind,
+            cast  = pick.cast,
+            data  = pick.data,
+        });
 
         DebugLog($"开聊「{pick.data.id}」{(string.IsNullOrEmpty(pick.data.topic) ? "" : $"[{pick.data.topic}] ")}" +
                  $"参与者：{string.Join("、", pick.cast.ConvertAll(s => s.SpeakerId))}");
@@ -256,6 +349,8 @@ public class AmbientChatDirector : MonoBehaviour
         if (roles.Count == 0) return false;
 
         var pool = PoolFor(data);
+        if (data.missionIds != null && data.missionIds.Count > 0)
+            pool = pool.FindAll(sp => data.MatchesMission(sp.GetComponent<EnemyAIController>()?.CurrentMission?.missionId));
         if (pool.Count == 0) return false;
         float maxDist = Mathf.Max(0.1f, data.maxSpeakerDistance);
 

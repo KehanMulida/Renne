@@ -886,33 +886,5 @@ public class EquipmentManager : MonoBehaviour
         return reduction;
     }
 
-    void OnGUI()
-    {
-        if (!enableDebugLog || !Application.isPlaying) return;
 
-        GUIStyle style = new GUIStyle(GUI.skin.box)
-        {
-            fontSize = 13,
-            alignment = TextAnchor.UpperLeft
-        };
-        style.normal.textColor = Color.white;
-
-        string info = "[Hotbar]\n";
-        for (int i = 0; i < hotbarSize; i++)
-        {
-            string prefix   = i == currentSlotIndex ? "► " : "  ";
-            string itemName = hotbar[i].IsEmpty
-                ? "---"
-                : $"{hotbar[i].itemData.Name} x{hotbar[i].quantity}";
-            string tag = (!hotbar[i].IsEmpty && hotbar[i].itemData.IsThrowable) ? " [T]" : "";
-            info += $"{prefix}[{i + 1}] {itemName}{tag}\n";
-        }
-
-        if (isAiming)
-            info += "\n[AIMING] LClick=Throw";
-        else if (CurrentSlot != null && !CurrentSlot.IsEmpty)
-            info += "\n[RClick=Use]";
-
-        GUI.Box(new Rect(10, 200, 210, 180), info, style);
-    }
 }

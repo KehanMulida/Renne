@@ -1,0 +1,35 @@
+{
+  "id": "mission_defend_zone_01_mutter",
+  "trigger": "ambient",
+  "topic": "仓储区守卫",
+  "priority": 0,
+  "weight": 3,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 8,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "外面刚才有声音，要不要过去看看？"
+    },
+    {
+      "speaker": "E04",
+      "text": "先别动。咱们一走，这里就没人了。"
+    }
+  ],
+  "missionIds": [
+    "defend_zone_01"
+  ]
+}

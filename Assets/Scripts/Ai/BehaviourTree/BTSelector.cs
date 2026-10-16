@@ -167,17 +167,27 @@ public class BTAction : BTNode
         isExecuting = false;
         // Debug.Log($"[BTAction] Executor {executorName} completed");
         
-        // 如果是巡逻移动完成，设置新的随机巡逻点
+        // ⚠ 这里原本会在每次 move 结束后，用一个未经校验的 Random.Range(-5,5) 偏移
+        //   直接覆盖 patrolTarget。两个问题：
+        //     ① 不校验可走/有效，目标经常落在墙里或地图外 → 下回合 FindPath 失败、原地不动
+        //     ② 把 EnemyAIController.SetPatrolTarget() 那套（避开上回合走过的格子、
+        //        校验可走、保证最小距离）整个盖掉，回合之间方向毫无连续性，看起来乱转
+        //   现在交还给 SetPatrolTarget：它在 EvaluateState 里按需重选
+        //   （只有"没有目标"或"已走到目标"时才换），方向能保持连续。
+        //
+        // 走到目标后把 patrolTarget 清掉，下次 EvaluateState 自然会重选一个合法的
         if (executorName == "move" && context.Blackboard.ContainsKey("patrolTarget"))
         {
             var controller = coroutineRunner as EnemyAIController;
-            if (controller != null)
+            var unitMovement = controller != null ? controller.GetComponent<UnitMovement>() : null;
+
+            if (unitMovement != null && GridManager.Instance != null)
             {
-                // 设置新的随机巡逻目标
-                var unitMovement = controller.GetComponent<UnitMovement>();
-                Vector2Int randomOffset = new Vector2Int(Random.Range(-5, 5), Random.Range(-5, 5));
-                Vector2Int targetGrid = unitMovement.CurrentGridPosition + randomOffset;
-                context.Blackboard["patrolTarget"] = FloorManager.Instance.GridToWorld(targetGrid, unitMovement.CurrentFloor);
+                Vector2Int targetGrid = GridManager.Instance.WorldToGrid(
+                    (Vector3)context.Blackboard["patrolTarget"]);
+
+                if (targetGrid == unitMovement.CurrentGridPosition)
+                    context.Blackboard.Remove("patrolTarget");
             }
         }
     }

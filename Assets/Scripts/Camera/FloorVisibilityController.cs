@@ -171,6 +171,7 @@ public class FloorVisibilityController : MonoBehaviour
 
         // 查找所有带有Renderer的物体
         Renderer[] allRenderers = FindObjectsOfType<Renderer>();
+        floorObjectsMap.Clear();
 
         foreach (Renderer renderer in allRenderers)
         {
@@ -180,10 +181,19 @@ public class FloorVisibilityController : MonoBehaviour
 
             // 根据Y坐标判断属于哪个楼层
             float objectY = renderer.transform.position.y;
+            // Imported floor meshes may keep a ground-level pivot while their vertices
+            // are on an upper storey. Classify flat slabs by their actual world bounds.
+            if(renderer.bounds.size.y<.25f && Mathf.Max(renderer.bounds.size.x,renderer.bounds.size.z)>2f)
+                objectY=renderer.bounds.center.y;
             int floor = FloorManager.Instance.GetFloorFromWorldY(objectY);
 
             // 注册到对应楼层
-            RegisterObjectToFloor(renderer.gameObject, floor);
+            // Scan each renderer once, rather than registering a parent's upper-floor
+            // children again into the parent's storey.
+            if(!floorObjectsMap.TryGetValue(floor,out var data))
+                floorObjectsMap[floor]=data=new FloorObjects(floor);
+            data.staticObjects.Add(renderer.gameObject);
+            data.renderers.Add(renderer);
         }
 
         DebugLog($"Scanned {allRenderers.Length} renderers across {floorObjectsMap.Count} floors");
@@ -523,6 +533,7 @@ public class FloorVisibilityController : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         GUIStyle style = new GUIStyle(GUI.skin.box);
         style.fontSize = 12;
         style.normal.textColor = Color.white;

@@ -179,8 +179,15 @@ public class UnitMovement : MonoBehaviour
     /// apCost：调用方预算的 AP 消耗（≥0 时使用该值，-1 = 默认用实际路径长度）
     /// AI 执行器预先算好 stepsToTake 后传入，防止内部 re-pathfind 路径不同导致 AP 超耗
     /// </summary>
-    /// <summary>诊断开关：打印移动路径并检查是否跨越被薄墙隔断的格边。排查完置 false。</summary>
-    public static bool DebugPathCross = true;
+    /// <summary>
+    /// 诊断开关：打印移动路径并检查是否跨越被薄墙隔断的格边。
+    ///
+    /// 已于 2026-10-06 关闭 —— 连续多次自动化运行（每次数百条路径）都是
+    /// 0 条「路径穿墙」，说明 GetNeighbors 的 CanCross 过滤是生效的，排查结束。
+    /// 开着的代价不小：每走一步打一条 Debug.Log，一次 8 回合的运行就是几百条，
+    /// 还会把真正该看的警告淹掉。怀疑寻路穿墙时再临时置 true。
+    /// </summary>
+    public static bool DebugPathCross = false;
 
     public void MoveToGrid(Vector2Int targetGridPos, int targetFloor = -1, int apCost = -1)
     {
@@ -253,8 +260,11 @@ public class UnitMovement : MonoBehaviour
                 {
                     // 这条边判定为「可通过」——那就查查它上面到底有没有碰撞体（不限 Layer）。
                     // 若列出了墙，看它的 layer：不是 Obstacle 就说明层没设对。
+                    //
+                    // ⚠ DescribeEdge 用 ~0 扫所有层，必然会扫到移动单位自己的碰撞盒。
+                    //   自己挡自己不是问题，过滤掉，否则 85% 的输出都是这种假阳性。
                     string what = GridManager.Instance.DescribeEdge(prev, step, currentFloor);
-                    if (!string.IsNullOrEmpty(what))
+                    if (!string.IsNullOrEmpty(what) && !MentionsOnlySelf(what))
                         Debug.LogWarning($"[Move:{gameObject.name}] 边 {prev}→{step} 未阻挡，但边上有碰撞体：{what}");
                 }
                 prev = step;
@@ -263,6 +273,23 @@ public class UnitMovement : MonoBehaviour
         }
 
         StartCoroutine(MoveAlongPathCoroutine(path, apCost));
+    }
+
+    /// <summary>
+    /// DescribeEdge 的输出里是不是只提到了自己的碰撞体。
+    /// 格式形如 "[Box:Enemy (3) layer=Enemy(8)] [Ray@2:Enemy (3) layer=Enemy(8)]"，
+    /// 每一项都带本物体名就说明全是自己，没有别的东西挡在这条边上。
+    /// </summary>
+    private bool MentionsOnlySelf(string describeOutput)
+    {
+        string self = gameObject.name;
+        foreach (var part in describeOutput.Split('['))
+        {
+            string s = part.Trim();
+            if (s.Length == 0) continue;
+            if (!s.Contains(self)) return false;
+        }
+        return true;
     }
 
     /// <summary>

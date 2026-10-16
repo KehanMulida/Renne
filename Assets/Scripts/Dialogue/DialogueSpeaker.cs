@@ -25,6 +25,10 @@ public class DialogueSpeaker : MonoBehaviour
     [Tooltip("说话时转向对话的另一方")]
     [SerializeField] private bool turnToListener = true;
 
+    [Tooltip("转身速度（度/秒）。说话转向同伴、聊完转回原朝向都用它。0 = 瞬间转\n" +
+             "移动中不转身——那时朝向归 UnitMovement 管，两边都写会打架抖动")]
+    [Min(0f)] [SerializeField] private float turnSpeed = 360f;
+
     [Tooltip("发声点相对本物体的偏移（大致嘴/头的高度）")]
     [SerializeField] private Vector3 mouthOffset = new Vector3(0f, 1.6f, 0f);
 
@@ -65,6 +69,16 @@ public class DialogueSpeaker : MonoBehaviour
     // 登记时用的 id。注销必须用同一个——enemyId 运行时若被改，重新算出来的就对不上了
     private string _registeredId;
 
+    // 开聊前的朝向。对话期间会转向同伴，结束时要转回去
+    private Quaternion _facingBeforeTalk;
+    private bool       _facingSaved;
+    private UnitMovement _movement;
+    private bool         _movementResolved;
+
+    // 想转到哪个朝向。有值 = Update 正在往那儿转；转到位或开始移动就清空
+    private Quaternion _desiredFacing;
+    private bool       _hasDesiredFacing;
+
     /// <summary>当前是否已被某段对话占用（防止同一个人同时参与两段对话）。</summary>
     public bool IsBusy { get; internal set; }
 
@@ -100,6 +114,10 @@ public class DialogueSpeaker : MonoBehaviour
         _registeredId = null;
 
         IsBusy = false;
+        // 组件被禁用时丢掉暂存的朝向：重新启用后那个值早就过期了，
+        // 留着会在下一段对话结束时把人转到一个莫名其妙的方向
+        _facingSaved      = false;
+        _hasDesiredFacing = false;
     }
 
     /// <summary>说这一句时的表现：转向对方。台词与发声由 DialogueManager 负责。</summary>
@@ -111,7 +129,84 @@ public class DialogueSpeaker : MonoBehaviour
         dir.y = 0f;
         if (dir.sqrMagnitude < 0.0001f) return;
 
-        transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+        // 第一次开口前记下原朝向，供 RestoreFacing() 还原。
+        // 一段对话里会说好几句、每句都转一次，所以只在首句保存
+        if (!_facingSaved)
+        {
+            _facingBeforeTalk = transform.rotation;
+            _facingSaved      = true;
+        }
+
+        SetDesiredFacing(Quaternion.LookRotation(dir.normalized, Vector3.up));
+    }
+
+    /// <summary>
+    /// 把朝向转回开聊之前。由 DialogueManager.FinishSession 调用（正常结束和中止都会走到）。
+    ///
+    /// 为什么必须还原：视觉感知是基于 transform.forward 的锥形
+    /// （VisionPerception 用 Vector3.Angle(owner.forward, 目标方向) 判断是否在视野内）。
+    /// 对话期间互相对视会把视野锥指向同伴 —— 那是有意的设计，对话制造盲区。
+    /// 但聊完不还原的话，原地不动的敌人（守点任务、AP 耗尽、无事可做）
+    /// 会永久盯着同伴站过的方向，盲区固定在那儿不走，等于白送一条潜行路线。
+    ///
+    /// 正在移动的敌人不处理：UnitMovement 每帧会把朝向 Slerp 到移动方向，
+    /// 这里再写一次只会和它打架，交给它自己纠正就行。
+    /// </summary>
+    public void RestoreFacing()
+    {
+        if (!_facingSaved) return;
+        _facingSaved = false;
+
+        if (IsMoving) { _hasDesiredFacing = false; return; }
+        SetDesiredFacing(_facingBeforeTalk);
+    }
+
+    private bool IsMoving
+    {
+        get
+        {
+            if (!_movementResolved)
+            {
+                _movement         = GetComponent<UnitMovement>();
+                _movementResolved = true;
+            }
+            return _movement != null && _movement.IsMoving;
+        }
+    }
+
+    private void SetDesiredFacing(Quaternion target)
+    {
+        // 移动中一律不转身：UnitMovement 每帧把朝向 Slerp 到移动方向，
+        // 这里再写一次就是两头抢 transform.rotation —— 说话那帧 snap 向同伴、
+        // 下一帧又被拉回去，表现为边走边说时朝向疯狂抖动
+        if (IsMoving) { _hasDesiredFacing = false; return; }
+
+        if (turnSpeed <= 0f)
+        {
+            transform.rotation = target;
+            _hasDesiredFacing  = false;
+            return;
+        }
+
+        _desiredFacing    = target;
+        _hasDesiredFacing = true;
+    }
+
+    private void Update()
+    {
+        if (!_hasDesiredFacing) return;
+
+        // 聊到一半开始走了 → 交还给 UnitMovement，别抢
+        if (IsMoving) { _hasDesiredFacing = false; return; }
+
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation, _desiredFacing, turnSpeed * Time.deltaTime);
+
+        if (Quaternion.Angle(transform.rotation, _desiredFacing) < 0.5f)
+        {
+            transform.rotation = _desiredFacing;
+            _hasDesiredFacing  = false;
+        }
     }
 }
 

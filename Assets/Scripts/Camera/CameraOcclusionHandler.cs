@@ -2,29 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 相机遮挡淡出：把挡在相机与玩家之间的物体临时变半透明，离开后恢复。
-///
-/// ── 相比旧版修掉的问题 ────────────────────────────────────────────────
-/// 1. **矮墙永远不透明**（你遇到的现象）：旧版只朝玩家身上**一个点**（胸口）发射线。
-///    俯视相机是**从上往下斜着**打过来的，射线会直接从矮墙（厕所隔板等）**上方掠过**，
-///    于是矮墙永远进不了遮挡列表。现在**沿玩家身高采样多个点**（脚/腰/头）——
-///    朝脚下那条射线才会被矮墙挡住。
-///    （另：旧版那个 `onlyCheckAbovePlayer` 用的是遮挡物 pivot 高度，判据本身也是错的
-///     ——墙 pivot 在地面会被整个跳过。现已改为用命中点 `hit.point.y`，且默认关闭。）
-/// 2. **URP 下根本没变透明**：旧版用 Built-in RP 的 `_ALPHABLEND_ON` + `_Color`，
-///    URP/Lit 不认。现在统一走 `MaterialFadeUtil`（`_Surface` / `_SURFACE_TYPE_TRANSPARENT`
-///    / `_BaseColor`）。
-/// 3. **材质泄漏**：旧版 `renderer.materials`（复数）每次访问都会克隆一份，且从不 Destroy，
-///    每轮"遮挡→恢复"泄漏约 2N 个 Material。现在用 `sharedMaterials` 读原始、
-///    实例只在进入遮挡时建一次、恢复时 Destroy。
-/// 4. **每帧重赋 materials**：很贵且打断 SRP Batcher。现在每帧只改 alpha。
-/// 5. **可能永远不恢复**：旧版 `Mathf.Lerp` + `Mathf.Approximately(a,1)` 几乎判不成立，
-///    物体会永久留在字典里。现在用 `MoveTowards`，能精确到达。
-/// 6. **闪烁**：旧版每帧 `Random.insideUnitSphere` 随机偏移射线，同一遮挡物时有时无。
-///    现在用固定采样图案；`RaycastAll` 也换成 `RaycastNonAlloc`（不再每帧分配）。
-///
-/// ⚠ 注意：`FloorVisibilityController` 也会改 Renderer 的材质透明度。若两者作用在
-///    同一个 Renderer 上会互相覆盖——它那边仍是旧写法，建议后续也迁到 MaterialFadeUtil。
+/// 仅淡出高于玩家的视线遮挡模型；整模型透明，离开后恢复源材质。
 /// </summary>
 public class CameraOcclusionHandler : MonoBehaviour
 {
@@ -59,7 +37,14 @@ public class CameraOcclusionHandler : MonoBehaviour
     [SerializeField] private float targetAlpha = 0.3f;
     [SerializeField] private float fadeSpeed = 6f;
 
+    [Header("恢复延迟")]
+    [HideInInspector]
+    [SerializeField] private Shader localFadeShader;
+    [HideInInspector] [Min(0.2f)] [SerializeField] private float localFadeRadius = 1.1f;
+    [Min(0f)] [SerializeField] private float releaseDelay = 0.18f;
+
     [Header("过滤")]
+    [Min(0f)] [SerializeField] private float heightMargin = .05f;
     [Tooltip("忽略命中点低于玩家脚下的物体（地板等）。判据是【命中点】高度，不是物体 pivot。\n" +
              "默认关闭：开了会把朝脚下那条射线打到的矮墙也滤掉，矮墙就又不透明了。")]
     [SerializeField] private bool  skipBelowFeet = false;
@@ -74,12 +59,15 @@ public class CameraOcclusionHandler : MonoBehaviour
         public Material[] originalShared;   // 原始共享材质（不是克隆）
         public Material[] fadeInstances;    // 我们建的透明实例，恢复时要 Destroy
         public float      alpha;
+        public float lastOccluded;
     }
 
     private readonly Dictionary<Renderer, FadeEntry> _faded = new Dictionary<Renderer, FadeEntry>();
     private readonly HashSet<Renderer> _currentOccluders     = new HashSet<Renderer>();
     private readonly List<Renderer>    _toRemove             = new List<Renderer>();
     private readonly RaycastHit[]      _hitBuf               = new RaycastHit[16];
+    private Renderer[] _visualOccluders;
+    private Renderer _playerBody;
 
     /// <summary>缓存"该 Renderer 是否允许淡出"，避免每帧对每个命中做 GetComponentInParent</summary>
     private readonly Dictionary<Renderer, bool> _fadeAllowed = new Dictionary<Renderer, bool>();
@@ -87,10 +75,27 @@ public class CameraOcclusionHandler : MonoBehaviour
     /// <summary>挂了 NoOcclusionFade 的物体（含父物体）永不透明</summary>
     private bool AllowFade(Renderer r)
     {
+        if(!IsTallerThanPlayer(r))return false;
+        // Supported tall walls use whole-renderer transparency, including legacy protected walls.
+        if(localFadeShader!=null)
+            foreach(var material in r.sharedMaterials)
+                if(material!=null && (material.shader.name=="Universal Render Pipeline/Lit" || material.shader==localFadeShader))return true;
+        // Legacy fallback for unsupported materials; the height gate above always applies.
+        var distance=GetComponent<CameraWallDistance>();
+        if(distance!=null && distance.enabled && distance.NeedsCutaway)return true;
         if (_fadeAllowed.TryGetValue(r, out bool ok)) return ok;
         ok = r.GetComponentInParent<NoOcclusionFade>() == null;
         _fadeAllowed[r] = ok;
         return ok;
+    }
+
+    private bool IsTallerThanPlayer(Renderer candidate)
+    {
+        if(player==null || candidate==null)return false;
+        if(_playerBody==null)_playerBody=player.GetComponentInChildren<MeshRenderer>();
+        Bounds body=_playerBody!=null?_playerBody.bounds:new Bounds(player.position+Vector3.up*(playerHeight*.5f),new Vector3(.6f,playerHeight,.6f));
+        Bounds obstacle=candidate.bounds;
+        return obstacle.size.y>body.size.y+heightMargin && obstacle.max.y>body.max.y+heightMargin;
     }
 
     // 采样是固定图案（沿玩家身高均匀分布 + 可选左右各一条），
@@ -98,6 +103,8 @@ public class CameraOcclusionHandler : MonoBehaviour
 
     void Awake()
     {
+        // 部分导入隔间只有渲染网格，没有 Collider，也需要参与镜头遮挡。
+        _visualOccluders = FindObjectsOfType<MeshRenderer>();
         if (targetCamera == null) targetCamera = Camera.main;
 
         if (player == null)
@@ -130,17 +137,14 @@ public class CameraOcclusionHandler : MonoBehaviour
 
     // ── 检测 ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// 本帧「被遮挡的采样射线比例」0~1。供相机做让位用（相机不必自己再打一遍射线）。
-    /// 注意：这里统计的是**任何**挡住视线的命中，不受 maxOccluderDistance 过滤影响——
-    /// 远处的墙虽然不该被弄透明，但它确实挡住了玩家，相机仍应该让位。
-    /// </summary>
+    /// <summary>本帧被遮挡的采样射线比例，供调试或其他系统读取。</summary>
     public float OcclusionAmount { get; private set; }
 
     private int _raysCast, _raysBlocked;
 
     private void DetectOcclusion()
     {
+        if(_playerBody==null && player!=null)_playerBody=player.GetComponentInChildren<MeshRenderer>();
         Transform camT   = targetCamera.transform;
         Vector3   camPos = camT.position;
 
@@ -152,12 +156,17 @@ public class CameraOcclusionHandler : MonoBehaviour
             // ★ 沿玩家身高分布采样点：朝【脚下】那条射线才会被矮墙挡住
             float t = hs == 1 ? 0.5f : i / (float)(hs - 1);
             Vector3 aim = player.position + Vector3.up * Mathf.Lerp(footOffset, playerHeight, t);
+            if(_playerBody!=null)
+            {
+                var body=_playerBody.bounds;
+                aim=new Vector3(body.center.x,Mathf.Lerp(body.min.y+.15f,body.max.y-.15f,t),body.center.z);
+            }
 
             CastAt(camPos, aim);
             if (lateralSpread > 0.001f)
             {
-                CastAt(camPos + camT.right * lateralSpread, aim);
-                CastAt(camPos - camT.right * lateralSpread, aim);
+                CastAt(camPos, aim + camT.right * lateralSpread);
+                CastAt(camPos, aim - camT.right * lateralSpread);
             }
         }
 
@@ -178,6 +187,31 @@ public class CameraOcclusionHandler : MonoBehaviour
         int hits = Physics.RaycastNonAlloc(
             origin, delta / dist, _hitBuf, dist, occlusionLayers, QueryTriggerInteraction.Ignore);
 
+        if (localFadeShader != null && _visualOccluders != null)
+        {
+            var ray = new Ray(origin, delta / dist);
+            foreach (var candidate in _visualOccluders)
+            {
+                if (candidate == null || !candidate.enabled || !candidate.gameObject.activeInHierarchy ||
+                    (occlusionLayers.value & (1 << candidate.gameObject.layer)) == 0 ||
+                    candidate.transform.IsChildOf(player) || candidate.transform == player ||
+                    candidate.GetComponent<Collider>() != null || !AllowFade(candidate)) continue;
+                var bounds = candidate.bounds;
+                if (bounds.size.y < 0.4f || !bounds.IntersectRay(ray, out float distance) || distance >= dist) continue;
+                var point = ray.GetPoint(distance);
+                if (maxOccluderDistance > 0f &&
+                    (point - player.position).sqrMagnitude > maxOccluderDistance * maxOccluderDistance) continue;
+                bool supported = false;
+                foreach (var material in candidate.sharedMaterials)
+                    if (material != null && (material.shader.name == "Universal Render Pipeline/Lit" ||
+                        material.shader == localFadeShader)) supported = true;
+                if (!supported) continue;
+                blocked = true;
+                if (_currentOccluders.Add(candidate) && !_faded.ContainsKey(candidate))
+                    _faded[candidate] = BeginFade(candidate);
+            }
+        }
+
         for (int k = 0; k < hits; k++)
         {
             ref RaycastHit hit = ref _hitBuf[k];
@@ -191,9 +225,9 @@ public class CameraOcclusionHandler : MonoBehaviour
 
             if (r.transform == player || r.transform.IsChildOf(player)) continue;  // 别把玩家自己弄透明
 
-            // 这条射线确实被挡住了 → 计入遮挡程度（相机让位据此判断）。
-            // 注意要在下面各种"不淡出"过滤【之前】记：
-            // 墙可以拒绝变透明，但它确实挡住了玩家——此时应该由**相机**让路。
+            // 命中遮挡物，记录当前遮挡程度。
+            // 在淡出过滤之前统计：
+            // 禁止淡出的物体也仍然构成遮挡。
             blocked = true;
 
             // ★ 挂了 NoOcclusionFade 的墙永不淡出（它的职责就是挡住视线、不泄漏隔壁房间）
@@ -228,7 +262,10 @@ public class CameraOcclusionHandler : MonoBehaviour
 
             if (r == null) { _toRemove.Add(r); continue; }   // Renderer 已被销毁
 
-            bool  occluding = _currentOccluders.Contains(r);
+            bool eligible=IsTallerThanPlayer(r);
+            bool  occluding = eligible && _currentOccluders.Contains(r);
+            if (occluding) e.lastOccluded = Time.time;
+            occluding |= eligible && Time.time - e.lastOccluded < releaseDelay;
             float goal      = occluding ? targetAlpha : 1f;
 
             // MoveTowards 而非 Lerp：能精确到达 1，恢复判定才会真正触发
@@ -236,7 +273,11 @@ public class CameraOcclusionHandler : MonoBehaviour
 
             // 每帧只改 alpha，不重新赋 renderer.materials
             for (int i = 0; i < e.fadeInstances.Length; i++)
-                MaterialFadeUtil.SetAlpha(e.fadeInstances[i], e.alpha);
+            {
+                var material = e.fadeInstances[i];
+                if (material == null) continue;
+                MaterialFadeUtil.SetAlpha(material, e.alpha);
+            }
 
             if (!occluding && e.alpha >= 1f)
             {
@@ -257,9 +298,12 @@ public class CameraOcclusionHandler : MonoBehaviour
         for (int i = 0; i < shared.Length; i++)
         {
             if (shared[i] == null) continue;
-            inst[i] = new Material(shared[i]);
+            // Construct an independent material so Material Variant parents remain untouched.
+            var shader=shared[i].shader==localFadeShader?Shader.Find("Universal Render Pipeline/Lit"):shared[i].shader;
+            inst[i]=new Material(shader);
+            inst[i].CopyPropertiesFromMaterial(shared[i]);
             MaterialFadeUtil.SetTransparent(inst[i]);
-            MaterialFadeUtil.SetAlpha(inst[i], 1f);
+            MaterialFadeUtil.SetAlpha(inst[i],1f);
         }
 
         r.materials = inst;                              // 只赋这一次
@@ -273,10 +317,14 @@ public class CameraOcclusionHandler : MonoBehaviour
         if (r != null) r.sharedMaterials = e.originalShared;
 
         for (int i = 0; i < e.fadeInstances.Length; i++)
-            if (e.fadeInstances[i] != null) Destroy(e.fadeInstances[i]);
+            if (e.fadeInstances[i] != null)
+            {
+                if (Application.isPlaying) Destroy(e.fadeInstances[i]);
+                else DestroyImmediate(e.fadeInstances[i]);
+            }
     }
 
-    void OnDestroy()
+    void OnDisable()
     {
         foreach (var kv in _faded) EndFade(kv.Key, kv.Value);
         _faded.Clear();
@@ -298,8 +346,8 @@ public class CameraOcclusionHandler : MonoBehaviour
             Gizmos.DrawLine(camT.position, aim);
             if (lateralSpread > 0.001f)
             {
-                Gizmos.DrawLine(camT.position + camT.right * lateralSpread, aim);
-                Gizmos.DrawLine(camT.position - camT.right * lateralSpread, aim);
+                Gizmos.DrawLine(camT.position, aim + camT.right * lateralSpread);
+                Gizmos.DrawLine(camT.position, aim - camT.right * lateralSpread);
             }
         }
     }

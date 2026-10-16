@@ -263,8 +263,7 @@ public class MissionManager : MonoBehaviour
                  $"{(state.exclusive ? " [串行]" : " [并行]")}");
 
         // 播放开始演出
-        if (!string.IsNullOrEmpty(entry.missionData.dialogueOnStart))
-            DebugLog($"[onStart] 触发演出：{entry.missionData.dialogueOnStart}（DialogueManager 待接入）");
+        PlayMissionDialogue("onStart", entry.missionData.dialogueOnStart);
 
         // 向参与 Enemy 推送 MissionContext
         PushContextToEnemies(entry.missionData, entry.priority, state.exclusive);
@@ -630,9 +629,8 @@ public class MissionManager : MonoBehaviour
         }
 
         // 播放结算演出
-        string dialogue = success ? state.data.dialogueOnSuccess : state.data.dialogueOnFail;
-        if (!string.IsNullOrEmpty(dialogue))
-            DebugLog($"[onSettle] 触发演出：{dialogue}（DialogueManager 待接入）");
+        PlayMissionDialogue("onSettle", success ? state.data.dialogueOnSuccess
+                                               : state.data.dialogueOnFail);
 
         // 通知外部
         OnMissionSettled?.Invoke(state.data, success);
@@ -650,6 +648,25 @@ public class MissionManager : MonoBehaviour
         // 任务结算完成后，将此任务从所有参与 Enemy 的队列中移除
         // 放在最后，确保上方所有结算逻辑执行完毕再切换 Enemy 行为
         PopMissionFromAllEnemies(state.data.missionId);
+    }
+
+    /// <summary>
+    /// 触发任务演出对话。键值对应 Resources/Dialogues/&lt;key&gt;.json。
+    ///
+    /// 这类对话应当配 mode=realtime —— 任务开始/结算是即时演出，
+    /// 不该像敌人闲聊那样按回合一句一句挤出来。
+    /// 找不到文件时 DialogueManager.Play 内部会打 warning，这里不重复判断。
+    /// </summary>
+    private void PlayMissionDialogue(string hook, string key)
+    {
+        if (string.IsNullOrEmpty(key)) return;
+        if (DialogueManager.Instance == null) return;
+
+        // ⚠ 用 Enqueue 而不是 Play：场上就几个敌人，闲聊占用率很高，
+        //   Play 撞上有人在聊就直接丢弃，任务演出会静默消失。
+        //   Enqueue 会先尝试抢占（任务优先级高于闲聊），不行就排队等几回合。
+        bool playedNow = DialogueManager.Instance.Enqueue(key, expireTurns: 3, reason: hook);
+        DebugLog($"[{hook}] 触发演出：{key} → {(playedNow ? "已播放" : "已入队")}");
     }
 
     // ══════════════════════════════════════════════════════
@@ -806,6 +823,7 @@ public class MissionManager : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         if (!showDebugGUI) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box);

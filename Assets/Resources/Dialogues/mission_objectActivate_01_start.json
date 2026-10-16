@@ -1,0 +1,31 @@
+{
+  "id": "mission_objectActivate_01_start",
+  "trigger": "manual",
+  "topic": "启动目标设备 3004",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E03"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "我去把那台设备开起来，先别碰它旁边的东西。"
+    },
+    {
+      "speaker": "E03",
+      "text": "开关老是发涩，别又卡在半截。"
+    }
+  ]
+}

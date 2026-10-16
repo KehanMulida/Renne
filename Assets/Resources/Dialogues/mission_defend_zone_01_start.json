@@ -1,0 +1,32 @@
+{
+  "id": "mission_defend_zone_01_start",
+  "trigger": "manual",
+  "topic": "仓储区守卫",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "仓储区这边守住，别一有响动就都往外跑。"
+    },
+    {
+      "speaker": "E04",
+      "text": "我看里侧。你要挪位置，先跟我说一声。"
+    }
+  ]
+}

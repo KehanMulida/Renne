@@ -445,7 +445,7 @@ public class PlayerInputController : MonoBehaviour
 
         foreach (var item in Object.FindObjectsOfType<SceneItemInstance>())
         {
-            if (item == null || item.IsDestroyed) continue;
+            if (item == null || item.IsDestroyed || !PlayerSceneVisibility.CanReveal(item)) continue;
             if (item.Data == null || !item.Data.PlayerCanInteract) continue;
 
             int gridDist = item.MinGridDistanceTo(playerCell);
@@ -727,7 +727,7 @@ public class PlayerInputController : MonoBehaviour
         EnemyInventory best = null; float bestDist = float.MaxValue;
         foreach (var inv in Object.FindObjectsOfType<EnemyInventory>())
         {
-            if (!inv.IsSearchable) continue;
+            if (!inv.IsSearchable || !PlayerSceneVisibility.CanReveal(inv)) continue;
             float dist = Vector3.Distance(playerUnit.transform.position, inv.transform.position);
             if (dist <= inv.lootRange && dist < bestDist) { bestDist = dist; best = inv; }
         }
@@ -837,7 +837,7 @@ public class PlayerInputController : MonoBehaviour
         WorldItem[] allItems = FindObjectsOfType<WorldItem>();
         foreach (var item in allItems)
         {
-            if (item == null || item.IsPickedUp) continue;
+            if (item == null || item.IsPickedUp || !PlayerSceneVisibility.CanReveal(item)) continue;
             float distance = Vector3.Distance(playerUnit.transform.position, item.transform.position);
             if (distance <= pickupDetectionRange)
             {
@@ -854,7 +854,7 @@ public class PlayerInputController : MonoBehaviour
         int pickedCount = 0;
         foreach (var item in nearbyItems.ToArray())
         {
-            if (item != null && !item.IsPickedUp)
+            if (item != null && !item.IsPickedUp && PlayerSceneVisibility.CanReveal(item))
             {
                 bool pickedOk = equipmentManager != null
                     ? equipmentManager.TryPickupItem(item.ItemData, item.Quantity)
@@ -1481,7 +1481,7 @@ public class PlayerInputController : MonoBehaviour
             string floorPrompt = $"[{availableFloorConnection.connectionType}]\n" +
                                  $"Press [{changeFloorKey}] to go to Floor {availableFloorConnection.toFloor}";
 
-            GUI.Box(new Rect(Screen.width / 2 - 200, Screen.height / 2 - 50, 400, 80), floorPrompt, promptStyle);
+            GUI.Box(new Rect(Screen.width / 2 - 170, Screen.height - 130, 340, 58), floorPrompt, promptStyle);
         }
     }
 }

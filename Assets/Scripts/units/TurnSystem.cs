@@ -382,6 +382,7 @@ public class TurnSystem : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         if (!enableDebugLog || !isSystemActive) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box);

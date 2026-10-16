@@ -1,0 +1,32 @@
+{
+  "id": "mission_patrol_test_05_fail",
+  "trigger": "manual",
+  "topic": "第二水果区持续巡查",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E01",
+    "E02"
+  ],
+  "lines": [
+    {
+      "speaker": "E01",
+      "text": "这回巡查没接住，时间全耗在别的动静上了。"
+    },
+    {
+      "speaker": "E02",
+      "text": "先把眼前这段稳住，别再漏第二次。"
+    }
+  ]
+}

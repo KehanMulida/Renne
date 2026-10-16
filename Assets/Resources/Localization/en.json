@@ -1,0 +1,33 @@
+{
+  "entries": [
+    { "key": "menu.title",            "value": "Renne" },
+    { "key": "menu.start",            "value": "Start Game" },
+    { "key": "menu.settings",         "value": "Settings" },
+    { "key": "menu.quit",             "value": "Quit" },
+    { "key": "menu.back",             "value": "Back" },
+
+    { "key": "settings.title",        "value": "Settings" },
+    { "key": "settings.language",     "value": "Language" },
+    { "key": "settings.language.hint","value": "Language can only be changed from the main menu." },
+
+    { "key": "lang.zh",               "value": "简体中文" },
+    { "key": "lang.en",               "value": "English" },
+
+    { "key": "dialogue.unknownSpeaker",  "value": "?" },
+    { "key": "dialogue.clearFormat",     "value": "{0}: {1}" },
+    { "key": "dialogue.autoBlurFormat",  "value": "...{0}..." },
+    { "key": "dialogue.blurNoKeyword",   "value": "..." },
+    { "key": "dialogue.faintFormat",     "value": "(Someone is talking quietly to the {0})" },
+    { "key": "dialogue.thoughtFormat",   "value": "({0})" },
+
+    { "key": "dir.front",      "value": "front" },
+    { "key": "dir.frontRight", "value": "front-right" },
+    { "key": "dir.right",      "value": "right" },
+    { "key": "dir.backRight",  "value": "back-right" },
+    { "key": "dir.back",       "value": "rear" },
+    { "key": "dir.backLeft",   "value": "back-left" },
+    { "key": "dir.left",       "value": "left" },
+    { "key": "dir.frontLeft",  "value": "front-left" },
+    { "key": "dir.near",       "value": "nearby" }
+  ]
+}

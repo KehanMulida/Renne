@@ -478,7 +478,7 @@ public class PlayerController : MonoBehaviour, IDamageable, ITurnControllable, I
                          $"HP: {CurrentHp}/{MaxHp}\n" +
                          $"SP: {CurrentStamina}/{MaxStamina}";
 
-            GUI.Label(new Rect(screenPos.x - 50, Screen.height - screenPos.y - 40, 100, 60), 
+            GUI.Box(new Rect(14, Screen.height - 98, 150, 76),
                      info, style);
         }
     }

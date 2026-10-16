@@ -1,0 +1,35 @@
+{
+  "id": "mission_objectdefend_01_mutter",
+  "trigger": "ambient",
+  "topic": "设备 3004 看护与巡逻",
+  "priority": 0,
+  "weight": 3,
+  "state": "idle",
+  "mode": "turn",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 8,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "刚才转得好好的，别又有人碰了什么。"
+    },
+    {
+      "speaker": "E04",
+      "text": "我先看周围。真有问题，也别两个人都扑上去。"
+    }
+  ],
+  "missionIds": [
+    "objectdefend_01"
+  ]
+}

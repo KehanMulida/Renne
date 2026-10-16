@@ -207,6 +207,7 @@ public class SystemDiagnostic : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         GUIStyle style = new GUIStyle(GUI.skin.box);
         style.fontSize = 12;
         style.normal.textColor = Color.yellow;

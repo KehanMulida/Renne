@@ -50,6 +50,7 @@ public class EnemyHPDisplay : MonoBehaviour
     {
         if (enemyAI == null || mainCam == null) return;
         if (!enemyAI.IsAlive) return;
+        if (!PlayerSceneVisibility.CanReveal(this)) return;
 
         // 世界坐标 → 屏幕坐标（GUI 的 Y 轴是反的）
         Vector3 screenPos = mainCam.WorldToScreenPoint(transform.position + worldOffset);

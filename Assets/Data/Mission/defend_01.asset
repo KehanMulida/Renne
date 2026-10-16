@@ -62,6 +62,6 @@ MonoBehaviour:
   - actionKey: defend
     weight: 0.86
   enemyActionProfiles: []
-  dialogueOnStart: 
-  dialogueOnSuccess: 
-  dialogueOnFail: 
+  dialogueOnStart: mission_defend_zone_01_start
+  dialogueOnSuccess: mission_defend_zone_01_success
+  dialogueOnFail: mission_defend_zone_01_fail

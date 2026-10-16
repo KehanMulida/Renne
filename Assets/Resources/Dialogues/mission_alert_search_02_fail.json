@@ -1,0 +1,32 @@
+{
+  "id": "mission_alert_search_02_fail",
+  "trigger": "manual",
+  "topic": "走廊搜索",
+  "priority": 100,
+  "weight": 0,
+  "state": "any",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "搜了这一阵，还是没摸着可靠的线索。"
+    },
+    {
+      "speaker": "E04",
+      "text": "别再围着同一个角落转，把漏掉的地方补上。"
+    }
+  ]
+}

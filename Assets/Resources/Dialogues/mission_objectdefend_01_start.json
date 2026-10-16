@@ -1,0 +1,32 @@
+{
+  "id": "mission_objectdefend_01_start",
+  "trigger": "manual",
+  "topic": "设备 3004 看护与巡逻",
+  "priority": 100,
+  "weight": 0,
+  "state": "idle",
+  "mode": "realtime",
+  "linesPerTurn": 0,
+  "secondsPerLine": 2.5,
+  "clearRadius": 6,
+  "keywordRadius": 10,
+  "audibleRadius": 15,
+  "maxSpeakerDistance": 5,
+  "alertsOthers": false,
+  "repeatable": true,
+  "cooldownTurns": 0,
+  "speakers": [
+    "E03",
+    "E04"
+  ],
+  "lines": [
+    {
+      "speaker": "E03",
+      "text": "设备转起来以后更得看着，别让人靠过去乱碰。"
+    },
+    {
+      "speaker": "E04",
+      "text": "你巡里面，我照看外侧。有问题先喊一声。"
+    }
+  ]
+}

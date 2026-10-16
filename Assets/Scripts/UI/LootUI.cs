@@ -58,11 +58,13 @@ public class LootUI : MonoBehaviour
         if (!isOpen) return;
         if (Input.GetKeyDown(KeyCode.Escape)) { Close(); return; }
         if (lootSource == null || !lootSource.IsSearchable) Close();
+        else if (!PlayerSceneVisibility.CanReveal(lootSource)) Close();
     }
 
     private void OnGUI()
     {
         if (!isOpen || lootSource == null || mainCam == null) return;
+        if (!PlayerSceneVisibility.CanReveal(lootSource)) return;
 
         var slots = GetValidSlots();
 

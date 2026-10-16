@@ -364,6 +364,7 @@ public class FloorManager : MonoBehaviour
 
     void OnGUI()
     {
+        if (!DebugOverlayToggle.Visible) return;
         if (!enableDebugLog || floors == null) return;
 
         GUIStyle style = new GUIStyle(GUI.skin.box);

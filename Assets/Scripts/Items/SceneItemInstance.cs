@@ -322,6 +322,8 @@ public class SceneItemInstance : MonoBehaviour
     /// </summary>
     public bool TryInteract(GameObject interactor)
     {
+        if (interactor != null && interactor.GetComponent<PlayerController>() != null &&
+            !PlayerSceneVisibility.CanReveal(this)) return false;
         if (data == null || _isDestroyed || _isAnimating) return false;
 
         // 确定本次行动类型与 AP 消耗
@@ -499,6 +501,8 @@ public class SceneItemInstance : MonoBehaviour
     /// <summary>跳过 ResolveInteraction，直接按指定 kind 执行（供选择菜单调用）</summary>
     public bool TryInteractAs(InteractionKind kind, GameObject interactor)
     {
+        if (interactor != null && interactor.GetComponent<PlayerController>() != null &&
+            !PlayerSceneVisibility.CanReveal(this)) return false;
         if (data == null || _isDestroyed || _isAnimating) return false;
         _resolvedKind = kind;
         int apCost = GetApCostForKind(kind);

@@ -726,6 +726,7 @@ public class SimpleEnemyAI : MonoBehaviour
     void OnGUI()
     {
         if (!enableDebugLog || !Application.isPlaying) return;
+        if (!PlayerSceneVisibility.CanReveal(this)) return;
 
         Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position + Vector3.up * 3.5f);
         if (screenPos.z > 0)

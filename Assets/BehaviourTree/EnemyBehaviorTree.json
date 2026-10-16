@@ -10,6 +10,16 @@
 
         {
           "type": "Sequence",
+          "name": "Combat_TakeCover",
+          "children": [
+            { "type": "Condition", "key": "hasVisualContact", "value": "true" },
+            { "type": "Condition", "key": "coverTarget", "exists": true },
+            { "type": "Action", "executor": "combatMove", "keys": ["coverTarget", "coverTargetFloor"] }
+          ]
+        },
+
+        {
+          "type": "Sequence",
           "name": "Combat_InRange",
           "children": [
             { "type": "Condition", "key": "hasVisualContact", "value": "true" },

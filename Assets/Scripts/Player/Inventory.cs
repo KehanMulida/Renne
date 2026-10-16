@@ -356,31 +356,5 @@ public class Inventory : MonoBehaviour
 
     // ============ 调试可视化 ============
 
-    void OnGUI()
-    {
-        if (!enableDebugLog) return;
 
-        GUIStyle style = new GUIStyle(GUI.skin.box);
-        style.fontSize = 12;
-        style.normal.textColor = Color.white;
-        style.alignment = TextAnchor.UpperLeft;
-
-        string info = $"[Inventory]\n" +
-                     $"Slots: {SlotCount}/{MaxSlots}\n" +
-                     $"Weight: {CurrentWeight:F1}/{MaxWeight}\n";
-
-        // 显示前3个物品
-        int displayCount = Mathf.Min(3, slots.Count);
-        for (int i = 0; i < displayCount; i++)
-        {
-            info += $"• {slots[i].itemData.Name} x{slots[i].quantity}\n";
-        }
-
-        if (slots.Count > 3)
-        {
-            info += $"... +{slots.Count - 3} more";
-        }
-
-        GUI.Box(new Rect(10, 400, 200, 120), info, style);
-    }
 }
