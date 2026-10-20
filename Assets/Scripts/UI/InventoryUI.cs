@@ -32,6 +32,7 @@ public class InventoryUI : MonoBehaviour
 
         if (inventory != null)
             inventory.OnInventoryChanged += Refresh;
+        Refresh();
     }
 
     void OnDestroy()
@@ -44,13 +45,15 @@ public class InventoryUI : MonoBehaviour
 
     private void BuildSlots()
     {
-        if (slotPrefab == null || gridContainer == null) return;
+        if (gridContainer == null) return;
 
         int total = rows * columns;
+        var authored = gridContainer.GetComponentsInChildren<ItemSlotUI>(true);
         for (int i = 0; i < total; i++)
         {
-            var go   = Instantiate(slotPrefab, gridContainer);
-            var slot = go.GetComponent<ItemSlotUI>();
+            var slot = i < authored.Length ? authored[i] :
+                (slotPrefab != null ? Instantiate(slotPrefab, gridContainer).GetComponent<ItemSlotUI>() : null);
+            if (slot == null) continue;
             slot.SlotIndex    = i;
             slot.IsHotbarSlot = false;
             slot.OnSlotClicked       += OnSlotClicked;

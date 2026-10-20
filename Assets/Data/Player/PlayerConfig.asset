@@ -21,7 +21,7 @@ MonoBehaviour:
   StaminaRegenPerTurn: 10
   MoveRange: 8
   CombatMoveRange: 3
-  MoveSpeed: 6
+  MoveSpeed: 1.1
   MoveStaminaCost: 5
   QteWindowDuration: 5
   TurnStartDelay: 0.521
@@ -37,4 +37,13 @@ MonoBehaviour:
   HearingRange: 10.6
   BaseVisibility: 5
   ViewAngle: 120
+  CrouchMoveMultiplier: 0.6
+  CrouchSoundMultiplier: 0.3
+  CrouchFireHeightMultiplier: 0.55
+  StandEyeHeight: 1
+  CrouchEyeHeight: 0.4
+  ProneCrawlRange: 1
+  ProneSoundMultiplier: 0.1
+  ProneFireHeightMultiplier: 0.2
+  ProneEyeHeight: 0.15
   Prefab: {fileID: 6147953553251091065, guid: 88a79f1c17424cf49931801dcadb898a, type: 3}

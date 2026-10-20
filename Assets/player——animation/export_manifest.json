@@ -1,0 +1,178 @@
+{
+  "source": "Current unsaved Blender session snapshot",
+  "clips": [
+    {
+      "name": "Base_Idle.001_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4975481660844222e-06,
+      "start": 1,
+      "end": 60
+    },
+    {
+      "name": "Base_Idle.002_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4975481660844222e-06,
+      "start": 1,
+      "end": 60
+    },
+    {
+      "name": "Base_Idle_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4975481660844222e-06,
+      "start": 1,
+      "end": 60
+    },
+    {
+      "name": "Crouch_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.3167939549753293e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rene_Cautious_Walk_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.5716310588640224e-06,
+      "start": 1,
+      "end": 65
+    },
+    {
+      "name": "Rene_Crouch_Pickup_Right_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 2.0018643884356814e-06,
+      "start": 1,
+      "end": 91
+    },
+    {
+      "name": "Rene_Crouch_Sneak_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.3197415963104087e-06,
+      "start": 1,
+      "end": 81
+    },
+    {
+      "name": "Rene_Prone_Crawl_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 9.789578094301322e-07,
+      "start": 1,
+      "end": 121
+    },
+    {
+      "name": "Rene_Search_Pickup_Right_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4170213756953324e-06,
+      "start": 1,
+      "end": 91
+    },
+    {
+      "name": "Rene_Stand_To_Crouch_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.6173080863017005e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rene_Throw_Right_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.7244191338407317e-06,
+      "start": 1,
+      "end": 73
+    },
+    {
+      "name": "Rene_Transition_Crouch_To_Prone_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.1104114963150818e-06,
+      "start": 1,
+      "end": 61
+    },
+    {
+      "name": "Rene_Transition_Crouch_To_Stand_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.7489672602559578e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rene_Transition_Prone_To_Crouch_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.6104298975650315e-06,
+      "start": 1,
+      "end": 61
+    },
+    {
+      "name": "Rene_Transition_Stand_To_Crouch_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.7489672602559578e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rifle_Aim_Cente.001_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.6040738392827378e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rifle_Aim_Cente_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.584015162696637e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rifle_Aim_left_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.9399572183103305e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Rifle_Aim_right_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.8623471021614067e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Run.001_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4919776018337e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Run_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4919776018337e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Stand_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.2193996779843267e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "Walk_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.4757604806525814e-06,
+      "start": 1,
+      "end": 31
+    },
+    {
+      "name": "WPN_Rifle_Relex_Idle_15F",
+      "bones": 74,
+      "bake_mesh_error_m": 1.8081478481318856e-06,
+      "start": 1,
+      "end": 31
+    }
+  ],
+  "excluded": [
+    "Rene_Knockdown_Back_15F",
+    "Rene_Tie_Swing_Test_15F"
+  ],
+  "fbx_sample_rate": 30
+}

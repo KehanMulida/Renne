@@ -15,6 +15,7 @@ using System.Linq;
 /// </summary>
 public class PlayerInputController : MonoBehaviour
 {
+    [SerializeField] private float hudHintBottomOffset = 50f;
     // ============ 引用 ============
 
     [Header("引用")]
@@ -306,6 +307,10 @@ public class PlayerInputController : MonoBehaviour
         // 换弹（F 键）：不受模式和 canAct 门控，只要当前槽是武器即可
         if (Input.GetKeyDown(reloadKey))
             equipmentManager.ReloadWeapon();
+
+        if ((throwKey == KeyCode.Mouse0 || throwKey == KeyCode.Mouse1) &&
+            UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
 
         if (!canAct) return;
 
@@ -886,6 +891,8 @@ public class PlayerInputController : MonoBehaviour
 
     private void HandleMouseInput()
     {
+        if (UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, groundLayer);
 
@@ -1098,7 +1105,7 @@ public class PlayerInputController : MonoBehaviour
             ClearMovementRange();
     }
 
-    private void EndPlayerTurn()
+    public void EndPlayerTurn()
     {
         if (TurnSystem.Instance != null && TurnSystem.Instance.IsCurrentFaction(TurnFaction.Player))
         {
@@ -1467,7 +1474,7 @@ public class PlayerInputController : MonoBehaviour
             hint = "Space: 结束回合";
         }
 
-        GUI.Box(new Rect(Screen.width / 2 - 280, Screen.height - 50, 560, 30), hint, style);
+        GUI.Box(new Rect(Screen.width / 2 - 280, Screen.height - hudHintBottomOffset, 560, 30), hint, style);
 
         if (isShowingFloorPrompt && availableFloorConnection != null)
         {

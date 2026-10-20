@@ -457,6 +457,7 @@ public class PlayerController : MonoBehaviour, IDamageable, ITurnControllable, I
 
     void OnGUI()
     {
+        if (!showLegacyStatusLabel) return;
         if (runtimeConfig == null) return;
 
         // 在角色头顶显示状态信息
@@ -482,4 +483,6 @@ public class PlayerController : MonoBehaviour, IDamageable, ITurnControllable, I
                      info, style);
         }
     }
+
+    [SerializeField] private bool showLegacyStatusLabel = true;
 }

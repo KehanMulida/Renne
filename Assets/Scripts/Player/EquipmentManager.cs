@@ -76,6 +76,7 @@ public class EquipmentManager : MonoBehaviour
 
     public event System.Action<int, HotbarSlot> OnSlotChanged;
     public event System.Action<ItemData> OnItemUsed;
+    public event System.Action<Vector3> OnItemThrown;
 
     // ============ 公开属性 ============
 
@@ -493,6 +494,7 @@ public class EquipmentManager : MonoBehaviour
         DebugLog($"Throwing [{item.Name}] → {targetPos}");
 
         ThrowableProjectile.Launch(item, cfg, origin, targetPos, gameObject);
+        OnItemThrown?.Invoke(targetPos);
 
         hotbar[currentSlotIndex].quantity -= 1;
         if (hotbar[currentSlotIndex].quantity <= 0)

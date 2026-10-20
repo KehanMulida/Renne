@@ -21,6 +21,8 @@ public class ItemSlotUI : MonoBehaviour,
     [SerializeField] private Image iconImage;
     [SerializeField] private Image bgImage;
     [SerializeField] private Text  quantityText;
+    [SerializeField] private ItemGlyphGraphic fallbackGraphic;
+    [SerializeField] private Graphic selectedBorder;
 
     [Header("颜色配置")]
     [SerializeField] private Color colorNormal   = new Color(0.75f, 0.75f, 0.75f, 1f);
@@ -104,12 +106,18 @@ public class ItemSlotUI : MonoBehaviour,
 
         if (iconImage != null)
         {
-            iconImage.enabled = hasItem;
-            if (hasItem && Item.Icon != null)
-                iconImage.sprite = Item.Icon;
+            iconImage.enabled = hasItem && Item.Icon != null;
+            iconImage.sprite = hasItem ? Item.Icon : null;
             // 弹药耗尽的武器：图标变暗，直观提示"没有子弹"
             if (hasItem)
                 iconImage.color = emptyGun ? new Color(1f, 1f, 1f, 0.4f) : Color.white;
+        }
+
+        if (fallbackGraphic != null)
+        {
+            fallbackGraphic.enabled = hasItem && Item.Icon == null;
+            if (hasItem) fallbackGraphic.SetItem(Item);
+            fallbackGraphic.canvasRenderer.SetAlpha(emptyGun ? 0.4f : 1f);
         }
 
         if (quantityText != null)
@@ -134,6 +142,7 @@ public class ItemSlotUI : MonoBehaviour,
 
         float target = _selected ? scaleSelected : scaleNormal;
         transform.localScale = Vector3.one * target;
+        if (selectedBorder != null) selectedBorder.gameObject.SetActive(_selected);
     }
 
     // ── 指针事件 ─────────────────────────────────────────────────────────

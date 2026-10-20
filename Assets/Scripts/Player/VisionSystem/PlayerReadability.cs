@@ -37,7 +37,14 @@ public sealed class PlayerReadability : MonoBehaviour
                 material.SetFloat("_SpecularHighlights",0f);
                 material.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
                 if(material.HasProperty("_EmissionColor"))
-                {material.EnableKeyword("_EMISSION");material.SetColor("_EmissionColor",new Color(.018f,.026f,.04f));}
+                {
+                    material.EnableKeyword("_EMISSION");
+                    bool character = renderer is SkinnedMeshRenderer;
+                    if (character && material.HasProperty("_BaseMap") && material.HasProperty("_EmissionMap"))
+                        material.SetTexture("_EmissionMap", material.GetTexture("_BaseMap"));
+                    material.SetColor("_EmissionColor", character ? new Color(.4f,.4f,.4f) : new Color(.018f,.026f,.04f));
+                }
+                if (renderer is SkinnedMeshRenderer) renderer.receiveShadows = false;
                 materials[i]=material;clones.Add(material);
             }
             renderer.sharedMaterials=materials;

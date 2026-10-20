@@ -93,6 +93,10 @@ namespace RenneAutoTest
         {
             switch ((cmd.action ?? "").ToLowerInvariant())
             {
+                case "hudsetup":
+                    try { global::SurvivalHUDSetup.Apply(); AutoTestStatus.Write("done","",cmd.action,cmd.seq,"\"exitCode\":0"); }
+                    catch(Exception error) { Debug.LogException(error);Directory.CreateDirectory("Artifacts/SurvivalHUD");File.WriteAllText("Artifacts/SurvivalHUD/error.txt",error.ToString());AutoTestStatus.Write("done","",cmd.action,cmd.seq,"\"exitCode\":1"); }
+                    break;
                 case "enemytest":
                     try { global::EnemyRangeTestSetup.Apply();AutoTestStatus.Write("done","",cmd.action,cmd.seq,"\"exitCode\":0"); }
                     catch(Exception error){Debug.LogException(error);Directory.CreateDirectory("Artifacts/EnemyRangeTest");File.WriteAllText("Artifacts/EnemyRangeTest/error.txt",error.ToString());AutoTestStatus.Write("done","",cmd.action,cmd.seq,"\"exitCode\":1");}

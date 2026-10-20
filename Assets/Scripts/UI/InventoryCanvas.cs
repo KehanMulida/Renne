@@ -22,6 +22,7 @@ public class InventoryCanvas : MonoBehaviour
     [Header("动画配置")]
     [SerializeField] private float animDuration = 0.18f;
     [SerializeField] private float slideOffsetX = -60f; // 负值 = 从左侧滑入
+    [SerializeField] private bool alignWithHotbar = true;
 
     // 运行时引用（由 inventoryPanel 自动取得）
     private RectTransform _inventoryPanelRect;
@@ -56,7 +57,13 @@ public class InventoryCanvas : MonoBehaviour
 
         // 对齐结束后记录目标 X（此时 panel 已定位）
         if (_inventoryPanelRect != null)
+        {
             _targetAnchoredX = _inventoryPanelRect.anchoredPosition.x;
+            var pos = _inventoryPanelRect.anchoredPosition;
+            pos.x += slideOffsetX;
+            _inventoryPanelRect.anchoredPosition = pos;
+        }
+        if (_canvasGroup != null) _canvasGroup.alpha = 0f;
     }
 
     void OnDestroy()
@@ -68,6 +75,7 @@ public class InventoryCanvas : MonoBehaviour
 
     private void SyncSpacingAndAlignment()
     {
+        if (!alignWithHotbar) return;
         // 1. 同步间距：Hotbar VLG spacing → Inventory GLG spacing
         float spacing = 8f;
         if (hotbarSlotContainer != null)
@@ -120,6 +128,23 @@ public class InventoryCanvas : MonoBehaviour
         else OpenInventory();
     }
 
+    public bool IsOpen => _isOpen;
+
+    public void BeginPanelDrag()
+    {
+        if (_animCoroutine != null) StopCoroutine(_animCoroutine);
+        if (_inventoryPanelRect == null) return;
+        var pos = _inventoryPanelRect.anchoredPosition;
+        pos.x = _targetAnchoredX;
+        _inventoryPanelRect.anchoredPosition = pos;
+        if (_canvasGroup != null) _canvasGroup.alpha = 1f;
+    }
+
+    public void RememberPanelPosition()
+    {
+        if (_inventoryPanelRect != null) _targetAnchoredX = _inventoryPanelRect.anchoredPosition.x;
+    }
+
     // ── 动画协程 ─────────────────────────────────────────────────────────
 
     private IEnumerator AnimatePanel(bool opening)
@@ -131,9 +156,9 @@ public class InventoryCanvas : MonoBehaviour
             yield break;
         }
 
-        float startX     = opening ? _targetAnchoredX + slideOffsetX : _targetAnchoredX;
+        float startX     = _inventoryPanelRect.anchoredPosition.x;
         float endX       = opening ? _targetAnchoredX                 : _targetAnchoredX + slideOffsetX;
-        float startAlpha = opening ? 0f : 1f;
+        float startAlpha = _canvasGroup.alpha;
         float endAlpha   = opening ? 1f : 0f;
 
         float elapsed = 0f;

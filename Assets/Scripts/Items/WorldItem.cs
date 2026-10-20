@@ -206,6 +206,9 @@ public class WorldItem : MonoBehaviour
 
         isPickedUp = true;
 
+        if (picker != null)
+            picker.GetComponent<PlayerAnimationDriver>()?.PlayPickup(transform.position);
+
         // 判断拾取方阵营
         if (picker != null)
             interactedByFaction = ResolveFaction(picker);

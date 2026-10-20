@@ -43,15 +43,17 @@ public class HotbarUI : MonoBehaviour
     /// </summary>
     private void BuildSlots()
     {
-        foreach (Transform child in slotContainer)
-            Destroy(child.gameObject);
+        if (slotContainer == null) return;
         _slots.Clear();
 
         int size = equipmentManager != null ? equipmentManager.HotbarSize : 8;
+        // Reuse authored slots so their editable hierarchy survives entering Play Mode.
+        var authored = slotContainer.GetComponentsInChildren<ItemSlotUI>(true);
         for (int i = 0; i < size; i++)
         {
-            var go   = Instantiate(slotPrefab, slotContainer);
-            var slot = go.GetComponent<ItemSlotUI>();
+            var slot = i < authored.Length ? authored[i] :
+                (slotPrefab != null ? Instantiate(slotPrefab, slotContainer).GetComponent<ItemSlotUI>() : null);
+            if (slot == null) continue;
             slot.SlotIndex   = i;
             slot.IsHotbarSlot = true;
             slot.OnSlotClicked       += OnSlotClicked; // 订阅格子点击事件
@@ -91,6 +93,7 @@ public class HotbarUI : MonoBehaviour
     private void RefreshSlot(int index)
     {
         // if (index < 0 || index >= _slots.Count) return;
+        if (equipmentManager == null || index < 0 || index >= _slots.Count) return;
         var hotbarSlot = equipmentManager.GetSlot(index); // 获取格子数据
         if (hotbarSlot == null || hotbarSlot.IsEmpty)
         {
@@ -110,6 +113,7 @@ public class HotbarUI : MonoBehaviour
     private void UpdateSelectionHighlight()
     {
         //if (equipmentManager == null) return; 不需要检查，因为 _slots 已经初始化
+        if (equipmentManager == null) return;
         int cur = equipmentManager.CurrentSlotIndex;
         for (int i = 0; i < _slots.Count; i++)
             _slots[i].IsSelected = (i == cur);

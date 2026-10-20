@@ -393,6 +393,7 @@ public class UnitMovement : MonoBehaviour
         if (!isMoving) return;
 
         StopAllCoroutines();
+        GetComponent<PlayerAnimationDriver>()?.CancelGridStep();
 
         // 确保当前格子被正确标记为占据
         // （MoveAlongPathCoroutine 在移动开始时释放了旧格，途中逐格更新 currentGridPosition，
@@ -503,6 +504,12 @@ public class UnitMovement : MonoBehaviour
 
     private IEnumerator MoveAlongPathCoroutine(List<Vector2Int> path, int apCost = -1)
     {
+        var gait = GetComponent<PlayerAnimationDriver>();
+        if (gait != null && gait.UseGridCadence)
+        {
+            yield return MovePlayerGridPath(path, apCost, gait);
+            yield break;
+        }
         isMoving = true;
 
         if (animator != null)
@@ -604,6 +611,78 @@ public class UnitMovement : MonoBehaviour
         // Debug.Log($"[{gameObject.name}] Move complete → grid: {currentGridPosition}, floor: {currentFloor}");
     }
 
+    private IEnumerator MovePlayerGridPath(List<Vector2Int> path, int apCost, PlayerAnimationDriver gait)
+    {
+        isMoving = true;
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, false);
+        float remainingFrameTime = -1f;
+        foreach (Vector2Int gridPos in path)
+        {
+            Vector3 destination = FloorManager.Instance != null
+                ? FloorManager.Instance.GridToWorld(gridPos, currentFloor)
+                : GridManager.Instance.GridToWorld(gridPos);
+            yield return MovePlayerGridSegment(destination, gait, remainingFrameTime, value => remainingFrameTime = value);
+            currentGridPosition = gridPos;
+            OnPositionChanged?.Invoke(currentGridPosition);
+        }
+        GridManager.Instance.SetOccupied(currentGridPosition, currentFloor, true);
+        isMoving = false;
+        if (animator != null) animator.SetBool(moveAnimationParam, false);
+        var turn = GetComponent<TurnBasedUnit>();
+        if (turn != null && turn.IsMyTurn) turn.ConsumeAP(apCost >= 0 ? apCost : path.Count);
+        OnMoveComplete?.Invoke();
+    }
+
+    private IEnumerator MovePlayerGridSegment(Vector3 destination, PlayerAnimationDriver gait,
+        float initialFrameTime = -1f, System.Action<float> remainingFrameTime = null)
+    {
+        // Finish stance/action transitions before translating the player.
+        if (!gait.IsGridLocomotionReady)
+        {
+            yield return gait.WaitForGridLocomotion();
+            initialFrameTime = -1f;
+        }
+        Vector3 origin = transform.position;
+        float distance = Vector3.Distance(origin, destination);
+        if (distance < .001f) yield break;
+        float duration = distance / Mathf.Max(.05f, moveSpeed * gait.StanceSpeedMultiplier);
+        float elapsed = 0;
+        float budget = initialFrameTime >= 0 ? initialFrameTime : Time.deltaTime;
+        int footfalls = 0;
+        gait.BeginGridStep();
+        while (elapsed < duration)
+        {
+            if (budget <= .000001f)
+            {
+                yield return null;
+                budget = Time.deltaTime;
+            }
+            float used = Mathf.Min(budget, duration - elapsed);
+            elapsed += used;
+            budget -= used;
+            float progress = elapsed / duration;
+            transform.position = Vector3.Lerp(origin, destination, progress);
+            gait.SetGridProgress(progress);
+            Vector3 direction = destination - origin; direction.y = 0;
+            if (direction.sqrMagnitude > .001f)
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                Quaternion.LookRotation(direction), rotationSpeed * Time.deltaTime);
+            // One complete left/right gait cycle for every grid edge.
+            while (footfalls < 2 && progress >= (footfalls + 1) * .5f)
+            {
+                footfalls++; OnStep?.Invoke();
+            }
+            if (elapsed < duration)
+            {
+                yield return null;
+                budget = Time.deltaTime;
+            }
+        }
+        transform.position = destination;
+        gait.EndGridStep();
+        remainingFrameTime?.Invoke(budget);
+    }
+
     public IEnumerator MoveToFloorCoroutine(Vector2Int targetGridPos, int targetFloor, FloorConnection connection)
     {
         isMoving = true;
@@ -625,7 +704,7 @@ public class UnitMovement : MonoBehaviour
                     yield return StartCoroutine(MoveToPositionCoroutine(targetWorldPos));
                     currentGridPosition = gridPos;
 
-                    OnStep?.Invoke();
+                    if (GetComponent<PlayerAnimationDriver>()?.UseGridCadence != true) OnStep?.Invoke();
                 }
             }
 
@@ -669,6 +748,12 @@ public class UnitMovement : MonoBehaviour
 
     private IEnumerator MoveToPositionCoroutine(Vector3 targetPos)
     {
+        var gait = GetComponent<PlayerAnimationDriver>();
+        if (gait != null && gait.UseGridCadence)
+        {
+            yield return MovePlayerGridSegment(targetPos, gait);
+            yield break;
+        }
         Vector3 direction = (targetPos - transform.position).normalized;
         if (direction != Vector3.zero)
             transform.rotation = Quaternion.LookRotation(direction);

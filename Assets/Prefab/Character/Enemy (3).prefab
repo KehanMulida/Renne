@@ -79,7 +79,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveRange: 7
-  moveSpeed: 5.13
+  moveSpeed: 3.13
   verticalMoveSpeed: 5
   lookAheadRatio: 0.4
   rotationSpeed: 10
